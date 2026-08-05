@@ -11,6 +11,9 @@ const sourceReferenceSchema = z.object({
   hinweis: nonEmptyStringSchema
 })
 
+/** Zod schema for a liturgical source reference embedded in calendar data. */
+export const calendarSourceReferenceSchema = sourceReferenceSchema
+
 const sourceDefinitionSchema = z.object({
   name: nonEmptyStringSchema,
   url: z.url(),

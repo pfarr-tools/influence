@@ -6,9 +6,15 @@ import {
   loadCalendarFromFile
 } from "./services/calendar/calendar-service.js"
 import { CalendarValidationError } from "./services/calendar/errors.js"
+import {
+  assertOutputRoot,
+  scaffoldPostById,
+  scaffoldWeekByDate
+} from "./services/content/content-scaffolder.js"
 
 const program = new Command()
 const defaultCalendarPath = "data/redaktionskalender-2026-2027.json"
+const defaultOutputRoot = "output"
 
 program
   .name("director")
@@ -16,6 +22,7 @@ program
   .showHelpAfterError()
 
 const calendarCommand = program.command("calendar").description("Calendar commands")
+const contentCommand = program.command("content").description("Content commands")
 
 calendarCommand
   .command("validate")
@@ -27,6 +34,50 @@ calendarCommand
       console.log(
         `Calendar is valid: ${calendar.meta.titel} (${calendar.wochen.length} weeks, ${calendar.meta.umfang.beitraege} posts declared)`
       )
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+contentCommand
+  .command("scaffold")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .description("Create a local content scaffold for one post")
+  .action(async (options: { postId: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const result = await scaffoldPostById(
+        calendar,
+        options.postId,
+        defaultOutputRoot
+      )
+
+      console.log(`Scaffolded ${result.content.id} -> ${result.outputPath}`)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+contentCommand
+  .command("scaffold-week")
+  .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
+  .description("Create local content scaffolds for every post in the matching week")
+  .action(async (options: { date: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const results = await scaffoldWeekByDate(
+        calendar,
+        options.date,
+        defaultOutputRoot
+      )
+
+      console.log(`Scaffolded ${results.length} posts for week ${options.date}`)
+
+      for (const result of results) {
+        console.log(`- ${result.content.id} -> ${result.outputPath}`)
+      }
     } catch (error) {
       handleCliError(error)
     }

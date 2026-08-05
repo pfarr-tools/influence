@@ -104,6 +104,26 @@ export function getPostsForMonth(
 }
 
 /**
+ * Finds a single post by its calendar post identifier.
+ *
+ * @param calendar Parsed calendar data.
+ * @param postId Calendar post identifier such as `post-0001`.
+ * @returns The matching calendar post.
+ * @throws {CalendarValidationError} If the post does not exist.
+ */
+export function getPostById(calendar: Calendar, postId: string): CalendarPost {
+  const post = calendar.wochen
+    .flatMap((week) => week.beitraege)
+    .find((entry) => entry.id === postId)
+
+  if (!post) {
+    throw new CalendarValidationError(`No post found for id "${postId}"`)
+  }
+
+  return post
+}
+
+/**
  * Validates a CLI date argument before calendar lookup.
  *
  * @param value Candidate ISO date string.
