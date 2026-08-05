@@ -1,5 +1,5 @@
 import OpenAI from "openai"
-import { zodTextFormat } from "openai/helpers/zod"
+import { z } from "zod"
 
 import { contentPackageSchema } from "../content/content-schema.js"
 
@@ -47,25 +47,31 @@ export interface TokenUsage {
  */
 export function createOpenAIContentClient(apiKey: string): ContentModelClient {
   const client = new OpenAI({ apiKey })
+  const responseSchema = buildResponseSchema()
 
   return {
     async generateContent(
       input: ContentModelRequest
     ): Promise<ContentModelResponse> {
-      const response = await client.responses.parse({
+      const response = await client.responses.create({
         model: input.model,
         instructions: input.developerPrompt,
         input: input.userPrompt,
         max_output_tokens: input.maxOutputTokens,
         text: {
-          format: zodTextFormat(contentPackageSchema, "content_package"),
+          format: {
+            type: "json_schema",
+            name: "content_package",
+            strict: true,
+            schema: responseSchema
+          },
           verbosity: "medium"
         }
       })
 
       return {
         model: response.model,
-        parsedContent: response.output_parsed,
+        parsedContent: contentPackageSchema.parse(JSON.parse(response.output_text)),
         rawResponse: response,
         usage: {
           inputTokens: response.usage?.input_tokens ?? 0,
@@ -75,4 +81,17 @@ export function createOpenAIContentClient(apiKey: string): ContentModelClient {
       }
     }
   }
+}
+
+function buildResponseSchema(): Record<string, unknown> {
+  const jsonSchema = z.toJSONSchema(contentPackageSchema)
+
+  if (jsonSchema.type !== "object") {
+    throw new Error(
+      `contentPackageSchema must compile to a JSON Schema object, got ${jsonSchema.type ?? "unknown"}.`
+    )
+  }
+
+  const { $schema, ...responseSchema } = jsonSchema
+  return responseSchema
 }
