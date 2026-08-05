@@ -285,6 +285,8 @@ Funktionen:
 
 Keine Authentifizierung nötig, solange die Anwendung nur lokal gebunden wird.
 
+Verwende Bootstrap für die UI.
+
 # Phase 9 – Video/Reels optional
 
 Nutze FFmpeg für einfache Reels:
