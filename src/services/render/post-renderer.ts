@@ -1085,13 +1085,6 @@ function formatOverflowWarning(
   return `Text overflow detected in ${document.format} page ${document.pageIndex}/${document.pageCount} (${region.id}). Review copy before approval.`
 }
 
-function firstNonEmptyLine(value: string): string {
-  return value
-    .split("\n")
-    .map((entry) => entry.trim())
-    .find((entry) => entry.length > 0) ?? ""
-}
-
 function firstMeaningfulLine(value: string): string {
   const lines = value
     .split("\n")

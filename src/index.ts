@@ -33,6 +33,7 @@ import {
   renderPostById,
   renderWeekByDate
 } from "./services/render/index.js"
+import { createReviewServer } from "./services/review/index.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -50,6 +51,7 @@ const contentCommand = program.command("content").description("Content commands"
 const imageCommand = program.command("image").description("Image commands")
 const qaCommand = program.command("qa").description("Quality assurance checks")
 const renderCommand = program.command("render").description("Render commands")
+const reviewCommand = program.command("review").description("Local review UI")
 
 calendarCommand
   .command("validate")
@@ -444,6 +446,44 @@ renderCommand
       for (const result of results) {
         printRenderResult(result)
       }
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+reviewCommand
+  .command("serve")
+  .option("--host <host>", "Interface to bind the local review server to", "127.0.0.1")
+  .option("--port <port>", "TCP port for the local review server", parseIntegerOption, 3040)
+  .description("Start a local Bootstrap review interface")
+  .action(async (options: { host: string; port: number }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const server = createReviewServer({
+        calendar,
+        imageClient:
+          runtimeConfig.fluxApiBaseUrl === ""
+            ? undefined
+            : createFluxImageClient({
+                apiBaseUrl: runtimeConfig.fluxApiBaseUrl,
+                apiKey: runtimeConfig.fluxApiKey,
+                generatePath: runtimeConfig.fluxApiGeneratePath
+              }),
+        liturgicalSourceClient,
+        modelClient:
+          runtimeConfig.openAiApiKey === ""
+            ? undefined
+            : createOpenAIContentClient(runtimeConfig.openAiApiKey),
+        pageRenderClient: createPlaywrightHtmlRenderClient(),
+        runtimeConfig
+      })
+
+      server.listen(options.port, options.host, () => {
+        console.log(
+          `Review UI available at http://${options.host}:${options.port}/`
+        )
+      })
     } catch (error) {
       handleCliError(error)
     }

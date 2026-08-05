@@ -21,6 +21,7 @@ Das System liest den Jahres-Redaktionskalender aus `data/redaktionskalender-2026
 7. Alle Schritte müssen wiederholbar sein.
 8. Jeder Generator muss Dry-Run unterstützen.
 9. Erstellter Code muss immer durch eine komplette, deutschsprachige End-User-Dokumentation in docs/ unterstützt werden.
+10. Jede implementierte Phase muss in der lokalen UI sichtbar sein; verfügbare Schritte, Status und Ergebnisse dürfen nicht nur über die CLI zugänglich sein.
 10. Erstellter Code ist immer vollständig auf englisch dokumentiert (JSDoc oder äquivalent)
 
 ## Repository
@@ -282,6 +283,8 @@ Funktionen:
 - Neu generieren
 - Freigeben
 - Exportieren
+- Die Oberfläche und die End-User-Dokumentation müssen korrektes Deutsch mit Umlauten und ß verwenden.
+- Die Oberfläche muss die bis dahin implementierten Phasen als sichtbare Workflow-Schritte mit Status und Aktionen abbilden.
 
 Keine Authentifizierung nötig, solange die Anwendung nur lokal gebunden wird.
 
