@@ -20,6 +20,12 @@ Das System liest den Jahres-Redaktionskalender aus `data/redaktionskalender-2026
 6. Bibelzitate und Liedtexte müssen als sensible Quellenfelder behandelt werden.
 7. Alle Schritte müssen wiederholbar sein.
 8. Jeder Generator muss Dry-Run unterstützen.
+9. Erstellter Code muss immer durch eine komplette, deutschsprachige End-User-Dokumentation in docs/ unterstützt werden.
+10. Erstellter Code ist immer vollständig auf englisch dokumentiert (JSDoc oder äquivalent)
+
+## Repository
+
+Commits haben einen prefix wie "feat:", "fix:", usw. und eine sinnvolle, englischsprachige Beschreibung
 
 # Phase 1 – Repository und Grundstruktur
 
