@@ -24,6 +24,11 @@ import {
 import { createFluxImageClient } from "./services/image/flux-client.js"
 import { createLiturgicalSourceClient } from "./services/liturgy/liturgical-source.js"
 import { createOpenAIContentClient } from "./services/openai/openai-client.js"
+import {
+  createPlaywrightHtmlRenderClient,
+  renderPostById,
+  renderWeekByDate
+} from "./services/render/index.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -39,6 +44,7 @@ program
 const calendarCommand = program.command("calendar").description("Calendar commands")
 const contentCommand = program.command("content").description("Content commands")
 const imageCommand = program.command("image").description("Image commands")
+const renderCommand = program.command("render").description("Render commands")
 
 calendarCommand
   .command("validate")
@@ -336,6 +342,66 @@ imageCommand
     }
   )
 
+renderCommand
+  .command("post")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .option("--force", "Overwrite existing rendered outputs", false)
+  .description("Render all supported graphics for one post")
+  .action(async (options: { force: boolean; postId: string }) => {
+    const renderer = createPlaywrightHtmlRenderClient()
+
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const result = await renderPostById(
+        calendar,
+        options.postId,
+        {
+          force: options.force,
+          outputRoot: defaultOutputRoot
+        },
+        {
+          pageRenderClient: renderer
+        }
+      )
+
+      printRenderResult(result)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+renderCommand
+  .command("week")
+  .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
+  .option("--force", "Overwrite existing rendered outputs", false)
+  .description("Render all supported graphics for every post in a week")
+  .action(async (options: { date: string; force: boolean }) => {
+    const renderer = createPlaywrightHtmlRenderClient()
+
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const results = await renderWeekByDate(
+        calendar,
+        options.date,
+        {
+          force: options.force,
+          outputRoot: defaultOutputRoot
+        },
+        {
+          pageRenderClient: renderer
+        }
+      )
+
+      for (const result of results) {
+        printRenderResult(result)
+      }
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
 calendarCommand
   .command("list-week")
   .argument("<date>", "ISO date inside the desired week, e.g. 2026-08-10")
@@ -500,4 +566,47 @@ function parseIntegerOption(value: string): number {
   }
 
   return parsed
+}
+
+/**
+ * Prints one render result in a CLI-friendly way.
+ *
+ * @param result Render result to display.
+ */
+function printRenderResult(result: {
+  contentPath: string
+  postId: string
+  renders: Array<{
+    format: string
+    htmlPath: string
+    imagePath: string
+    overflowWarnings: string[]
+    pageCount: number
+    pageIndex: number
+    pageLabel: string
+    variant: string
+  }>
+  summaryPath: string
+  template: string
+  warnings: string[]
+}): void {
+  console.log(`Rendered ${result.postId} with template ${result.template}`)
+  console.log(`Content: ${result.contentPath}`)
+  console.log(`Summary: ${result.summaryPath}`)
+
+  for (const render of result.renders) {
+    console.log(
+      `- ${render.format} ${render.pageIndex}/${render.pageCount} [${render.variant}]: ${render.imagePath} (html: ${render.htmlPath})`
+    )
+
+    for (const warning of render.overflowWarnings) {
+      console.log(`  warning: ${warning}`)
+    }
+  }
+
+  for (const warning of result.warnings) {
+    if (!result.renders.some((render) => render.overflowWarnings.includes(warning))) {
+      console.log(`warning: ${warning}`)
+    }
+  }
 }
