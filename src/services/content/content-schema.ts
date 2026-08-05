@@ -69,7 +69,7 @@ export const contentPackageSchema = z.object({
   }),
   qa: z.object({
     warnings: z.array(z.string()),
-    approved: z.literal(false)
+    approved: z.boolean()
   }),
   metadata: z.object({
     model: z.string(),

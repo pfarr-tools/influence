@@ -8,11 +8,11 @@ import {
   getWeekForDate
 } from "../calendar/calendar-service.js"
 import { CalendarValidationError } from "../calendar/errors.js"
-import { contentPackageSchema } from "../content/content-schema.js"
 import {
+  assertContentApproved,
   getContentOutputPaths,
   pathExists,
-  readJsonFile,
+  readContentPackage,
   writeJsonFile
 } from "../content/content-storage.js"
 import type {
@@ -135,7 +135,8 @@ async function generateImagesForCalendarPost(
   dependencies: ImageGeneratorDependencies
 ): Promise<GenerateImagesResult> {
   const contentPaths = getContentOutputPaths(options.outputRoot, post)
-  const content = await loadContentPackage(contentPaths.contentPath)
+  const content = await readContentPackage(contentPaths.contentPath)
+  assertContentApproved(content, contentPaths.contentPath)
   const safePrompt = sanitizeFluxPrompt(content.visual.flux_prompt)
 
   if (safePrompt.length === 0) {
@@ -242,18 +243,6 @@ async function generateImagesForCalendarPost(
     postId: post.id,
     summaryPath
   }
-}
-
-async function loadContentPackage(path: string): Promise<ContentPackage> {
-  const exists = await pathExists(path)
-
-  if (!exists) {
-    throw new CalendarValidationError(
-      `Content package not found at "${path}". Run content generation first.`
-    )
-  }
-
-  return contentPackageSchema.parse(await readJsonFile(path))
 }
 
 function resolveTargetFormats(

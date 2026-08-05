@@ -209,6 +209,7 @@ async function writeImageReadyContent(
 
   await writeJsonFile(scaffold.outputPath, {
     ...content,
+    status: "freigegeben",
     visual: {
       ...content.visual,
       flux_prompt:

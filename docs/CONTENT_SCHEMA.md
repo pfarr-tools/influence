@@ -64,5 +64,6 @@
 
 - `needs_input = true`, wenn aktuelle Fakten fehlen.
 - `qa.approved = false` nach jeder Neugenerierung.
+- `qa.approved` darf erst nach bestandener QA und manueller Freigabe auf `true` gesetzt werden.
 - `visual.alt_text` muss vor Freigabe gefüllt sein.
 - Flux-Prompts dürfen nie Text im Bild verlangen.

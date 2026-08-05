@@ -254,6 +254,7 @@ async function writeRenderReadyContent(
 
   await writeJsonFile(scaffold.outputPath, {
     ...content,
+    status: "freigegeben",
     editorial_core: {
       ...content.editorial_core,
       main_message:

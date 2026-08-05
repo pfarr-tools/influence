@@ -18,6 +18,10 @@ import {
   generateContentForWeek
 } from "./services/content/content-generator.js"
 import {
+  runQaForPost,
+  runQaForWeek
+} from "./services/content/content-qa.js"
+import {
   generateImagesForPost,
   generateImagesForWeek
 } from "./services/image/image-generator.js"
@@ -44,6 +48,7 @@ program
 const calendarCommand = program.command("calendar").description("Calendar commands")
 const contentCommand = program.command("content").description("Content commands")
 const imageCommand = program.command("image").description("Image commands")
+const qaCommand = program.command("qa").description("Quality assurance checks")
 const renderCommand = program.command("render").description("Render commands")
 
 calendarCommand
@@ -342,6 +347,48 @@ imageCommand
     }
   )
 
+qaCommand
+  .command("post")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .description("Run rule-based QA checks for one content package")
+  .action(async (options: { postId: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const result = await runQaForPost(
+        calendar,
+        options.postId,
+        defaultOutputRoot
+      )
+
+      printQaResult(result)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+qaCommand
+  .command("week")
+  .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
+  .description("Run rule-based QA checks for every content package in a week")
+  .action(async (options: { date: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const results = await runQaForWeek(
+        calendar,
+        options.date,
+        defaultOutputRoot
+      )
+
+      for (const result of results) {
+        printQaResult(result)
+      }
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
 renderCommand
   .command("post")
   .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
@@ -608,5 +655,29 @@ function printRenderResult(result: {
     if (!result.renders.some((render) => render.overflowWarnings.includes(warning))) {
       console.log(`warning: ${warning}`)
     }
+  }
+}
+
+function printQaResult(result: {
+  contentPath: string
+  errors: string[]
+  postId: string
+  readyForApproval: boolean
+  statusAfterRun: string
+  statusBeforeRun: string
+  summaryPath: string
+  warnings: string[]
+}): void {
+  console.log(`QA ${result.postId}: ${result.readyForApproval ? "ready" : "blocked"}`)
+  console.log(`Content: ${result.contentPath}`)
+  console.log(`Summary: ${result.summaryPath}`)
+  console.log(`Status: ${result.statusBeforeRun} -> ${result.statusAfterRun}`)
+
+  for (const error of result.errors) {
+    console.log(`error: ${error}`)
+  }
+
+  for (const warning of result.warnings) {
+    console.log(`warning: ${warning}`)
   }
 }

@@ -3,6 +3,9 @@ import { constants } from "node:fs"
 import { dirname, join } from "node:path"
 
 import type { CalendarPost } from "../../domain/calendar.js"
+import type { ContentPackage } from "../../domain/content.js"
+import { CalendarValidationError } from "../calendar/errors.js"
+import { contentPackageSchema } from "./content-schema.js"
 
 /**
  * Computes all file paths used for a content generation result.
@@ -64,6 +67,41 @@ export async function writeJsonFile(path: string, value: unknown): Promise<void>
 export async function readJsonFile<T>(path: string): Promise<T> {
   const fileContent = await readFile(path, "utf8")
   return JSON.parse(fileContent) as T
+}
+
+/**
+ * Reads and validates a content package from disk.
+ *
+ * @param path File path to the content package.
+ * @returns Parsed content package.
+ */
+export async function readContentPackage(path: string): Promise<ContentPackage> {
+  const exists = await pathExists(path)
+
+  if (!exists) {
+    throw new CalendarValidationError(
+      `Content package not found at "${path}". Run content generation first.`
+    )
+  }
+
+  return contentPackageSchema.parse(await readJsonFile(path))
+}
+
+/**
+ * Ensures a content package has reached approval before downstream processing.
+ *
+ * @param content Parsed content package.
+ * @param contentPath Source file path for error reporting.
+ */
+export function assertContentApproved(
+  content: ContentPackage,
+  contentPath: string
+): void {
+  if (content.status !== "freigegeben") {
+    throw new CalendarValidationError(
+      `Content package "${contentPath}" is still "${content.status}". Run QA first and only continue after it is marked "freigegeben".`
+    )
+  }
 }
 
 /**
