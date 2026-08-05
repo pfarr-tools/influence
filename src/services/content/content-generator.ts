@@ -16,6 +16,7 @@ import {
   writeJsonFile
 } from "./content-storage.js"
 import type { ContentModelClient, TokenUsage } from "../openai/openai-client.js"
+import type { LiturgicalContext, LiturgicalSourceClient } from "../liturgy/liturgical-source.js"
 
 /**
  * Generation options shared by post, week, and month commands.
@@ -123,6 +124,7 @@ export async function generateContentForMonth(
  * Dependencies injected for testable content generation.
  */
 export interface ContentGeneratorDependencies {
+  liturgicalSourceClient?: LiturgicalSourceClient
   modelClient?: ContentModelClient
   now?: () => Date
 }
@@ -140,7 +142,8 @@ async function generateContentForCalendarPost(
   options: GenerateContentOptions,
   dependencies: ContentGeneratorDependencies
 ): Promise<GenerateContentResult> {
-  const scaffold = createContentScaffold(post)
+  const liturgicalContext = await loadLiturgicalContext(post, dependencies)
+  const scaffold = createContentScaffold(post, { liturgicalContext })
   const outputPaths = getContentOutputPaths(options.outputRoot, post)
 
   if (!options.dryRun) {
@@ -151,7 +154,8 @@ async function generateContentForCalendarPost(
     post,
     scaffold,
     options.model,
-    options.language
+    options.language,
+    liturgicalContext
   )
 
   if (options.dryRun) {
@@ -246,7 +250,8 @@ function buildGenerationRequestPreview(
   post: CalendarPost,
   scaffold: ContentPackage,
   model: string,
-  language: string
+  language: string,
+  liturgicalContext?: LiturgicalContext
 ): ContentGenerationRequestPreview {
   const developerPrompt = [
     "You are part of a Protestant social media editorial team.",
@@ -258,7 +263,8 @@ function buildGenerationRequestPreview(
     "Return content that strictly matches the requested JSON schema.",
     "Set needs_input to true whenever required facts are missing.",
     "Keep qa.approved false.",
-    "Do not ask for any text inside generated images."
+    "Do not ask for any text inside generated images.",
+    "When liturgical_context.resolved_weekly_verse is present, use its exact wording for Wochenspruch slots instead of placeholders."
   ].join(" ")
 
   const userPrompt = JSON.stringify(
@@ -279,6 +285,20 @@ function buildGenerationRequestPreview(
         liturgical_source: post.liturgische_quelle ?? null,
         platform_requirements: post.plattformen_und_formate
       },
+      liturgical_context: liturgicalContext
+        ? {
+            source_date: liturgicalContext.sourceDate,
+            source_path: liturgicalContext.sourcePath,
+            candidate_entries: liturgicalContext.entries.map((entry) => ({
+              code: entry.code,
+              label: entry.label,
+              title: entry.title,
+              weekly_verse: entry.weeklyVerse ?? null
+            })),
+            resolved_weekly_verse: liturgicalContext.weeklyVerse ?? null,
+            warnings: liturgicalContext.warnings
+          }
+        : null,
       scaffold,
       constraints: {
         preserve_source_truth: true,
@@ -294,6 +314,32 @@ function buildGenerationRequestPreview(
     developerPrompt,
     model,
     userPrompt
+  }
+}
+
+async function loadLiturgicalContext(
+  post: CalendarPost,
+  dependencies: ContentGeneratorDependencies
+): Promise<LiturgicalContext | undefined> {
+  if (!post.liturgische_quelle || !dependencies.liturgicalSourceClient) {
+    return undefined
+  }
+
+  try {
+    return await dependencies.liturgicalSourceClient.loadContext(
+      post.liturgische_quelle
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+
+    return {
+      entries: [],
+      sourceDate: post.liturgische_quelle.datum,
+      sourcePath: post.liturgische_quelle.json_pfad,
+      warnings: [
+        `The liturgical source could not be loaded automatically: ${message}`
+      ]
+    }
   }
 }
 

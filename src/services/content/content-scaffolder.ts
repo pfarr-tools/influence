@@ -13,6 +13,7 @@ import {
 } from "../calendar/calendar-service.js"
 import { CalendarValidationError } from "../calendar/errors.js"
 import { contentPackageSchema } from "./content-schema.js"
+import type { LiturgicalContext } from "../liturgy/liturgical-source.js"
 
 /**
  * Creates a validated content scaffold for a single calendar post.
@@ -20,7 +21,10 @@ import { contentPackageSchema } from "./content-schema.js"
  * @param post Calendar post used as the source of truth.
  * @returns Validated content package scaffold.
  */
-export function createContentScaffold(post: CalendarPost): ContentPackage {
+export function createContentScaffold(
+  post: CalendarPost,
+  options?: { liturgicalContext?: LiturgicalContext }
+): ContentPackage {
   const liturgicalSource = post.liturgische_quelle?.jahr_endpoint ?? ""
   const needsInput = (post.aktuelle_eingaben?.length ?? 0) > 0
   const title = post.redaktionsfelder.arbeitstitel || post.thema
@@ -29,8 +33,8 @@ export function createContentScaffold(post: CalendarPost): ContentPackage {
     ? "[TODO: define audience after current inputs are available]"
     : "breite Öffentlichkeit"
 
-  const sourceNotes = buildSourceNotes(post)
-  const qaWarnings = buildQaWarnings(post)
+  const sourceNotes = buildSourceNotes(post, options?.liturgicalContext)
+  const qaWarnings = buildQaWarnings(post, options?.liturgicalContext)
 
   return contentPackageSchema.parse({
     id: post.id,
@@ -168,7 +172,10 @@ async function writeScaffold(
  * @param post Calendar post used as the source of truth.
  * @returns Ordered notes carried into the content scaffold.
  */
-function buildSourceNotes(post: CalendarPost): string[] {
+function buildSourceNotes(
+  post: CalendarPost,
+  liturgicalContext?: LiturgicalContext
+): string[] {
   const notes = [
     `Goal: ${post.ziel}`,
     `Column: ${post.saeule}`,
@@ -183,6 +190,16 @@ function buildSourceNotes(post: CalendarPost): string[] {
 
   if (post.liturgische_quelle) {
     notes.push(formatLiturgicalSourceNote(post.liturgische_quelle))
+  }
+
+  if (liturgicalContext?.weeklyVerse) {
+    notes.push(
+      `Wochenspruch: ${liturgicalContext.weeklyVerse.text} (${liturgicalContext.weeklyVerse.citation})`
+    )
+  }
+
+  for (const warning of liturgicalContext?.warnings ?? []) {
+    notes.push(`Liturgical note: ${warning}`)
   }
 
   if (post.sonderformat) {
@@ -200,7 +217,10 @@ function buildSourceNotes(post: CalendarPost): string[] {
  * @param post Calendar post used as the source of truth.
  * @returns Warnings persisted in the scaffold QA block.
  */
-function buildQaWarnings(post: CalendarPost): string[] {
+function buildQaWarnings(
+  post: CalendarPost,
+  liturgicalContext?: LiturgicalContext
+): string[] {
   const warnings = ["Alt text must be completed before approval"]
 
   if ((post.aktuelle_eingaben?.length ?? 0) > 0) {
@@ -217,6 +237,10 @@ function buildQaWarnings(post: CalendarPost): string[] {
 
   if (post.rubrik === "Gebet oder Lied") {
     warnings.push("Check song lyric copyright before publication")
+  }
+
+  for (const warning of liturgicalContext?.warnings ?? []) {
+    warnings.push(warning)
   }
 
   return warnings

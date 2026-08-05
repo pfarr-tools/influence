@@ -17,12 +17,14 @@ import {
   generateContentForPost,
   generateContentForWeek
 } from "./services/content/content-generator.js"
+import { createLiturgicalSourceClient } from "./services/liturgy/liturgical-source.js"
 import { createOpenAIContentClient } from "./services/openai/openai-client.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
 const defaultCalendarPath = runtimeConfig.calendarPath
 const defaultOutputRoot = runtimeConfig.outputDir
+const liturgicalSourceClient = createLiturgicalSourceClient()
 
 program
   .name("director")
@@ -77,6 +79,7 @@ contentCommand
             outputRoot: defaultOutputRoot
           },
           {
+            liturgicalSourceClient,
             modelClient:
               options.dryRun || runtimeConfig.openAiApiKey === ""
                 ? undefined
@@ -121,6 +124,7 @@ contentCommand
             outputRoot: defaultOutputRoot
           },
           {
+            liturgicalSourceClient,
             modelClient:
               options.dryRun || runtimeConfig.openAiApiKey === ""
                 ? undefined
@@ -167,6 +171,7 @@ contentCommand
             outputRoot: defaultOutputRoot
           },
           {
+            liturgicalSourceClient,
             modelClient:
               options.dryRun || runtimeConfig.openAiApiKey === ""
                 ? undefined

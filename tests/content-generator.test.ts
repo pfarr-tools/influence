@@ -13,6 +13,10 @@ import {
 import { createContentScaffold } from "../src/services/content/content-scaffolder.js"
 import { readJsonFile } from "../src/services/content/content-storage.js"
 import type {
+  LiturgicalContext,
+  LiturgicalSourceClient
+} from "../src/services/liturgy/liturgical-source.js"
+import type {
   ContentModelClient,
   ContentModelRequest,
   ContentModelResponse
@@ -119,6 +123,130 @@ describe("content generator", () => {
 
     expect(result.dryRunRequest?.model).toBe("gpt-5.6")
     expect(called).toBe(false)
+  })
+
+  it("passes the resolved Wochenspruch text into the generation prompt", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+
+    const result = await generateContentForPost(
+      calendar,
+      "post-0001",
+      {
+        dryRun: true,
+        force: false,
+        language: "de",
+        model: "gpt-5.6",
+        outputRoot: tempDir
+      },
+      {
+        liturgicalSourceClient: createMockLiturgicalSourceClient({
+          entries: [
+            {
+              code: "10TR",
+              label: "10. So. n. Trinitatis (Israelsonntag)",
+              title: "Der Herr und sein Volk",
+              weeklyVerse: {
+                citation: "Ps 33,12",
+                text: "Wohl dem Volk, dessen Gott der HERR ist, dem Volk, das er zum Erbe erwählt hat!",
+                url: "https://example.com/ps33-12"
+              }
+            }
+          ],
+          sourceDate: "2026-08-09",
+          sourcePath: "$.Tage['2026-08-09']",
+          warnings: [],
+          weeklyVerse: {
+            citation: "Ps 33,12",
+            text: "Wohl dem Volk, dessen Gott der HERR ist, dem Volk, das er zum Erbe erwählt hat!",
+            url: "https://example.com/ps33-12"
+          }
+        })
+      }
+    )
+
+    const promptPayload = JSON.parse(result.dryRunRequest!.userPrompt) as {
+      liturgical_context: {
+        resolved_weekly_verse: { text: string; citation: string }
+      }
+      scaffold: {
+        editorial_core: { source_notes: string[] }
+      }
+    }
+
+    expect(promptPayload.liturgical_context.resolved_weekly_verse.text).toContain(
+      "Wohl dem Volk"
+    )
+    expect(promptPayload.liturgical_context.resolved_weekly_verse.citation).toBe(
+      "Ps 33,12"
+    )
+    expect(promptPayload.scaffold.editorial_core.source_notes).toContain(
+      "Wochenspruch: Wohl dem Volk, dessen Gott der HERR ist, dem Volk, das er zum Erbe erwählt hat! (Ps 33,12)"
+    )
+  })
+
+  it("keeps a warning when multiple liturgical entries disagree on the Wochenspruch", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+
+    const result = await generateContentForPost(
+      calendar,
+      "post-0001",
+      {
+        dryRun: true,
+        force: false,
+        language: "de",
+        model: "gpt-5.6",
+        outputRoot: tempDir
+      },
+      {
+        liturgicalSourceClient: createMockLiturgicalSourceClient({
+          entries: [
+            {
+              code: "A",
+              label: "Entry A",
+              title: "First",
+              weeklyVerse: {
+                citation: "Ps 33,12",
+                text: "First verse",
+                url: "https://example.com/first"
+              }
+            },
+            {
+              code: "B",
+              label: "Entry B",
+              title: "Second",
+              weeklyVerse: {
+                citation: "Ps 40,1",
+                text: "Second verse",
+                url: "https://example.com/second"
+              }
+            }
+          ],
+          sourceDate: "2026-08-09",
+          sourcePath: "$.Tage['2026-08-09']",
+          warnings: [
+            "Multiple liturgical entries for 2026-08-09 contain different Wochenspruch values. Local selection is still required before publication."
+          ]
+        })
+      }
+    )
+
+    const promptPayload = JSON.parse(result.dryRunRequest!.userPrompt) as {
+      liturgical_context: {
+        resolved_weekly_verse: unknown
+        warnings: string[]
+      }
+      scaffold: {
+        qa: { warnings: string[] }
+      }
+    }
+
+    expect(promptPayload.liturgical_context.resolved_weekly_verse).toBeNull()
+    expect(promptPayload.liturgical_context.warnings).toContain(
+      "Multiple liturgical entries for 2026-08-09 contain different Wochenspruch values. Local selection is still required before publication."
+    )
+    expect(promptPayload.scaffold.qa.warnings).toContain(
+      "Multiple liturgical entries for 2026-08-09 contain different Wochenspruch values. Local selection is still required before publication."
+    )
   })
 
   it("writes the raw response and rejects invalid generated content", async () => {
@@ -263,6 +391,16 @@ function createMockModelClient(options: {
           totalTokens: 46
         }
       }
+    }
+  }
+}
+
+function createMockLiturgicalSourceClient(
+  context: LiturgicalContext
+): LiturgicalSourceClient {
+  return {
+    async loadContext(): Promise<LiturgicalContext> {
+      return context
     }
   }
 }
