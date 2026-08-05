@@ -92,6 +92,7 @@ function buildResponseSchema(): Record<string, unknown> {
     )
   }
 
-  const { $schema, ...responseSchema } = jsonSchema
+  const responseSchema = { ...jsonSchema }
+  delete responseSchema.$schema
   return responseSchema
 }

@@ -1,4 +1,4 @@
-import { Command } from "commander"
+import { Command, InvalidArgumentError } from "commander"
 
 import {
   getPostsForMonth,
@@ -17,6 +17,11 @@ import {
   generateContentForPost,
   generateContentForWeek
 } from "./services/content/content-generator.js"
+import {
+  generateImagesForPost,
+  generateImagesForWeek
+} from "./services/image/image-generator.js"
+import { createFluxImageClient } from "./services/image/flux-client.js"
 import { createLiturgicalSourceClient } from "./services/liturgy/liturgical-source.js"
 import { createOpenAIContentClient } from "./services/openai/openai-client.js"
 
@@ -33,6 +38,7 @@ program
 
 const calendarCommand = program.command("calendar").description("Calendar commands")
 const contentCommand = program.command("content").description("Content commands")
+const imageCommand = program.command("image").description("Image commands")
 
 calendarCommand
   .command("validate")
@@ -232,6 +238,104 @@ contentCommand
     }
   })
 
+imageCommand
+  .command("generate")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .option("--dry-run", "Show Flux requests without calling the API", false)
+  .option("--force", "Overwrite existing generated image outputs", false)
+  .option("--model <name>", "Flux model to use", runtimeConfig.fluxModel)
+  .option("--seed <seed>", "Optional deterministic seed", parseIntegerOption)
+  .description("Generate text-free image assets for one post")
+  .action(
+    async (options: {
+      dryRun: boolean
+      force: boolean
+      model: string
+      postId: string
+      seed?: number
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const result = await generateImagesForPost(
+          calendar,
+          options.postId,
+          {
+            dryRun: options.dryRun,
+            force: options.force,
+            model: options.model,
+            outputRoot: defaultOutputRoot,
+            seed: options.seed
+          },
+          {
+            imageClient:
+              options.dryRun || runtimeConfig.fluxApiBaseUrl === ""
+                ? undefined
+                : createFluxImageClient({
+                    apiBaseUrl: runtimeConfig.fluxApiBaseUrl,
+                    apiKey: runtimeConfig.fluxApiKey,
+                    generatePath: runtimeConfig.fluxApiGeneratePath
+                  })
+          }
+        )
+
+        printImageGenerationResult(result)
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
+imageCommand
+  .command("generate-week")
+  .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
+  .option("--dry-run", "Show Flux requests without calling the API", false)
+  .option("--force", "Overwrite existing generated image outputs", false)
+  .option("--model <name>", "Flux model to use", runtimeConfig.fluxModel)
+  .option("--seed <seed>", "Optional deterministic seed", parseIntegerOption)
+  .description("Generate text-free image assets for every post in a week")
+  .action(
+    async (options: {
+      date: string
+      dryRun: boolean
+      force: boolean
+      model: string
+      seed?: number
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const results = await generateImagesForWeek(
+          calendar,
+          options.date,
+          {
+            dryRun: options.dryRun,
+            force: options.force,
+            model: options.model,
+            outputRoot: defaultOutputRoot,
+            seed: options.seed
+          },
+          {
+            imageClient:
+              options.dryRun || runtimeConfig.fluxApiBaseUrl === ""
+                ? undefined
+                : createFluxImageClient({
+                    apiBaseUrl: runtimeConfig.fluxApiBaseUrl,
+                    apiKey: runtimeConfig.fluxApiKey,
+                    generatePath: runtimeConfig.fluxApiGeneratePath
+                  })
+          }
+        )
+
+        for (const result of results) {
+          printImageGenerationResult(result)
+        }
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
 calendarCommand
   .command("list-week")
   .argument("<date>", "ISO date inside the desired week, e.g. 2026-08-10")
@@ -330,4 +434,70 @@ function printGenerationResult(result: {
   console.log(
     `${result.postId} -> ${result.contentPath} (raw: ${result.rawResponsePath}, ${usage})`
   )
+}
+
+/**
+ * Prints one image generation result in a CLI-friendly way.
+ *
+ * @param result Image generation result to display.
+ */
+function printImageGenerationResult(result: {
+  contentPath: string
+  dryRunRequests?: Array<{
+    aspectRatio: string
+    height: number
+    model: string
+    negativePrompt: string
+    outputFormat: string
+    postId: string
+    prompt: string
+    seed?: number
+    width: number
+  }>
+  jobs: Array<{
+    assetPath: string
+    aspectRatio: string
+    error?: string
+    rawResponsePath: string
+    status: "failed" | "succeeded"
+  }>
+  postId: string
+  summaryPath: string
+}): void {
+  console.log(`Image jobs for ${result.postId}`)
+  console.log(`Content: ${result.contentPath}`)
+  console.log(`Summary: ${result.summaryPath}`)
+
+  if (result.dryRunRequests) {
+    console.log("Dry-run requests:")
+
+    for (const request of result.dryRunRequests) {
+      console.log(JSON.stringify(request, null, 2))
+    }
+
+    return
+  }
+
+  for (const job of result.jobs) {
+    if (job.status === "succeeded") {
+      console.log(
+        `- ${job.aspectRatio}: succeeded -> ${job.assetPath} (raw: ${job.rawResponsePath})`
+      )
+      continue
+    }
+
+    console.log(
+      `- ${job.aspectRatio}: failed -> ${job.error ?? "unknown error"} (raw: ${job.rawResponsePath})`
+    )
+  }
+}
+
+function parseIntegerOption(value: string): number {
+  const parsed = Number.parseInt(value, 10)
+
+  if (Number.isNaN(parsed)) {
+    throw new InvalidArgumentError(`Expected integer seed, received "${value}"`)
+  }
+
+  return parsed
 }

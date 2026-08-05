@@ -20,6 +20,7 @@ Canva ist nicht erforderlich. Das Layout wird reproduzierbar mit HTML/CSS und Pl
 ## Enthalten
 
 - `docs/CODEX_PLAN.md` – vollständiger Arbeitsplan für Codex
+- `docs/CLI_PHASE_5.md` – Dokumentation der Flux-Bildgenerierung
 - `docs/ARCHITECTURE.md` – Zielarchitektur und Datenfluss
 - `docs/PROMPTS.md` – empfohlene Prompt-Struktur
 - `docs/CONTENT_SCHEMA.md` – Struktur der erzeugten Contentpakete
