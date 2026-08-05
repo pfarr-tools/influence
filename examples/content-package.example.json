@@ -1,0 +1,61 @@
+{
+  "id": "post-0001",
+  "status": "in Arbeit",
+  "needs_input": false,
+  "source": {
+    "calendar_post_id": "post-0001",
+    "date": "2026-08-10",
+    "rubric": "Mit dem Wochenspruch in die Woche",
+    "liturgical_source": "https://kirchenjahr.pfarr.tools/api/jahr/2026"
+  },
+  "editorial_core": {
+    "title": "Fünf Minuten Aufmerksamkeit",
+    "main_message": "Glaube wird konkret, wenn ein Mensch für einen anderen wirklich da ist.",
+    "audience": "breite Öffentlichkeit",
+    "tone": ["klar", "ruhig", "alltagsnah"],
+    "source_notes": ["Wochenspruch aus der Kirchenjahr-API ergänzen"]
+  },
+  "platforms": {
+    "facebook": {
+      "headline": "Eine kleine Übung für diese Woche",
+      "text": ""
+    },
+    "instagram": {
+      "caption": "",
+      "carousel": [
+        { "type": "cover", "text": "Fünf Minuten Aufmerksamkeit" },
+        { "type": "body", "text": "Heute einer Person fünf Minuten ungeteilte Aufmerksamkeit schenken." }
+      ]
+    },
+    "mastodon": { "text": "" },
+    "story": {
+      "slides": [
+        { "text": "Wann hat dir zuletzt jemand wirklich zugehört?" },
+        { "text": "Eine kleine Übung für heute: fünf Minuten ohne Handy, ohne Unterbrechung." }
+      ]
+    },
+    "reel": {
+      "hook": "Fünf Minuten können eine Woche verändern.",
+      "script": "",
+      "shots": ["ruhiger Tisch", "Handy wird umgedreht", "zwei Tassen"],
+      "duration_seconds": 20
+    }
+  },
+  "visual": {
+    "concept": "Zwei Tassen an einem schlichten Tisch, ein umgedrehtes Smartphone, ruhiges Morgenlicht.",
+    "flux_prompt": "Documentary-style still life of two simple ceramic cups on a wooden table, a smartphone placed face down, soft natural morning light from the side, calm and authentic atmosphere, generous negative space, no people visible, no text, no letters, no logo, no watermark, vertical 4:5 composition",
+    "negative_prompt": "text, letters, typography, logo, watermark, religious kitsch, glowing cross",
+    "formats": ["4:5", "9:16", "1.91:1"],
+    "alt_text": "Auf einem schlichten Holztisch stehen zwei Tassen. Daneben liegt ein Smartphone mit dem Bildschirm nach unten."
+  },
+  "qa": {
+    "warnings": ["Wochenspruch und Bibelstelle vor Veröffentlichung ergänzen"],
+    "approved": false
+  },
+  "metadata": {
+    "model": "",
+    "generated_at": "",
+    "prompt_version": "1.0",
+    "assets": []
+  }
+}

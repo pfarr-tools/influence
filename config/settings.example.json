@@ -1,0 +1,22 @@
+{
+  "language": "de-DE",
+  "timezone": "Europe/Brussels",
+  "brand": {
+    "name": "Christoph Fischer",
+    "website": "christoph-fischer.de",
+    "defaultTone": ["klar", "ruhig", "zugänglich", "evangelisch"]
+  },
+  "render": {
+    "formats": {
+      "instagramFeed": { "width": 1080, "height": 1350 },
+      "instagramStory": { "width": 1080, "height": 1920 },
+      "facebook": { "width": 1200, "height": 630 }
+    }
+  },
+  "safety": {
+    "requireHumanApproval": true,
+    "neverInventCommunityEvents": true,
+    "neverInventSchoolSituations": true,
+    "warnOnSongLyrics": true
+  }
+}
