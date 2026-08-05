@@ -11,10 +11,18 @@ import {
   scaffoldPostById,
   scaffoldWeekByDate
 } from "./services/content/content-scaffolder.js"
+import { loadRuntimeConfig } from "./config/runtime-config.js"
+import {
+  generateContentForMonth,
+  generateContentForPost,
+  generateContentForWeek
+} from "./services/content/content-generator.js"
+import { createOpenAIContentClient } from "./services/openai/openai-client.js"
 
 const program = new Command()
-const defaultCalendarPath = "data/redaktionskalender-2026-2027.json"
-const defaultOutputRoot = "output"
+const runtimeConfig = loadRuntimeConfig()
+const defaultCalendarPath = runtimeConfig.calendarPath
+const defaultOutputRoot = runtimeConfig.outputDir
 
 program
   .name("director")
@@ -38,6 +46,142 @@ calendarCommand
       handleCliError(error)
     }
   })
+
+contentCommand
+  .command("generate")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .option("--dry-run", "Show the OpenAI request without calling the API", false)
+  .option("--force", "Overwrite an existing generated content package", false)
+  .option("--model <name>", "OpenAI model to use", runtimeConfig.openAiModel)
+  .option("--language <language>", "Content language", "de")
+  .description("Generate a structured content package for one post")
+  .action(
+    async (options: {
+      dryRun: boolean
+      force: boolean
+      language: string
+      model: string
+      postId: string
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const result = await generateContentForPost(
+          calendar,
+          options.postId,
+          {
+            dryRun: options.dryRun,
+            force: options.force,
+            language: options.language,
+            model: options.model,
+            outputRoot: defaultOutputRoot
+          },
+          {
+            modelClient:
+              options.dryRun || runtimeConfig.openAiApiKey === ""
+                ? undefined
+                : createOpenAIContentClient(runtimeConfig.openAiApiKey)
+          }
+        )
+
+        printGenerationResult(result)
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
+contentCommand
+  .command("generate-week")
+  .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
+  .option("--dry-run", "Show the OpenAI request without calling the API", false)
+  .option("--force", "Overwrite an existing generated content package", false)
+  .option("--model <name>", "OpenAI model to use", runtimeConfig.openAiModel)
+  .option("--language <language>", "Content language", "de")
+  .description("Generate structured content packages for every post in a week")
+  .action(
+    async (options: {
+      date: string
+      dryRun: boolean
+      force: boolean
+      language: string
+      model: string
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const results = await generateContentForWeek(
+          calendar,
+          options.date,
+          {
+            dryRun: options.dryRun,
+            force: options.force,
+            language: options.language,
+            model: options.model,
+            outputRoot: defaultOutputRoot
+          },
+          {
+            modelClient:
+              options.dryRun || runtimeConfig.openAiApiKey === ""
+                ? undefined
+                : createOpenAIContentClient(runtimeConfig.openAiApiKey)
+          }
+        )
+
+        for (const result of results) {
+          printGenerationResult(result)
+        }
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
+contentCommand
+  .command("generate-month")
+  .requiredOption("--month <month>", "ISO month, e.g. 2026-09")
+  .option("--dry-run", "Show the OpenAI request without calling the API", false)
+  .option("--force", "Overwrite an existing generated content package", false)
+  .option("--model <name>", "OpenAI model to use", runtimeConfig.openAiModel)
+  .option("--language <language>", "Content language", "de")
+  .description("Generate structured content packages for every post in a month")
+  .action(
+    async (options: {
+      dryRun: boolean
+      force: boolean
+      language: string
+      model: string
+      month: string
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const results = await generateContentForMonth(
+          calendar,
+          options.month,
+          {
+            dryRun: options.dryRun,
+            force: options.force,
+            language: options.language,
+            model: options.model,
+            outputRoot: defaultOutputRoot
+          },
+          {
+            modelClient:
+              options.dryRun || runtimeConfig.openAiApiKey === ""
+                ? undefined
+                : createOpenAIContentClient(runtimeConfig.openAiApiKey)
+          }
+        )
+
+        for (const result of results) {
+          printGenerationResult(result)
+        }
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
 
 contentCommand
   .command("scaffold")
@@ -144,4 +288,41 @@ function handleCliError(error: unknown): never {
   }
 
   process.exit(1)
+}
+
+/**
+ * Prints one generation result in a CLI-friendly way.
+ *
+ * @param result Generation result to display.
+ */
+function printGenerationResult(result: {
+  contentPath: string
+  dryRunRequest?: { developerPrompt: string; model: string; userPrompt: string }
+  postId: string
+  rawResponsePath: string
+  skippedReason?: string
+  usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
+}): void {
+  if (result.dryRunRequest) {
+    console.log(`[dry-run] ${result.postId} -> ${result.contentPath}`)
+    console.log(`model: ${result.dryRunRequest.model}`)
+    console.log(result.dryRunRequest.developerPrompt)
+    console.log(result.dryRunRequest.userPrompt)
+    return
+  }
+
+  if (result.skippedReason) {
+    console.log(
+      `${result.postId} -> ${result.contentPath} (raw: ${result.rawResponsePath}, skipped: ${result.skippedReason})`
+    )
+    return
+  }
+
+  const usage = result.usage
+    ? `tokens in/out/total=${result.usage.inputTokens}/${result.usage.outputTokens}/${result.usage.totalTokens}`
+    : "tokens unavailable"
+
+  console.log(
+    `${result.postId} -> ${result.contentPath} (raw: ${result.rawResponsePath}, ${usage})`
+  )
 }
