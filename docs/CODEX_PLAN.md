@@ -22,7 +22,10 @@ Das System liest den Jahres-Redaktionskalender aus `data/redaktionskalender-2026
 8. Jeder Generator muss Dry-Run unterstützen.
 9. Erstellter Code muss immer durch eine komplette, deutschsprachige End-User-Dokumentation in docs/ unterstützt werden.
 10. Jede implementierte Phase muss in der lokalen UI sichtbar sein; verfügbare Schritte, Status und Ergebnisse dürfen nicht nur über die CLI zugänglich sein.
-10. Erstellter Code ist immer vollständig auf englisch dokumentiert (JSDoc oder äquivalent)
+11. Die lokale UI verwendet Bootstrap für UI-Elemente und Vite mit Vue 3 für das Frontend.
+12. Sämtliche UI-Texte und die End-User-Dokumentation verwenden korrektes Deutsch mit Umlauten und ß.
+13. Aktionsbuttons folgen immer der fachlich logischen Reihenfolge der Content-Pipeline.
+14. Erstellter Code ist immer vollständig auf englisch dokumentiert (JSDoc oder äquivalent)
 
 ## Repository
 
@@ -272,7 +275,7 @@ Das System darf nur nach `freigegeben` weiterarbeiten.
 
 # Phase 8 – Review-Oberfläche
 
-Baue eine kleine lokale Weboberfläche, bevorzugt mit Fastify oder Express und einfacher serverseitiger UI.
+Baue eine kleine lokale Weboberfläche mit lokalem HTTP-Backend und einem Frontend auf Basis von Vite und Vue 3.
 
 Funktionen:
 
@@ -285,10 +288,12 @@ Funktionen:
 - Exportieren
 - Die Oberfläche und die End-User-Dokumentation müssen korrektes Deutsch mit Umlauten und ß verwenden.
 - Die Oberfläche muss die bis dahin implementierten Phasen als sichtbare Workflow-Schritte mit Status und Aktionen abbilden.
+- Die Reihenfolge von Aktionsbuttons und Workflow-Aktionen folgt der Content-Pipeline, also vom Bearbeiten und Generieren über Prüfung und Freigabe bis zu Export, Terminierung und Veröffentlichung.
 
 Keine Authentifizierung nötig, solange die Anwendung nur lokal gebunden wird.
 
-Verwende Bootstrap für die UI.
+Verwende Bootstrap für die UI-Elemente.
+Verwende Vite und Vue 3 für das Frontend.
 
 # Phase 9 – Video/Reels optional
 
@@ -330,6 +335,14 @@ Das Modal soll mindestens enthalten:
 - separaten Button zum Anfordern einer strukturgleichen JSON-Revision
 - Bereich für die letzte strukturierte JSON-Antwort
 - Aktionen zum Übernehmen, Verwerfen oder erneuten Anfordern der Revision
+
+Die Aktionen im Modal folgen ebenfalls der fachlichen Reihenfolge:
+
+- Prompt eingeben
+- Nachricht senden
+- strukturierte Revision anfordern
+- Revision prüfen
+- Revision übernehmen oder verwerfen
 
 Der Unterschied zwischen Diskussion und Revision muss in der Oberfläche klar erkennbar sein:
 
@@ -469,19 +482,21 @@ GET /chat/sessions/:id
 - Verlauf, Revisionen und Diff sind nach einem Neuladen der lokalen UI weiter verfügbar.
 - Tests decken mindestens Session-Persistenz, Schema-Validierung, Revisionsfehler und den Übernahme-Workflow ab.
 
-# Phase 11 – Server-renderte Review-Oberfläche modularisieren
+# Phase 11 – Review-Frontend mit Vite und Vue 3 modularisieren
 
 ## Ziel
 
-Die bisher kleine lokale Review-Oberfläche ist zu einer eigenständigen App-Oberfläche gewachsen. Die aktuelle Implementierung in einer großen `review-server.ts` soll deshalb nicht durch ein Frontend-Framework ersetzt, sondern als server-renderte Anwendung architektonisch sauber modularisiert werden.
+Die lokale Review-Oberfläche ist zu einer eigenständigen App gewachsen. Für eine zukunftssichere Weiterentwicklung wird das Frontend deshalb konsequent auf Vite und Vue 3 aufgebaut. Bootstrap bleibt die UI-Basis. Das Backend bleibt lokal und stellt klar definierte Endpunkte für Workflow, Chat, Assets und Publishing bereit.
 
 Ziele dieser Phase:
 
-- klare Trennung von HTTP-Routing, UI-Komposition, Client-Skripten, Styles und Review-Anwendungslogik
-- bessere Testbarkeit für UI-nahe Logik und Endpunkte
-- geringere Kopplung zwischen Seitenstruktur und interaktiven Funktionen
-- explizite JSON-Endpunkte für interaktive UI-Teile
-- Erhalt der bestehenden serverseitigen Renderstrategie ohne Vue, React oder SPA-Migration
+- klare Trennung von lokalem HTTP-Backend, Vue-Anwendung, Bootstrap-basierter UI-Komposition, Zustandslogik und API-Verträgen
+- bessere Testbarkeit für Komponenten, Stores, View-Model-Mapping und Endpunkte
+- geringere Kopplung zwischen Seitenstruktur, interaktiven Funktionen und Transportformaten
+- explizite JSON-Endpunkte für alle interaktiven UI-Teile
+- ein dauerhaft wartbares Frontend-Fundament auf Basis von Vite und Vue 3
+- durchgehend deutsche UI-Texte mit korrekten Umlauten und ß
+- konsistente Button-Reihenfolgen entlang der Content-Pipeline
 
 ## Ausgangsproblem
 
@@ -495,19 +510,20 @@ Die Review-Oberfläche enthält inzwischen:
 - Asset-Upload mit Cropping
 - Voiceover- und Reel-bezogene Interaktionen
 
-Diese Funktionen dürfen nicht länger in einer einzigen Datei dieselben Verantwortlichkeiten mischen:
+Diese Funktionen dürfen nicht länger implizit zwischen Serverdatei, HTML-Strings und Browserlogik verteilt sein. Künftig müssen die Verantwortlichkeiten klar getrennt werden zwischen:
 
-- Routing
-- Request-Parsing
-- Response-Erzeugung
-- HTML-Rendering
-- CSS-Auslieferung
-- Browserlogik
-- implizite API-Verträge
+- Backend-Routing
+- Request-Parsing und Validierung
+- API-Responses
+- Vue-Seiten und Komponenten
+- Bootstrap-basierte Präsentationsschicht
+- Client-Zustand und Interaktionen
+- explizite API-Verträge
+- Branding-Assets und Dokumentationsassets
 
 ## Zielarchitektur
 
-Behalte eine server-renderte Architektur bei, führe aber klare Modulgrenzen ein.
+Verwende eine klare Trennung aus lokalem Backend und Vite/Vue-Frontend.
 
 Empfohlene Struktur:
 
@@ -516,41 +532,65 @@ src/services/review/
   server/
     review-server.ts
     routes/
-      page-routes.ts
-      action-routes.ts
       api-routes.ts
+    controllers/
+      workflow-controller.ts
+      chat-controller.ts
+      asset-controller.ts
+      publishing-controller.ts
     responses/
-      html-response.ts
       json-response.ts
-      redirect-response.ts
     request/
-      parse-form-body.ts
       parse-json-body.ts
-  ui/
-    layout/
-      document.ts
-      header.ts
-      flash.ts
-    pages/
-      week-page.ts
-      post-page.ts
-    components/
-      workflow-badges.ts
-      action-forms.ts
-      preview-gallery.ts
-      asset-list.ts
-      chat-modal.ts
-      asset-upload-modal.ts
-      voiceover-modal.ts
-      reel-modal.ts
-    client/
-      page-loading.ts
-      chat-modal.ts
-      asset-upload.ts
-      voiceover-recorder.ts
-      preview-modal.ts
-    styles/
-      review.css
+    contracts/
+      workflow-contracts.ts
+      chat-contracts.ts
+      asset-contracts.ts
+  frontend/
+    index.html
+    vite.config.ts
+    src/
+      main.ts
+      app/
+        App.vue
+        router.ts
+      pages/
+        WeekViewPage.vue
+        PostDetailPage.vue
+      components/
+        AppHeader.vue
+        WorkflowStepper.vue
+        ActionButtonGroup.vue
+        PostActionsCard.vue
+        PreviewGallery.vue
+        AssetPanel.vue
+        ChatModal.vue
+        VoiceoverModal.vue
+        ReelModal.vue
+      stores/
+        review-store.ts
+        chat-store.ts
+      composables/
+        useWorkflowActions.ts
+        useChatSession.ts
+        useAssetUpload.ts
+      api/
+        review-api.ts
+        chat-api.ts
+        asset-api.ts
+      utils/
+        german-copy.ts
+        action-order.ts
+      styles/
+        app.scss
+        bootstrap-overrides.scss
+  public/
+    branding/
+      logo-mark.svg
+      favicon.svg
+  docs/
+    assets/
+      logo-wordmark.svg
   review-service.ts
   content-chat-service.ts
 ```
@@ -564,45 +604,50 @@ Die exakten Dateinamen dürfen angepasst werden. Wichtig ist die Trennung der Sc
 `review-server.ts` soll nur noch:
 
 - Dependencies entgegennehmen
-- Requests an eine Routing-Schicht delegieren
+- Requests an eine Routing- und Controller-Schicht delegieren
 - Fehler zentral behandeln
 
-Es soll nicht mehr seitenlange HTML-Strings und Browserlogik direkt enthalten.
+Es soll keine UI-Komposition und keine Browserlogik direkt enthalten.
 
-### 2. Getrennte Route-Typen
+### 2. API-first für die lokale UI
 
-Teile die Endpunkte mindestens in drei Gruppen:
+Die Vue-Anwendung spricht klar benannte lokale API-Endpunkte an. Mindestens diese Gruppen werden getrennt geführt:
 
-- Page-Routes für servergerenderte HTML-Seiten
-- Action-Routes für klassische POST-Aktionen mit Redirect
-- API-Routes für JSON- oder Streaming-Endpunkte interaktiver UI-Module
+- Workflow-Endpunkte
+- Chat-Endpunkte
+- Asset-Endpunkte
+- Publishing- und Export-Endpunkte
 
 Beispiele:
 
-- `GET /weeks/:date` bleibt eine Page-Route
-- `POST /posts/:id/approve` bleibt eine Action-Route
-- `POST /chat/sessions/:id/messages/stream` ist eine API-Route
-- Asset-Uploads können als API-Route modelliert werden, auch wenn sie von einer servergerenderten Seite aus aufgerufen werden
+- `GET /api/weeks/:date` liefert die Wochenansicht für die Vue-Seite
+- `GET /api/posts/:id` liefert die Beitragsdetails inklusive Workflow-Status
+- `POST /api/posts/:id/approve` führt eine Freigabeaktion aus
+- `POST /api/chat/sessions/:id/messages` sendet eine Diskussionsnachricht
+- `POST /api/chat/sessions/:id/revise` fordert eine strukturierte Revision an
+- `POST /api/assets/uploads` lädt Medien hoch
 
-### 3. UI als modulare serverseitige View-Schicht
+### 3. Vue-Komponenten mit klaren Zuständigkeiten
 
-HTML-Erzeugung bleibt serverseitig, wird aber in:
+Die UI wird in:
 
-- Page-Module
-- wiederverwendbare Komponenten
-- Layout-Helfer
+- Page-Komponenten
+- wiederverwendbare Vue-Komponenten
+- Composables und Stores
+- kleine Utility-Module
 
 zerlegt.
 
 Regeln:
 
-- Eine Page-Funktion komponiert nur noch Komponenten und Page-Daten.
-- Komponenten sollen keine Request-Objekte oder Server-Dependencies kennen.
+- Eine Page-Komponente komponiert nur noch Unterkomponenten und Datenquellen.
+- Komponenten kennen keine Backend-Implementierung, sondern nur API-Clients oder Props.
 - Komponenten erhalten vorbereitete, einfache View-Model-Daten.
+- Bootstrap wird über Klassen, Variants und Utility-Klassen verwendet, nicht durch eine zweite konkurrierende UI-Bibliothek ersetzt.
 
 ### 4. Explizite View-Model-Schicht
 
-Zwischen Review-Services und HTML-Rendering soll eine kleine View-Model-Schicht eingeführt werden.
+Zwischen Review-Services und Vue-Komponenten soll eine kleine View-Model-Schicht eingeführt werden.
 
 Sie bereitet Daten auf für:
 
@@ -613,15 +658,16 @@ Sie bereitet Daten auf für:
 - QA-Zusammenfassungen
 - Chat- und Medien-Metadaten
 
-Dadurch bleibt Fachlogik aus Template-Funktionen heraus.
+Dadurch bleibt Fachlogik aus Komponenten und Templates heraus.
 
-### 5. Client-Skripte als eigenständige Module
+### 5. Stores, Composables und Interaktionen modularisieren
 
-Inline-Skripte sollen in getrennte Client-Module verschoben werden.
+Interaktive Funktionen werden in getrennte Frontend-Module verschoben.
 
 Mindestens diese Bereiche sind getrennt zu kapseln:
 
-- globales Loading-Overlay
+- globales Laden und Fehlerzustände
+- Workflow-Aktionen
 - Chat-Modal
 - Asset-Upload und Cropper
 - Voiceover-Recorder
@@ -629,19 +675,28 @@ Mindestens diese Bereiche sind getrennt zu kapseln:
 
 Regeln:
 
-- Client-Module initialisieren sich über `data-*`-Attribute oder klar benannte DOM-Root-Elemente.
-- Sie lesen keine serverseitigen Werte aus zusammengebauten JavaScript-Strings, wenn strukturierte JSON-Daten oder `data-*`-Attribute ausreichen.
-- Jede Interaktion verwendet explizite API-Endpunkte statt impliziter Seiteneffekte.
+- Zustandslogik liegt in Stores oder Composables, nicht direkt in großen Komponenten.
+- UI-Interaktionen sprechen nur explizite API-Endpunkte an.
+- Deutsche Button- und Statuslabels werden zentral gepflegt, damit Umlaute, ß und Terminologie konsistent bleiben.
+- Aktionsgruppen werden aus einer zentral definierten fachlichen Reihenfolge erzeugt, nicht zufällig pro View zusammengesetzt.
 
 ### 6. Styles und Assets entkoppeln
 
-Inline-CSS im Dokument-Renderer soll in eine eigene statische CSS-Datei ausgelagert werden.
+Styles und Branding-Assets sollen in stabile Frontend- und Dokumentationspfade ausgelagert werden.
 
 Anforderungen:
 
 - Bootstrap bleibt erhalten.
-- projektspezifische Styles liegen in einer eigenen Review-CSS-Datei
-- Vendor-Dateien und eigene Assets werden über klar benannte statische Pfade ausgeliefert
+- projektspezifische Styles liegen in eigenen Frontend-Stylesheets
+- der Header, die App-Navigation und Favicon-Verweise verwenden die Logovariante ohne Text
+- die Dokumentation verwendet für ihren Titel die Logovariante mit Text
+- Branding-Dateien liegen nicht lose im Repository-Wurzelverzeichnis, sondern in klar benannten Asset-Ordnern
+
+Vorgesehene Ablage:
+
+- `public/branding/logo-mark.svg` für Header-Logo
+- `public/branding/favicon.svg` für Favicon und browsernahe App-Icons
+- `docs/assets/logo-wordmark.svg` für den Dokumentationstitel
 
 ### 7. API-Verträge sichtbar machen
 
@@ -659,76 +714,95 @@ Mindestens für:
 
 Wo sinnvoll, sollen Zod-Schemas oder gleichwertige Validatoren verwendet werden.
 
+### 8. Deutsche UI-Copy und Aktionsreihenfolge absichern
+
+Die UI muss sprachlich und fachlich konsistent bleiben.
+
+Anforderungen:
+
+- sichtbare UI-Texte, Labels, Hilfetexte und Fehlermeldungen sind auf Deutsch formuliert
+- Umlaute und ß werden korrekt verwendet
+- die Reihenfolge von Aktionsbuttons folgt der fachlichen Abfolge der Content-Pipeline
+- typische Reihenfolgen werden zentral definiert, zum Beispiel `Bearbeiten -> Generieren -> Prüfen -> Freigeben -> Exportieren -> Terminieren -> Veröffentlichen`
+- destruktive oder sekundäre Aktionen stehen nie vor dem nächsten fachlich sinnvollen Hauptschritt
+
 ## Umsetzungsreihenfolge
 
 Die Phase soll inkrementell umgesetzt werden. Nach jedem Teilabschnitt muss die bestehende UI weiter benutzbar bleiben.
 
-### Schritt 1 – Bestandsaufnahme und Schnittgrenzen
+### Schritt 1 – Frontend-Grundlage schaffen
 
-- Verantwortlichkeiten der bisherigen `review-server.ts` katalogisieren
-- Seiten, Komponenten und Client-Features identifizieren
-- Zielgrenzen zwischen Review-Service, View-Models, Pages und Client-Modulen festlegen
-- bestehende Endpunkte in Page-, Action- und API-Routes einordnen
+- Vite und Vue 3 in die bestehende Anwendung integrieren
+- Bootstrap in das Frontend einbinden
+- Frontend-Einstiegspunkt, Build und lokales Serving festlegen
+- Branding-Ordner für App und Dokumentation anlegen
 
-### Schritt 2 – HTTP- und Response-Schicht extrahieren
+### Schritt 2 – API- und Vertragsgrenzen festlegen
 
-- Helper für HTML-, JSON- und Redirect-Responses extrahieren
-- Form- und JSON-Parsing in eigene Request-Module verschieben
-- Routing in kleinere, testbare Handler aufteilen
-
-### Schritt 3 – View-Schicht modularisieren
-
-- Document-Layout, Header, Flash-Messages und wiederverwendbare UI-Bausteine auslagern
-- Wochen- und Beitragsseite in eigene Page-Module aufteilen
-- komplexe Teilbereiche wie Workflow, QA, Preview, Assets und Reel-Status als Komponenten kapseln
-
-### Schritt 4 – Client-Interaktionen aus Inline-Skripten lösen
-
-- Chat-Modal in ein Client-Modul überführen
-- Asset-Upload inklusive Cropping in ein Client-Modul überführen
-- Voiceover- und Preview-Interaktionen in getrennte Module verschieben
-- globale Seitenskripte vom Dokument-Renderer trennen
-
-### Schritt 5 – API-Verträge härten
-
-- JSON- und Streaming-Endpunkte für interaktive Module sauber definieren
+- bestehende Review-Funktionen als klare JSON-Endpunkte modellieren
 - Request-Validierung vereinheitlichen
-- Fehlerobjekte konsistent machen
-- DOM-Initialisierung mit stabilen `data-*`-Verträgen absichern
+- Response-Formate dokumentieren und testen
+- die Datenform für Workflow, Post-Detail, Chat und Assets stabilisieren
+
+### Schritt 3 – Seiten und Komponenten migrieren
+
+- Wochenansicht als Vue-Seite aufbauen
+- Beitragsdetail als Vue-Seite aufbauen
+- Workflow, QA, Preview, Assets und Reel-Status in Komponenten kapseln
+- Bootstrap-Komponenten und Layouts konsistent anwenden
+
+### Schritt 4 – Interaktionen in Stores und Composables überführen
+
+- Chat-Modal in Store und Komponenten überführen
+- Asset-Upload inklusive Cropping in eigene Frontend-Module überführen
+- Voiceover- und Preview-Interaktionen trennen
+- Aktionsreihenfolgen zentralisieren und in der UI anwenden
+
+### Schritt 5 – Sprache, Branding und Politur festziehen
+
+- alle UI-Texte auf korrektes Deutsch prüfen
+- Logo ohne Text in Header, Navigation und Favicon einbinden
+- Logo mit Text im Dokumentationskopf verwenden
+- Bootstrap-Theme und projektspezifische Styles finalisieren
 
 ### Schritt 6 – Tests und Dokumentation ergänzen
 
-- Unit-Tests für View-Model-Helfer und Route-Helfer
+- Unit-Tests für View-Model-Helfer, Stores und Composables
 - Integrations-Tests für zentrale Review-Endpunkte
-- UI-nahe Tests für Client-Module, soweit ohne Browser-E2E sinnvoll
+- UI-nahe Tests für Vue-Komponenten, soweit ohne Browser-E2E sinnvoll
 - End-User-Dokumentation für die Review-Oberfläche und ihre erweiterten Interaktionen aktualisieren
 
 ## Nicht-Ziele
 
-- keine Einführung von Vue, React oder einem anderen SPA-Framework
-- keine vollständige Neugestaltung der Review-Oberfläche
+- keine Einführung eines zweiten Frontend-Frameworks neben Vue 3
+- keine Ablösung von Bootstrap durch ein anderes UI-System
+- keine vollständige Neugestaltung der Review-Oberfläche ohne fachlichen Grund
 - keine Änderung der fachlichen Review-Workflows nur aus Architekturgründen
-- keine Umstellung auf clientseitiges Routing
-- kein Build-System-Zwang allein für die Modultrennung, solange einfache statische Auslieferung ausreicht
+- kein Wechsel der UI-Sprache weg von Deutsch
+- keine beliebige oder viewspezifisch abweichende Button-Reihenfolge
 
 ## Akzeptanzkriterien
 
-- `review-server.ts` ist nur noch ein dünner Einstiegspunkt und enthält keine umfangreichen HTML- oder Client-Skript-Blöcke mehr.
-- HTML-Pages, UI-Komponenten, Client-Module und Response-Helfer liegen in getrennten Modulen.
-- Wochen- und Beitragsseite lassen sich unabhängig voneinander lesen und weiterentwickeln.
-- Chat, Asset-Upload und Voiceover verwenden explizite API-Verträge statt eng verkoppelter Inline-Logik.
-- Projektspezifische Styles werden nicht mehr ausschließlich inline im Dokument-Renderer definiert.
-- Tests decken mindestens Routing-Helfer, View-Model-Aufbereitung und ausgewählte API-Endpunkte ab.
-- Die lokale UI bleibt während der Refaktorierung nach jedem Zwischenstand benutzbar.
-- Alle bis dahin implementierten Workflow-Schritte bleiben in der UI sichtbar und funktional.
+- `review-server.ts` ist nur noch ein dünner lokaler HTTP-Einstiegspunkt und enthält keine umfangreiche UI-Logik.
+- Das Frontend läuft mit Vite und Vue 3.
+- Bootstrap bleibt die Grundlage aller UI-Elemente.
+- Wochenansicht, Beitragsdetail, Chat, Assets und Voiceover sind als getrennte Vue-Module oder Komponenten organisiert.
+- Chat, Asset-Upload, Workflow-Aktionen und Voiceover verwenden explizite API-Verträge.
+- Alle sichtbaren UI-Texte sind korrekt auf Deutsch formuliert und verwenden Umlaute und ß richtig.
+- Aktionsbuttons folgen in allen relevanten Views der fachlich logischen Reihenfolge der Content-Pipeline.
+- Die Logovariante ohne Text wird für Header-Logo und Favicon verwendet.
+- Die Logovariante mit Text wird im Dokumentationstitel verwendet.
+- Tests decken mindestens API-Verträge, View-Model-Aufbereitung, Stores, Composables und ausgewählte Vue-Komponenten ab.
+- Die lokale UI bleibt während der Migration nach jedem Zwischenstand benutzbar.
 
 ## Changelog dieser Phase
 
 Dokumentiere nach der Umsetzung mindestens:
 
-- welche Module aus `review-server.ts` extrahiert wurden
+- welche Vite- und Vue-Grundlage eingeführt wurde
 - welche API-Verträge neu oder klarer definiert wurden
-- welche Inline-Skripte und Styles ausgelagert wurden
+- welche Komponenten, Stores und Composables entstanden sind
+- wie Branding-Dateien und Dokumentationsassets eingeordnet wurden
 - welche Tests ergänzt oder angepasst wurden
 
 # Phase 12 – Publishing, Scheduling und manueller Facebook-Assistent
