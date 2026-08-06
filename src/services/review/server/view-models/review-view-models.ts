@@ -305,11 +305,13 @@ export function buildChatSessionResponse(session: ContentChatSession): ChatSessi
     id: session.id,
     messages: session.messages.map((message, index) => ({
       id: `${message.role}-${index}`,
+      kind: message.kind,
       role: message.role,
       text: message.content
     })),
     revision: latestRevision
       ? {
+          applied: latestRevision.appliedAt !== null,
           instructions: latestRevision.diff.join("\n"),
           summary:
             latestRevision.validationStatus === "valid"

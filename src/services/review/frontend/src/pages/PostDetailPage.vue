@@ -142,7 +142,7 @@
         <div class="card shadow-sm mb-4">
           <div class="card-body d-flex flex-wrap gap-2">
             <button class="btn btn-outline-secondary btn-sm" type="button" @click="chatOpen = true">
-              JSON mit ChatGPT
+              Mit ChatGPT besprechen
             </button>
           </div>
         </div>
@@ -203,7 +203,7 @@
       :loading-message="chatStore.loadingMessage"
       :open="chatOpen"
       :session="chatStore.session"
-      @apply="applyCurrentRevision"
+      @apply="applyPostRevision"
       @close="chatOpen = false"
       @revise="reviseCurrentSession"
       @send="sendMessage"
@@ -273,6 +273,13 @@ const { applyCurrentRevision, chatStore, reviseCurrentSession, sendMessage } = u
   () => postId.value
 )
 
+async function applyPostRevision() {
+  await applyCurrentRevision()
+  if (!chatStore.error) {
+    await refreshPost()
+  }
+}
+
 watch(
   () => route.params.postId,
   async () => {
@@ -314,7 +321,12 @@ async function refreshPost() {
 
 async function handleAction(payload: { action: string; force: boolean }) {
   const { action, force } = payload
-  if (action === "edit" || action === "export") {
+  if (action === "edit") {
+    await savePost()
+    return
+  }
+
+  if (action === "export") {
     return
   }
 
@@ -328,9 +340,24 @@ async function handleAction(payload: { action: string; force: boolean }) {
 
 async function savePost() {
   await triggerPostAction(postId.value, "edit", {
-    ...form,
-    storySlides: storySlides.value.map((slide) => slide.text)
+    altText: form.altText,
+    audience: form.audience,
+    concept: form.concept,
+    facebookHeadline: form.facebookHeadline,
+    facebookText: form.facebookText,
+    fluxPrompt: form.fluxPrompt,
+    instagramCaption: form.instagramCaption,
+    mainMessage: form.mainMessage,
+    mastodonText: form.mastodonText,
+    reelHook: form.reelHook,
+    reelScript: form.reelScript,
+    storySlides: storySlides.value.map((slide) => slide.text),
+    title: form.title
   })
+
+  if (!reviewStore.error) {
+    await refreshPost()
+  }
 }
 
 async function updateSchedule() {

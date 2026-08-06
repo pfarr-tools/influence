@@ -49,7 +49,7 @@ onMounted(() => window.addEventListener("keydown", handleKeydown))
 onUnmounted(() => window.removeEventListener("keydown", handleKeydown))
 
 function isImage(href: string) {
-  return /\.(png|jpe?g|webp)$/i.test(href)
+  return /\.(png|jpe?g|webp)(?:$|[?#])/i.test(href)
 }
 </script>
 

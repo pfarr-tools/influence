@@ -999,7 +999,7 @@ function resolveEyebrow(template: RenderTemplateKind): string {
   }
 
   if (template === "wissenskarussell") {
-    return "Wissenskarussell"
+    return "Gut zu wissen"
   }
 
   if (template === "reli-fragt") {

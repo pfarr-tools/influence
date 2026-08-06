@@ -182,11 +182,13 @@ const postDetailResponseSchema = z.object({
 
 const chatMessageSchema = z.object({
   id: z.string(),
+  kind: z.enum(["discussion", "revision_request", "revision_result"]),
   role: z.enum(["assistant", "system", "user"]),
   text: z.string()
 })
 
 const chatRevisionSchema = z.object({
+  applied: z.boolean(),
   instructions: z.string(),
   summary: z.string()
 })

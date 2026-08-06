@@ -67,6 +67,7 @@ export async function sendMessage(text: string) {
   const pendingSession = chatStore.session
   const optimisticUserMessage = {
     id: `user-pending-${Date.now()}`,
+    kind: "discussion" as const,
     role: "user" as const,
     text
   }

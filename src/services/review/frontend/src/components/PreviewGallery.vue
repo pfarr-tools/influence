@@ -40,7 +40,7 @@ defineEmits<{
 }>()
 
 function isImage(href: string) {
-  return /\.(png|jpe?g|webp)$/i.test(href)
+  return /\.(png|jpe?g|webp)(?:$|[?#])/i.test(href)
 }
 </script>
 

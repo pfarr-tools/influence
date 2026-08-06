@@ -1,22 +1,37 @@
 <template>
   <BaseModal :open="open" dialog-class="chat-modal-dialog" title="JSON mit ChatGPT" @close="$emit('close')">
     <div>
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h5 mb-0">Diskussion</h2>
-        <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary btn-sm" :disabled="busy || !session" @click="$emit('revise')">
-            Revision anfordern
-          </button>
-          <button class="btn btn-outline-primary btn-sm" :disabled="busy || !session?.revision" @click="$emit('apply')">
-            Revision übernehmen
-          </button>
-        </div>
-      </div>
+      <h2 class="h5 mb-3">Diskussion</h2>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <div class="chat-stream border rounded p-3 mb-3">
         <div v-for="message in session?.messages ?? []" :key="message.id" class="mb-3">
           <div class="fw-semibold text-capitalize">{{ message.role }}</div>
           <div class="small chat-markdown" v-html="renderMarkdown(message.text)" />
+          <button
+            v-if="message.role === 'assistant' && message.kind === 'discussion'"
+            class="btn btn-outline-secondary btn-sm mt-3"
+            :disabled="busy"
+            type="button"
+            @click="$emit('revise')"
+          >
+            Revision anfordern
+          </button>
+          <div
+            v-if="message.kind === 'revision_result' && message.id === latestRevisionMessageId && session?.revision"
+            class="revision-result mt-3"
+          >
+            <div class="fw-semibold">Revision</div>
+            <div class="small">{{ session.revision.summary }}</div>
+            <button
+              v-if="session.status === 'valid' && !session.revision.applied"
+              class="btn btn-outline-primary btn-sm mt-3"
+              :disabled="busy"
+              type="button"
+              @click="$emit('apply')"
+            >
+              Übernehmen
+            </button>
+          </div>
         </div>
         <div v-if="assistantDraft.length > 0" class="mb-3">
           <div class="fw-semibold text-capitalize">assistant</div>
@@ -26,10 +41,6 @@
           <span class="spinner-border spinner-border-sm me-2" aria-hidden="true" />
           {{ loadingMessage || "Antwort wird geladen ..." }}
         </div>
-      </div>
-      <div v-if="session?.revision" class="alert alert-light border">
-        <div class="fw-semibold">Letzte Revision</div>
-        <div>{{ session.revision.summary }}</div>
       </div>
       <form @submit.prevent="submitMessage">
         <label class="form-label" for="chat-message">Nachricht</label>
@@ -44,13 +55,13 @@
 
 <script setup lang="ts">
 import { marked } from "marked"
-import { ref } from "vue"
+import { computed, ref } from "vue"
 import type { ChatSessionResponse } from "../../../server/contracts/review-contracts.js"
 import BaseModal from "./BaseModal.vue"
 
 const draft = ref("")
 
-defineProps<{
+const props = defineProps<{
   assistantDraft: string
   busy: boolean
   error: string
@@ -58,6 +69,10 @@ defineProps<{
   open: boolean
   session: ChatSessionResponse | null
 }>()
+
+const latestRevisionMessageId = computed(() =>
+  [...(props.session?.messages ?? [])].reverse().find((message) => message.kind === "revision_result")?.id
+)
 
 const emit = defineEmits<{
   apply: []
@@ -98,6 +113,11 @@ function escapeHtml(text: string): string {
 .chat-status {
   align-items: center;
   display: flex;
+}
+
+.revision-result {
+  border-left: 3px solid var(--bs-primary);
+  padding-left: 0.75rem;
 }
 
 :deep(.chat-modal-dialog) {
