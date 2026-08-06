@@ -1,7 +1,11 @@
 import { dirname, extname, join, relative } from "node:path"
 import { mkdir, rename, rm, writeFile } from "node:fs/promises"
 
-import type { Calendar, CalendarPost, CalendarWeek } from "../../domain/calendar.js"
+import type {
+  Calendar,
+  CalendarPost,
+  CalendarWeek
+} from "../../domain/calendar.js"
 import type { ContentPackage } from "../../domain/content.js"
 import { getPostById, getWeekForDate } from "../calendar/calendar-service.js"
 import { CalendarValidationError } from "../calendar/errors.js"
@@ -130,6 +134,10 @@ export interface UpdateReviewPostInput {
   facebookText: string
   fluxPrompt: string
   instagramCaption: string
+  instagramCarousel: Array<{
+    text: string
+    type: string
+  }>
   mainMessage: string
   mastodonText: string
   reelHook: string
@@ -167,8 +175,7 @@ export interface StoreReviewAssetInput {
   reelShotIndex?: number
 }
 
-export interface ReviewRegenerateDependencies
-  extends ContentGeneratorDependencies {
+export interface ReviewRegenerateDependencies extends ContentGeneratorDependencies {
   generateContent?: (
     calendar: Calendar,
     postId: string,
@@ -187,7 +194,9 @@ export async function loadReviewWeek(
   return {
     selectedWeek: await buildReviewWeekSummary(selectedWeek, outputRoot),
     weekOptions: await Promise.all(
-      calendar.wochen.map((week) => buildReviewWeekSummary(week, outputRoot, false))
+      calendar.wochen.map((week) =>
+        buildReviewWeekSummary(week, outputRoot, false)
+      )
     )
   }
 }
@@ -205,17 +214,28 @@ export async function loadReviewPost(
   const imagePath = join(contentPaths.baseDir, "image-generation-results.json")
   const reelRenderPath = join(contentPaths.baseDir, "reel-render-results.json")
   const qaSummary = await readOptionalJson<PersistedQaSummary>(qaPath)
-  const renderSummary = await readOptionalJson<PersistedRenderSummary>(renderPath)
+  const renderSummary =
+    await readOptionalJson<PersistedRenderSummary>(renderPath)
   const imageSummary = await readOptionalJson<PersistedImageSummary>(imagePath)
-  const reelRenderSummary = await readOptionalJson<PersistedReelRenderSummary>(reelRenderPath)
+  const reelRenderSummary =
+    await readOptionalJson<PersistedReelRenderSummary>(reelRenderPath)
 
   return {
-    assetPaths: resolveManualAssetPaths(contentPaths.baseDir, outputRoot, content),
+    assetPaths: resolveManualAssetPaths(
+      contentPaths.baseDir,
+      outputRoot,
+      content
+    ),
     post,
     content,
     contentPath: contentPaths.contentPath,
     exportPath: join(contentPaths.baseDir, "review-export.json"),
-    imagePreviewPaths: resolveImagePreviewPaths(contentPaths.baseDir, outputRoot, content, imageSummary),
+    imagePreviewPaths: resolveImagePreviewPaths(
+      contentPaths.baseDir,
+      outputRoot,
+      content,
+      imageSummary
+    ),
     imageSummary,
     qaSummary,
     reelAudioAssetPath: resolveReelAudioAssetPath(
@@ -227,9 +247,17 @@ export async function loadReviewPost(
     reelAudioPath: resolveReelAudioDisplayPath(content, reelRenderSummary),
     reelSubtitleFontName: reelRenderSummary?.subtitle_font_name ?? "",
     reelSubtitleFontsDir: reelRenderSummary?.subtitle_fonts_dir ?? "",
-    reelPreviewPath: resolveReelPreviewPath(contentPaths.baseDir, outputRoot, reelRenderSummary),
+    reelPreviewPath: resolveReelPreviewPath(
+      contentPaths.baseDir,
+      outputRoot,
+      reelRenderSummary
+    ),
     reelRenderSummary,
-    renderPreviewPaths: resolveRenderPreviewPaths(contentPaths.baseDir, outputRoot, renderSummary),
+    renderPreviewPaths: resolveRenderPreviewPaths(
+      contentPaths.baseDir,
+      outputRoot,
+      renderSummary
+    ),
     renderSummary,
     workflow: await buildWorkflowState(
       contentPaths.baseDir,
@@ -265,7 +293,11 @@ export async function storeReviewAsset(
   const content = await readContentPackage(contentPaths.contentPath)
   const assetRelativePath = resolveAssetRelativePath(input)
   const assetAbsolutePath = join(contentPaths.baseDir, assetRelativePath)
-  const assets = updateAssetList(content.metadata.assets, assetRelativePath, input.assetKind)
+  const assets = updateAssetList(
+    content.metadata.assets,
+    assetRelativePath,
+    input.assetKind
+  )
 
   await mkdir(join(contentPaths.baseDir, "assets"), { recursive: true })
   await writeFile(assetAbsolutePath, input.file.buffer)
@@ -292,6 +324,12 @@ export async function updateReviewPost(
   const normalizedStorySlides = input.storySlides
     .map((slide) => slide.trim())
     .filter((slide) => slide.length > 0)
+  const normalizedInstagramCarousel = input.instagramCarousel
+    .map((card) => ({
+      text: card.text.trim(),
+      type: card.type.trim()
+    }))
+    .filter((card) => card.text.length > 0 || card.type.length > 0)
 
   const updatedContent: ContentPackage = {
     ...content,
@@ -310,7 +348,8 @@ export async function updateReviewPost(
       },
       instagram: {
         ...content.platforms.instagram,
-        caption: input.instagramCaption
+        caption: input.instagramCaption,
+        carousel: normalizedInstagramCarousel
       },
       mastodon: {
         text: input.mastodonText
@@ -400,22 +439,26 @@ export async function exportReviewPost(
     rendered_files: detail.renderPreviewPaths,
     source_files: {
       content_json: relative(contentPaths.baseDir, contentPaths.contentPath),
-      image_generation_results:
-        (await pathExists(join(contentPaths.baseDir, "image-generation-results.json")))
-          ? "image-generation-results.json"
-          : null,
-      qa_results:
-        (await pathExists(join(contentPaths.baseDir, "qa-results.json")))
-          ? "qa-results.json"
-          : null,
-      render_results:
-        (await pathExists(join(contentPaths.baseDir, "render-results.json")))
-          ? "render-results.json"
-          : null,
-      reel_render_results:
-        (await pathExists(join(contentPaths.baseDir, "reel-render-results.json")))
-          ? "reel-render-results.json"
-          : null
+      image_generation_results: (await pathExists(
+        join(contentPaths.baseDir, "image-generation-results.json")
+      ))
+        ? "image-generation-results.json"
+        : null,
+      qa_results: (await pathExists(
+        join(contentPaths.baseDir, "qa-results.json")
+      ))
+        ? "qa-results.json"
+        : null,
+      render_results: (await pathExists(
+        join(contentPaths.baseDir, "render-results.json")
+      ))
+        ? "render-results.json"
+        : null,
+      reel_render_results: (await pathExists(
+        join(contentPaths.baseDir, "reel-render-results.json")
+      ))
+        ? "reel-render-results.json"
+        : null
     },
     reel: detail.reelRenderSummary ?? null,
     reel_video: detail.reelPreviewPath ?? null,
@@ -457,7 +500,9 @@ export async function rescheduleReviewPost(
   const post = getPostById(calendar, postId)
   const sourceWeek = getWeekForDate(calendar, post.datum)
   const targetWeek = getWeekForDate(calendar, input.date)
-  const sourceIndex = sourceWeek.beitraege.findIndex((entry) => entry.id === postId)
+  const sourceIndex = sourceWeek.beitraege.findIndex(
+    (entry) => entry.id === postId
+  )
 
   if (sourceIndex < 0) {
     throw new CalendarValidationError(`No post found for id "${postId}"`)
@@ -476,7 +521,10 @@ export async function rescheduleReviewPost(
   post.datum = input.date
   post.wochentag = formatGermanWeekday(input.date)
 
-  const insertionIndex = clampInsertionIndex(input.position, targetWeek.beitraege.length)
+  const insertionIndex = clampInsertionIndex(
+    input.position,
+    targetWeek.beitraege.length
+  )
   targetWeek.beitraege.splice(insertionIndex, 0, post)
 
   const nextPaths = getContentOutputPaths(outputRoot, post)
@@ -506,7 +554,9 @@ async function buildReviewWeekSummary(
     id: week.id,
     postCount: week.beitraege.length,
     posts: includePosts
-      ? await Promise.all(week.beitraege.map((post) => buildReviewPostCard(post, outputRoot)))
+      ? await Promise.all(
+          week.beitraege.map((post) => buildReviewPostCard(post, outputRoot))
+        )
       : [],
     startDate: week.zeitraum.von
   }
@@ -600,12 +650,15 @@ async function buildWorkflowState(
     contentGenerated: content.metadata.generated_at.trim().length > 0,
     exportGenerated: await pathExists(join(baseDir, "review-export.json")),
     imagesGenerated:
-      (imageSummary?.jobs?.some((job) => job.status === "succeeded") ?? false) ||
+      (imageSummary?.jobs?.some((job) => job.status === "succeeded") ??
+        false) ||
       content.metadata.assets.length > 0,
     qaReadyForApproval: qaSummary?.ready_for_approval ?? false,
     qaRun: qaSummary !== undefined,
     reelImagesGenerated: reelAssetPaths.length > 0,
-    reelRendered: typeof reelRenderSummary?.video_path === "string" && reelRenderSummary.video_path.length > 0,
+    reelRendered:
+      typeof reelRenderSummary?.video_path === "string" &&
+      reelRenderSummary.video_path.length > 0,
     rendered: (renderSummary?.renders?.length ?? 0) > 0,
     scaffolded: true
   }
@@ -627,8 +680,12 @@ function resolveImagePreviewPaths(
 ): string[] {
   const successfulJobs =
     imageSummary?.jobs
-      ?.filter((job) => job.status === "succeeded" && typeof job.assetPath === "string")
-      .map((job) => toOutputRelativePath(outputRoot, job.assetPath as string)) ?? []
+      ?.filter(
+        (job) => job.status === "succeeded" && typeof job.assetPath === "string"
+      )
+      .map((job) =>
+        toOutputRelativePath(outputRoot, job.assetPath as string)
+      ) ?? []
 
   const contentAssets = content.metadata.assets.map((assetPath) =>
     toOutputRelativePath(outputRoot, join(baseDir, assetPath))
@@ -643,8 +700,13 @@ function resolveManualAssetPaths(
   content: ContentPackage
 ): string[] {
   return content.metadata.assets
-    .filter((assetPath) => assetPath.startsWith("assets/") && !assetPath.includes(".."))
-    .map((assetPath) => toOutputRelativePath(outputRoot, join(baseDir, assetPath)))
+    .filter(
+      (assetPath) =>
+        assetPath.startsWith("assets/") && !assetPath.includes("..")
+    )
+    .map((assetPath) =>
+      toOutputRelativePath(outputRoot, join(baseDir, assetPath))
+    )
 }
 
 function resolveRenderPreviewPaths(
@@ -659,7 +721,9 @@ function resolveRenderPreviewPaths(
           ? toOutputRelativePath(outputRoot, join(baseDir, render.image_path))
           : undefined
       )
-      .filter((path): path is string => typeof path === "string" && path.length > 0) ?? []
+      .filter(
+        (path): path is string => typeof path === "string" && path.length > 0
+      ) ?? []
   )
 }
 
@@ -672,7 +736,10 @@ function resolveReelPreviewPath(
     return undefined
   }
 
-  return toOutputRelativePath(outputRoot, join(baseDir, reelRenderSummary.video_path))
+  return toOutputRelativePath(
+    outputRoot,
+    join(baseDir, reelRenderSummary.video_path)
+  )
 }
 
 function resolveReelAudioDisplayPath(
@@ -695,9 +762,13 @@ function resolveReelAudioAssetPath(
   reelRenderSummary?: PersistedReelRenderSummary
 ): string | undefined {
   const candidatePaths = [
-    typeof reelRenderSummary?.audio_path === "string" ? reelRenderSummary.audio_path : undefined,
+    typeof reelRenderSummary?.audio_path === "string"
+      ? reelRenderSummary.audio_path
+      : undefined,
     findReelAudioAssetRelativePath(content)
-  ].filter((value): value is string => typeof value === "string" && value.length > 0)
+  ].filter(
+    (value): value is string => typeof value === "string" && value.length > 0
+  )
 
   for (const candidate of candidatePaths) {
     if (candidate.startsWith("..")) {
@@ -710,7 +781,9 @@ function resolveReelAudioAssetPath(
   return undefined
 }
 
-function findReelAudioAssetRelativePath(content: ContentPackage): string | undefined {
+function findReelAudioAssetRelativePath(
+  content: ContentPackage
+): string | undefined {
   const audioAsset = [...content.metadata.assets]
     .reverse()
     .find((assetPath) => assetPath.startsWith("assets/reel-audio."))
@@ -732,8 +805,13 @@ function resolveAssetRelativePath(input: StoreReviewAssetInput): string {
   }
 
   if (input.assetKind === "reel-shot") {
-    if (!Number.isInteger(input.reelShotIndex) || (input.reelShotIndex ?? 0) < 1) {
-      throw new CalendarValidationError("Reel-Shot-Uploads require a valid 1-based shot index.")
+    if (
+      !Number.isInteger(input.reelShotIndex) ||
+      (input.reelShotIndex ?? 0) < 1
+    ) {
+      throw new CalendarValidationError(
+        "Reel-Shot-Uploads require a valid 1-based shot index."
+      )
     }
 
     return `assets/reel-shot-${String(input.reelShotIndex).padStart(2, "0")}.webp`
@@ -750,7 +828,9 @@ function updateAssetList(
   if (assetKind === "reel-audio") {
     return Array.from(
       new Set([
-        ...existingAssets.filter((assetPath) => !assetPath.startsWith("assets/reel-audio.")),
+        ...existingAssets.filter(
+          (assetPath) => !assetPath.startsWith("assets/reel-audio.")
+        ),
         assetRelativePath
       ])
     )
@@ -799,7 +879,10 @@ function toOutputRelativePath(outputRoot: string, path: string): string {
   return relative(outputRoot, path)
 }
 
-function clampInsertionIndex(position: number | undefined, length: number): number {
+function clampInsertionIndex(
+  position: number | undefined,
+  length: number
+): number {
   if (typeof position !== "number" || Number.isNaN(position)) {
     return length
   }
@@ -823,10 +906,17 @@ async function persistCalendarWithUpdatedCounts(
     (total, week) => total + week.beitraege.length,
     0
   )
-  await writeFile(calendarPath, `${JSON.stringify(calendar, null, 2)}\n`, "utf8")
+  await writeFile(
+    calendarPath,
+    `${JSON.stringify(calendar, null, 2)}\n`,
+    "utf8"
+  )
 }
 
-async function movePostOutputDirectory(sourceDir: string, targetDir: string): Promise<void> {
+async function movePostOutputDirectory(
+  sourceDir: string,
+  targetDir: string
+): Promise<void> {
   if (!(await pathExists(sourceDir))) {
     return
   }
@@ -851,7 +941,8 @@ async function updateMovedContentArtifacts(
 
   const imageSummaryPath = join(nextBaseDir, "image-generation-results.json")
   if (await pathExists(imageSummaryPath)) {
-    const imageSummary = await readJsonFile<PersistedImageSummary>(imageSummaryPath)
+    const imageSummary =
+      await readJsonFile<PersistedImageSummary>(imageSummaryPath)
     await writeJsonFile(imageSummaryPath, {
       ...imageSummary,
       jobs: imageSummary.jobs?.map((job) => ({
@@ -870,7 +961,10 @@ async function updateMovedContentArtifacts(
   }
 }
 
-async function updateContentSourceDate(contentPath: string, nextDate: string): Promise<void> {
+async function updateContentSourceDate(
+  contentPath: string,
+  nextDate: string
+): Promise<void> {
   if (!(await pathExists(contentPath))) {
     return
   }

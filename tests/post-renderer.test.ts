@@ -44,7 +44,9 @@ describe("post renderer", () => {
     expect(resolveRenderTemplateKind("Mit dem Wochenspruch in die Woche")).toBe(
       "wochenspruch"
     )
-    expect(resolveRenderTemplateKind("Wochenspruch – meditativ")).toBe("wochenspruch")
+    expect(resolveRenderTemplateKind("Wochenspruch – meditativ")).toBe(
+      "wochenspruch"
+    )
     expect(resolveRenderTemplateKind("Gebet oder Lied")).toBe(
       "gebet-oder-liedgedanke"
     )
@@ -77,7 +79,8 @@ describe("post renderer", () => {
     )
     expect(document.html).toContain("Ps 33,12")
     expect(document.html).toContain('url("data:image/webp;base64,')
-    expect(normalizeMarkup(extractMainMarkup(document.html))).toMatchInlineSnapshot(`
+    expect(normalizeMarkup(extractMainMarkup(document.html)))
+      .toMatchInlineSnapshot(`
       "<main class="canvas format-feed">
       <section class="layout">
       <div class="panel-meta">
@@ -172,6 +175,112 @@ describe("post renderer", () => {
     expect(html).toContain("Wohl dem Volk")
   })
 
+  it("renders only the Facebook headline in the landscape image", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const post = findPost(calendar, "post-0001")
+    await writeRenderReadyContent(calendar, tempDir, post.id)
+    const content = await readJsonFile<ContentPackage>(
+      join(tempDir, post.datum, post.id, "content.json")
+    )
+
+    const document = await buildRenderDocument(
+      post,
+      content,
+      "facebook-mastodon",
+      tempDir
+    )
+
+    expect(document.html).toContain("Eine kleine Übung für diese Woche")
+    expect(document.html).not.toContain("Wohl dem Volk")
+    expect(document.html).not.toContain("Nimm dir heute fünf Minuten")
+    expect(document.html).not.toContain('data-overflow-id="primary-text"')
+    expect(content.platforms.facebook.text).toContain(
+      "Nimm dir heute fünf Minuten"
+    )
+  })
+
+  it("does not render Instagram carousel card types as headings", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const post = findPost(calendar, "post-0003")
+    await writeRenderReadyContent(calendar, tempDir, post.id)
+
+    await renderPostById(
+      calendar,
+      post.id,
+      { force: false, outputRoot: tempDir },
+      { pageRenderClient: createMockRenderClient() }
+    )
+
+    const secondSlide = await readFile(
+      join(tempDir, post.datum, post.id, "render-instagram-feed-02.html"),
+      "utf8"
+    )
+
+    expect(secondSlide).toContain(
+      "Gottes Treue macht Menschen nicht austauschbar"
+    )
+    expect(secondSlide).not.toContain(
+      '<h1 class="title" data-overflow-id="title">Alltagsgedanke</h1>'
+    )
+  })
+
+  it("does not duplicate Instagram titles or add captions to carousel and story images", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const post = findPost(calendar, "post-0003")
+    await writeRenderReadyContent(calendar, tempDir, post.id)
+    const contentPath = join(tempDir, post.datum, post.id, "content.json")
+    const content = await readJsonFile<ContentPackage>(contentPath)
+
+    await writeJsonFile(contentPath, {
+      ...content,
+      editorial_core: { ...content.editorial_core, title: "Serientitel" },
+      platforms: {
+        ...content.platforms,
+        instagram: {
+          ...content.platforms.instagram,
+          caption: "Diese Caption gehört in den Instagram-Post.",
+          carousel: [
+            { type: "title", text: "Serientitel" },
+            { type: "content", text: "Eine Erklärung für die Serie." }
+          ]
+        },
+        story: {
+          slides: [{ text: "Serientitel" }, { text: "Eine Story-Erklärung." }]
+        }
+      }
+    })
+
+    await renderPostById(
+      calendar,
+      post.id,
+      { force: false, outputRoot: tempDir },
+      { pageRenderClient: createMockRenderClient() }
+    )
+
+    const feedTitle = await readFile(
+      join(tempDir, post.datum, post.id, "render-instagram-feed-01.html"),
+      "utf8"
+    )
+    const storyTitle = await readFile(
+      join(tempDir, post.datum, post.id, "render-instagram-story-01.html"),
+      "utf8"
+    )
+    const storyContent = await readFile(
+      join(tempDir, post.datum, post.id, "render-instagram-story-02.html"),
+      "utf8"
+    )
+
+    expect(feedTitle).toContain(
+      '<h1 class="title" data-overflow-id="title">Serientitel</h1>'
+    )
+    expect(feedTitle).not.toContain('data-overflow-id="primary-text"')
+    expect(feedTitle).not.toContain("Diese Caption gehört")
+    expect(storyTitle).not.toContain('data-overflow-id="title"')
+    expect(storyTitle).not.toContain('data-overflow-id="primary-text">\n')
+    expect(storyContent).not.toContain("Diese Caption gehört")
+    expect(storyContent).not.toContain('data-overflow-id="secondary-text"')
+  })
+
   it("surfaces clear warnings when a text box overflows", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
     await writeRenderReadyContent(calendar, tempDir, "post-0001", {
@@ -209,9 +318,9 @@ describe("post renderer", () => {
     ])
     expect(
       result.renders.find(
-        (render) => render.format === "instagram-story" && render.pageIndex === 2
-      )
-        ?.overflowWarnings
+        (render) =>
+          render.format === "instagram-story" && render.pageIndex === 2
+      )?.overflowWarnings
     ).toEqual([
       "Text overflow detected in instagram-story page 2/4 (primary-text). Review copy before approval."
     ])
@@ -222,7 +331,9 @@ function createMockRenderClient(options?: {
   overflowByFormat?: Record<string, HtmlRenderResult["overflowRegions"]>
 }): HtmlRenderClient {
   return {
-    async renderHtmlDocument(request: HtmlRenderRequest): Promise<HtmlRenderResult> {
+    async renderHtmlDocument(
+      request: HtmlRenderRequest
+    ): Promise<HtmlRenderResult> {
       await writeFile(
         request.outputPath,
         `mock-image:${request.width}x${request.height}`,
@@ -303,23 +414,40 @@ async function writeRenderReadyContent(
             text: "Wohl dem Volk, dessen Gott der HERR ist, dem Volk, das er zum Erbe erwählt hat! (Ps 33,12)"
           },
           { text: "Aufmerksamkeit kann zeigen: Du bist nicht nebenbei." },
-          { text: "Die Übung: fünf Minuten zuhören. Ohne Handy. Ohne Unterbrechung." },
+          {
+            text: "Die Übung: fünf Minuten zuhören. Ohne Handy. Ohne Unterbrechung."
+          },
           { text: "Wem möchtest du heute ungeteilte Aufmerksamkeit schenken?" }
         ]
       }
     }
   })
 
-  await mkdir(join(outputRoot, findPost(calendar, postId).datum, postId, "assets"), {
-    recursive: true
-  })
+  await mkdir(
+    join(outputRoot, findPost(calendar, postId).datum, postId, "assets"),
+    {
+      recursive: true
+    }
+  )
   await writeFile(
-    join(outputRoot, findPost(calendar, postId).datum, postId, "assets", "background-4x5.webp"),
+    join(
+      outputRoot,
+      findPost(calendar, postId).datum,
+      postId,
+      "assets",
+      "background-4x5.webp"
+    ),
     "background",
     "utf8"
   )
   await writeFile(
-    join(outputRoot, findPost(calendar, postId).datum, postId, "assets", "background-9x16.webp"),
+    join(
+      outputRoot,
+      findPost(calendar, postId).datum,
+      postId,
+      "assets",
+      "background-9x16.webp"
+    ),
     "background",
     "utf8"
   )
@@ -362,8 +490,5 @@ function extractMainMarkup(html: string): string {
 }
 
 function normalizeMarkup(markup: string): string {
-  return markup
-    .replaceAll(/>\s+</g, ">\n<")
-    .replaceAll(/\n\s+/g, "\n")
-    .trim()
+  return markup.replaceAll(/>\s+</g, ">\n<").replaceAll(/\n\s+/g, "\n").trim()
 }

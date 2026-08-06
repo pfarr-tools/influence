@@ -1,0 +1,13 @@
+<section class="panel">
+  <div class="accent-line"></div>
+  {{#if title}}
+  <h1 class="title title-story" data-overflow-id="title">{{title}}</h1>
+  {{/if}} {{#if titleNote}}
+  <p class="title-note" data-overflow-id="title-note">{{titleNote}}</p>
+  {{/if}} {{#if primaryText}}<p class="body-text body-text-story" data-overflow-id="primary-text">{{{primaryText}}}</p>{{/if}} {{#if citation}}
+  <div class="citation">{{citation}}</div>
+  {{/if}} {{#if secondaryText}}
+  <p class="small-text" data-overflow-id="secondary-text">{{secondaryText}}</p>
+  {{/if}}
+  <p class="sender-mark">christoph-fischer.de</p>
+</section>

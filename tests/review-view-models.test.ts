@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { buildPostDetailResponse, buildWeekOverviewResponse } from "../src/services/review/server/view-models/review-view-models.js"
+import {
+  buildPostDetailResponse,
+  buildWeekOverviewResponse
+} from "../src/services/review/server/view-models/review-view-models.js"
 
 describe("review view models", () => {
   it("maps week overview data and keeps the configured action order", () => {
@@ -59,7 +62,9 @@ describe("review view models", () => {
       "render",
       "render-reel"
     ])
-    expect(response.weekActions.find((action) => action.action === "generate")).toMatchObject({
+    expect(
+      response.weekActions.find((action) => action.action === "generate")
+    ).toMatchObject({
       completed: false,
       supportsForce: true
     })
@@ -70,6 +75,7 @@ describe("review view models", () => {
   it("adds voiceover recording guidance to the post detail response", () => {
     const response = buildPostDetailResponse(
       {
+        assetPaths: [],
         content: {
           editorial_core: {
             audience: "Familien",
@@ -79,7 +85,10 @@ describe("review view models", () => {
           metadata: { assets: [] },
           platforms: {
             facebook: { headline: "Headline", text: "Facebook-Text" },
-            instagram: { caption: "Instagram-Caption" },
+            instagram: {
+              caption: "Instagram-Caption",
+              carousel: [{ type: "content", text: "Karussellkarte" }]
+            },
             mastodon: { text: "Mastodon-Text" },
             reel: {
               duration_seconds: 0,
@@ -135,5 +144,8 @@ describe("review view models", () => {
       index: 0,
       startSeconds: 0
     })
+    expect(response.content.instagramCarousel).toEqual([
+      { type: "content", text: "Karussellkarte" }
+    ])
   })
 })

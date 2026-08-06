@@ -51,7 +51,13 @@ export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   runtimeConfig: RuntimeConfig
 }
 
-const frontendRoot = resolve(process.cwd(), "src", "services", "review", "frontend")
+const frontendRoot = resolve(
+  process.cwd(),
+  "src",
+  "services",
+  "review",
+  "frontend"
+)
 let viteServerPromise: Promise<import("vite").ViteDevServer> | undefined
 
 export async function handleReviewRequest(
@@ -63,8 +69,11 @@ export async function handleReviewRequest(
     await routeReviewRequest(request, response, dependencies)
   } catch (error) {
     const statusCode =
-      error instanceof CalendarValidationError || isValidationError(error) ? 400 : 500
-    const message = error instanceof Error ? error.message : "Unbekannter Fehler."
+      error instanceof CalendarValidationError || isValidationError(error)
+        ? 400
+        : 500
+    const message =
+      error instanceof Error ? error.message : "Unbekannter Fehler."
 
     respondJson(response, statusCode, { error: message })
   }
@@ -99,7 +108,9 @@ async function routeReviewRequest(
   }
 
   if (method === "GET" && requestUrl.pathname.match(/^\/api\/weeks\/[^/]+$/)) {
-    const weekDate = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/weeks\//, ""))
+    const weekDate = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/weeks\//, "")
+    )
     respondJson(
       response,
       200,
@@ -109,8 +120,13 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/actions\/[^/]+$/)) {
-    const match = requestUrl.pathname.match(/^\/api\/weeks\/([^/]+)\/actions\/([^/]+)$/)
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/actions\/[^/]+$/)
+  ) {
+    const match = requestUrl.pathname.match(
+      /^\/api\/weeks\/([^/]+)\/actions\/([^/]+)$/
+    )
     const weekDate = decodeURIComponent(match?.[1] ?? "")
     const action = weekActionSchemaPublic.parse(match?.[2] ?? "")
     const force = parseForceSearchParam(requestUrl)
@@ -123,18 +139,35 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/posts$/)) {
-    const weekDate = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/weeks\/([^/]+)\/posts$/, "$1"))
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/posts$/)
+  ) {
+    const weekDate = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/weeks\/([^/]+)\/posts$/, "$1")
+    )
     const { parseJsonBody } = await import("../request/parse-json-body.js")
-    const { postIdeaRequestSchema } = await import("../contracts/review-contracts.js")
+    const { postIdeaRequestSchema } =
+      await import("../contracts/review-contracts.js")
     const body = postIdeaRequestSchema.parse(await parseJsonBody(request))
-    const { createReviewPostIdea } = await import("../controllers/workflow-controller.js")
-    respondJson(response, 200, await createReviewPostIdea(weekDate, body, dependencies), weekOverviewResponseSchemaPublic)
+    const { createReviewPostIdea } =
+      await import("../controllers/workflow-controller.js")
+    respondJson(
+      response,
+      200,
+      await createReviewPostIdea(weekDate, body, dependencies),
+      weekOverviewResponseSchemaPublic
+    )
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/posts\/[^/]+\/move$/)) {
-    const match = requestUrl.pathname.match(/^\/api\/weeks\/([^/]+)\/posts\/([^/]+)\/move$/)
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/posts\/[^/]+\/move$/)
+  ) {
+    const match = requestUrl.pathname.match(
+      /^\/api\/weeks\/([^/]+)\/posts\/([^/]+)\/move$/
+    )
     const weekDate = decodeURIComponent(match?.[1] ?? "")
     const postId = decodeURIComponent(match?.[2] ?? "")
     respondJson(
@@ -147,7 +180,9 @@ async function routeReviewRequest(
   }
 
   if (method === "GET" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+$/)) {
-    const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\//, ""))
+    const postId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/posts\//, "")
+    )
     respondJson(
       response,
       200,
@@ -157,8 +192,13 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/actions\/[^/]+$/)) {
-    const match = requestUrl.pathname.match(/^\/api\/posts\/([^/]+)\/actions\/([^/]+)$/)
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/actions\/[^/]+$/)
+  ) {
+    const match = requestUrl.pathname.match(
+      /^\/api\/posts\/([^/]+)\/actions\/([^/]+)$/
+    )
     const postId = decodeURIComponent(match?.[1] ?? "")
     const action = reviewActionSchemaPublic.parse(match?.[2] ?? "")
     const force = parseForceSearchParam(requestUrl)
@@ -171,7 +211,10 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/schedule$/)) {
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/schedule$/)
+  ) {
     const postId = decodeURIComponent(
       requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/schedule$/, "$1")
     )
@@ -184,7 +227,10 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/assets$/)) {
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/assets$/)
+  ) {
     const postId = decodeURIComponent(
       requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/assets$/, "$1")
     )
@@ -197,22 +243,47 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "DELETE" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/assets$/)) {
-    const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/assets$/, "$1"))
+  if (
+    method === "DELETE" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/assets$/)
+  ) {
+    const postId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/assets$/, "$1")
+    )
     const assetPath = requestUrl.searchParams.get("path") ?? ""
-    const { deleteReviewAsset } = await import("../controllers/asset-controller.js")
-    respondJson(response, 200, await deleteReviewAsset(postId, assetPath, dependencies), noticeResponseSchema)
+    const { deleteReviewAsset } =
+      await import("../controllers/asset-controller.js")
+    respondJson(
+      response,
+      200,
+      await deleteReviewAsset(postId, assetPath, dependencies),
+      noticeResponseSchema
+    )
     return
   }
 
-  if (method === "DELETE" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+$/)) {
-    const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\//, ""))
-    const { deleteReviewPost } = await import("../controllers/workflow-controller.js")
-    respondJson(response, 200, await deleteReviewPost(postId, dependencies), noticeResponseSchema)
+  if (
+    method === "DELETE" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+$/)
+  ) {
+    const postId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/posts\//, "")
+    )
+    const { deleteReviewPost } =
+      await import("../controllers/workflow-controller.js")
+    respondJson(
+      response,
+      200,
+      await deleteReviewPost(postId, dependencies),
+      noticeResponseSchema
+    )
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/reel-audio$/)) {
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/reel-audio$/)
+  ) {
     const postId = decodeURIComponent(
       requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/reel-audio$/, "$1")
     )
@@ -225,7 +296,10 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "GET" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/export$/)) {
+  if (
+    method === "GET" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/export$/)
+  ) {
     const postId = decodeURIComponent(
       requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/export$/, "$1")
     )
@@ -249,7 +323,10 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "GET" && requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+$/)) {
+  if (
+    method === "GET" &&
+    requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+$/)
+  ) {
     const sessionId = decodeURIComponent(
       requestUrl.pathname.replace(/^\/api\/chat\/sessions\/([^/]+)$/, "$1")
     )
@@ -262,9 +339,15 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/messages$/)) {
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/messages$/)
+  ) {
     const sessionId = decodeURIComponent(
-      requestUrl.pathname.replace(/^\/api\/chat\/sessions\/([^/]+)\/messages$/, "$1")
+      requestUrl.pathname.replace(
+        /^\/api\/chat\/sessions\/([^/]+)\/messages$/,
+        "$1"
+      )
     )
     respondJson(
       response,
@@ -275,17 +358,31 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/messages\/stream$/)) {
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(
+      /^\/api\/chat\/sessions\/[^/]+\/messages\/stream$/
+    )
+  ) {
     const sessionId = decodeURIComponent(
-      requestUrl.pathname.replace(/^\/api\/chat\/sessions\/([^/]+)\/messages\/stream$/, "$1")
+      requestUrl.pathname.replace(
+        /^\/api\/chat\/sessions\/([^/]+)\/messages\/stream$/,
+        "$1"
+      )
     )
     await streamChatMessage(sessionId, request, response, dependencies)
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/revise$/)) {
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/revise$/)
+  ) {
     const sessionId = decodeURIComponent(
-      requestUrl.pathname.replace(/^\/api\/chat\/sessions\/([^/]+)\/revise$/, "$1")
+      requestUrl.pathname.replace(
+        /^\/api\/chat\/sessions\/([^/]+)\/revise$/,
+        "$1"
+      )
     )
     respondJson(
       response,
@@ -296,9 +393,15 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "POST" && requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/apply$/)) {
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/apply$/)
+  ) {
     const sessionId = decodeURIComponent(
-      requestUrl.pathname.replace(/^\/api\/chat\/sessions\/([^/]+)\/apply$/, "$1")
+      requestUrl.pathname.replace(
+        /^\/api\/chat\/sessions\/([^/]+)\/apply$/,
+        "$1"
+      )
     )
     respondJson(
       response,
@@ -405,6 +508,9 @@ async function serveOutputFile(
                 ? "audio/webm"
                 : "application/octet-stream"
 
-  response.writeHead(200, { "content-type": contentType })
+  response.writeHead(200, {
+    "cache-control": "no-store, max-age=0",
+    "content-type": contentType
+  })
   response.end(content)
 }

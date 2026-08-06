@@ -41,7 +41,11 @@ describe("review service", () => {
 
   it("resets approval and moves edited content back to in Arbeit", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
-    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+    const contentPath = await writeQaReadyContent(
+      calendar,
+      tempDir,
+      "post-0001"
+    )
     await runQaForPost(calendar, "post-0001", tempDir)
     await approveReviewPost(calendar, "post-0001", tempDir)
 
@@ -53,6 +57,10 @@ describe("review service", () => {
       facebookText: "Neuer Facebook-Text",
       fluxPrompt: "Soft daylight, church doorway, no text, no letters",
       instagramCaption: "Neue Caption",
+      instagramCarousel: [
+        { type: "title", text: "Neue Karussell-Überschrift" },
+        { type: "content", text: "Neue Karussellkarte" }
+      ],
       mainMessage: "Neue Kernbotschaft",
       mastodonText: "Neuer Mastodon-Text",
       reelHook: "Neuer Hook",
@@ -68,12 +76,20 @@ describe("review service", () => {
       { text: "Slide eins" },
       { text: "Slide zwei" }
     ])
+    expect(written.platforms.instagram.carousel).toEqual([
+      { type: "title", text: "Neue Karussell-Überschrift" },
+      { type: "content", text: "Neue Karussellkarte" }
+    ])
     expect(written.editorial_core.title).toBe("Neuer Titel")
   })
 
   it("approves only QA-ready posts", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
-    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+    const contentPath = await writeQaReadyContent(
+      calendar,
+      tempDir,
+      "post-0001"
+    )
 
     await expect(
       approveReviewPost(calendar, "post-0001", tempDir)
@@ -92,13 +108,18 @@ describe("review service", () => {
     await writeQaReadyContent(calendar, tempDir, "post-0001", {
       metadataAssets: ["assets/background-4x5.webp"]
     })
-    await writeJsonFile(join(tempDir, "2026-08-10", "post-0001", "render-results.json"), {
-      renders: [{ image_path: "render-instagram-feed-01.png" }],
-      warnings: []
-    })
+    await writeJsonFile(
+      join(tempDir, "2026-08-10", "post-0001", "render-results.json"),
+      {
+        renders: [{ image_path: "render-instagram-feed-01.png" }],
+        warnings: []
+      }
+    )
 
     const result = await exportReviewPost(calendar, "post-0001", tempDir)
-    const exportJson = JSON.parse(await readFile(result.exportPath, "utf8")) as {
+    const exportJson = JSON.parse(
+      await readFile(result.exportPath, "utf8")
+    ) as {
       rendered_files: string[]
       visual_assets: string[]
     }
@@ -117,7 +138,12 @@ describe("review service", () => {
     const generateContent = vi.fn().mockResolvedValue({
       contentPath: join(tempDir, "2026-08-10", "post-0001", "content.json"),
       postId: "post-0001",
-      rawResponsePath: join(tempDir, "2026-08-10", "post-0001", "raw-openai-response.json")
+      rawResponsePath: join(
+        tempDir,
+        "2026-08-10",
+        "post-0001",
+        "raw-openai-response.json"
+      )
     })
 
     await regenerateReviewPost(
@@ -143,7 +169,11 @@ describe("review service", () => {
 
   it("stores uploaded reel audio as a reusable post asset", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
-    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+    const contentPath = await writeQaReadyContent(
+      calendar,
+      tempDir,
+      "post-0001"
+    )
 
     const storedPath = await storeReviewReelAudioAsset(
       calendar,
@@ -168,7 +198,11 @@ describe("review service", () => {
 
   it("stores browser-recorded reel audio with a webm extension", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
-    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+    const contentPath = await writeQaReadyContent(
+      calendar,
+      tempDir,
+      "post-0001"
+    )
 
     const storedPath = await storeReviewReelAudioAsset(
       calendar,
@@ -193,7 +227,11 @@ describe("review service", () => {
 
   it("stores uploaded background assets under canonical filenames", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
-    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+    const contentPath = await writeQaReadyContent(
+      calendar,
+      tempDir,
+      "post-0001"
+    )
 
     const storedPath = await storeReviewAsset(calendar, "post-0001", tempDir, {
       assetKind: "background-4x5",
@@ -216,7 +254,11 @@ describe("review service", () => {
 
   it("stores reel shots at the selected 1-based index", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
-    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+    const contentPath = await writeQaReadyContent(
+      calendar,
+      tempDir,
+      "post-0001"
+    )
 
     const storedPath = await storeReviewAsset(calendar, "post-0001", tempDir, {
       assetKind: "reel-shot",
@@ -240,9 +282,14 @@ describe("review service", () => {
 
   it("replaces older reel audio metadata entries when the extension changes", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
-    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001", {
-      metadataAssets: ["assets/reel-audio.mp3"]
-    })
+    const contentPath = await writeQaReadyContent(
+      calendar,
+      tempDir,
+      "post-0001",
+      {
+        metadataAssets: ["assets/reel-audio.mp3"]
+      }
+    )
 
     const storedPath = await storeReviewAsset(calendar, "post-0001", tempDir, {
       assetKind: "reel-audio",

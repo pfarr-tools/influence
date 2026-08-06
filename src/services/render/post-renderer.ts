@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, extname, join, relative, resolve } from "node:path"
 
+import Handlebars from "handlebars"
+
 import type { Calendar, CalendarPost } from "../../domain/calendar.js"
 import type { ContentPackage } from "../../domain/content.js"
 import { getPostById, getWeekForDate } from "../calendar/calendar-service.js"
@@ -12,10 +14,7 @@ import {
   readContentPackage,
   writeJsonFile
 } from "../content/content-storage.js"
-import type {
-  HtmlRenderClient,
-  RenderOverflowRegion
-} from "./html-renderer.js"
+import type { HtmlRenderClient, RenderOverflowRegion } from "./html-renderer.js"
 
 const renderFormats = {
   "facebook-mastodon": {
@@ -103,6 +102,7 @@ interface RenderPageSpec {
   pageIndex: number
   pageLabel: string
   secondaryText?: string
+  titleCard?: boolean
   template: RenderTemplateKind
   title: string
   titleNote?: string
@@ -220,7 +220,12 @@ export async function buildRenderDocument(
   template: RenderTemplateKind
   width: number
 }> {
-  const documents = await buildRenderDocuments(post, content, format, outputRoot)
+  const documents = await buildRenderDocuments(
+    post,
+    content,
+    format,
+    outputRoot
+  )
   const firstDocument = documents[0]
 
   if (!firstDocument) {
@@ -247,11 +252,20 @@ async function renderCalendarPost(
   const content = await readContentPackage(contentPaths.contentPath)
   assertContentApproved(content, contentPaths.contentPath)
   const summaryPath = join(contentPaths.baseDir, "render-results.json")
-  const allDocuments = await buildRenderDocumentsForPost(post, content, options.outputRoot)
+  const allDocuments = await buildRenderDocumentsForPost(
+    post,
+    content,
+    options.outputRoot
+  )
   const renders: RenderArtifactResult[] = []
   const aggregateWarnings = new Set<string>()
 
-  await assertWritableRenderTargets(contentPaths.baseDir, summaryPath, allDocuments, options.force)
+  await assertWritableRenderTargets(
+    contentPaths.baseDir,
+    summaryPath,
+    allDocuments,
+    options.force
+  )
 
   for (const document of allDocuments) {
     const fileSuffix = `${document.format}-${formatPageNumber(document.pageIndex)}`
@@ -261,12 +275,14 @@ async function renderCalendarPost(
     await mkdir(dirname(htmlPath), { recursive: true })
     await writeFile(htmlPath, `${document.html}\n`, "utf8")
 
-    const renderResult = await dependencies.pageRenderClient.renderHtmlDocument({
-      height: document.height,
-      html: document.html,
-      outputPath: imagePath,
-      width: document.width
-    })
+    const renderResult = await dependencies.pageRenderClient.renderHtmlDocument(
+      {
+        height: document.height,
+        html: document.html,
+        outputPath: imagePath,
+        width: document.width
+      }
+    )
 
     const overflowWarnings = renderResult.overflowRegions.map((region) =>
       formatOverflowWarning(document, region)
@@ -332,7 +348,9 @@ async function buildRenderDocumentsForPost(
   const documents: RenderPageDocument[] = []
 
   for (const format of Object.keys(renderFormats) as RenderFormatKey[]) {
-    documents.push(...(await buildRenderDocuments(post, content, format, outputRoot)))
+    documents.push(
+      ...(await buildRenderDocuments(post, content, format, outputRoot))
+    )
   }
 
   return documents
@@ -347,7 +365,11 @@ async function buildRenderDocuments(
   const template = resolveRenderTemplateKind(post.rubrik)
   const palette = resolvePalette(template)
   const dimensions = renderFormats[format]
-  const backgroundImagePath = resolveBackgroundAssetPath(outputRoot, post, format)
+  const backgroundImagePath = resolveBackgroundAssetPath(
+    outputRoot,
+    post,
+    format
+  )
   const backgroundCss = backgroundImagePath
     ? await buildBackgroundCss(backgroundImagePath, palette)
     : `background-image:
@@ -356,13 +378,20 @@ async function buildRenderDocuments(
 
   const pageSpecs = buildRenderPageSpecs(post, content, format)
 
-  return pageSpecs.map((pageSpec) => ({
-    ...pageSpec,
-    height: dimensions.height,
-    html: buildHtmlDocument(pageSpec, dimensions.cssClass, backgroundCss, palette),
-    template,
-    width: dimensions.width
-  }))
+  return Promise.all(
+    pageSpecs.map(async (pageSpec) => ({
+      ...pageSpec,
+      height: dimensions.height,
+      html: await buildHtmlDocument(
+        pageSpec,
+        dimensions.cssClass,
+        backgroundCss,
+        palette
+      ),
+      template,
+      width: dimensions.width
+    }))
+  )
 }
 
 function buildRenderPageSpecs(
@@ -387,38 +416,18 @@ function buildLandscapePageSpec(
   format: RenderFormatKey
 ): RenderPageSpec {
   const template = resolveRenderTemplateKind(post.rubrik)
-  const weeklyVerse = resolveWeeklyVerseText(content)
-  const title = content.platforms.facebook.headline || content.editorial_core.title
-  const secondaryParagraphs = splitIntoParagraphs(content.platforms.facebook.text)
-  const mainParagraph = secondaryParagraphs[0] || content.editorial_core.main_message
-  const remainingText = secondaryParagraphs.slice(1).join("\n\n")
-  const primaryText =
-    template === "wochenspruch" && weeklyVerse.length > 0 ? weeklyVerse : mainParagraph
-  const shouldShowCitation =
-    template === "wochenspruch" &&
-    weeklyVerse.length > 0 &&
-    normalizeComparableText(primaryText) === normalizeComparableText(weeklyVerse)
+  const title =
+    content.platforms.facebook.headline || content.editorial_core.title
 
   return {
-    citation: shouldShowCitation ? extractCitation(content, post) : undefined,
     eyebrow: resolveEyebrow(template),
     format,
     pageCount: 1,
     pageIndex: 1,
     pageLabel: renderFormats[format].label,
-    primaryText,
-    secondaryText:
-      template === "wochenspruch"
-        ? truncateText(content.editorial_core.main_message, 220)
-        : truncateText(remainingText || content.editorial_core.main_message, 260),
+    primaryText: "",
     template,
     title,
-    titleNote:
-      template === "predigt-preview"
-        ? content.needs_input
-          ? "Predigtinput noch offen"
-          : "Einladung zum Gottesdienst"
-        : undefined,
     variant: "landscape-post",
     width: renderFormats[format].width,
     height: renderFormats[format].height
@@ -439,11 +448,14 @@ function buildFeedPageSpecs(
     const weeklyVerse = resolveWeeklyVerseText(content)
 
     return cards.map((card, index) => {
-      const primaryText = card.text.trim()
+      const cardType = card.type.trim().toLowerCase()
+      const isTitleCard = cardType === "title"
+      const primaryText = isTitleCard ? "" : card.text.trim()
       const showCitation =
         template === "wochenspruch" &&
         weeklyVerse.length > 0 &&
-        normalizeComparableText(primaryText) === normalizeComparableText(weeklyVerse)
+        normalizeComparableText(primaryText) ===
+          normalizeComparableText(weeklyVerse)
 
       return {
         citation: showCitation ? extractCitation(content, post) : undefined,
@@ -453,17 +465,16 @@ function buildFeedPageSpecs(
         pageIndex: index + 1,
         pageLabel: `${renderFormats[format].label} ${index + 1}/${cards.length}`,
         primaryText,
-      secondaryText:
-        index === cards.length - 1
-          ? truncateText(firstMeaningfulLine(content.platforms.instagram.caption), 180)
-          : undefined,
         template,
+        titleCard: isTitleCard,
         title:
           template === "wochenspruch"
             ? ""
-            : index === 0
-              ? content.editorial_core.title
-              : resolveCardHeading(card.type),
+            : isTitleCard
+              ? card.text.trim()
+              : index === 0
+                ? content.editorial_core.title
+                : "",
         titleNote: undefined,
         variant: "feed-card",
         width: renderFormats[format].width,
@@ -474,14 +485,16 @@ function buildFeedPageSpecs(
 
   return [
     {
-      citation: template === "wochenspruch" ? extractCitation(content, post) : undefined,
+      citation:
+        template === "wochenspruch"
+          ? extractCitation(content, post)
+          : undefined,
       eyebrow: resolveEyebrow(template),
       format,
       pageCount: 1,
       pageIndex: 1,
       pageLabel: renderFormats[format].label,
       primaryText: content.editorial_core.main_message,
-      secondaryText: truncateText(firstMeaningfulLine(content.platforms.instagram.caption), 180),
       template,
       title: content.editorial_core.title,
       variant: "feed-card",
@@ -518,15 +531,16 @@ function buildStoryPageSpecs(
         pageIndex: index + 1,
         pageLabel: `${renderFormats[format].label} ${index + 1}/${slides.length}`,
         primaryText: slide,
-        secondaryText:
-          index === 0
-            ? truncateText(content.editorial_core.main_message, 150)
-          : index === slides.length - 1
-              ? truncateText(firstMeaningfulLine(content.platforms.instagram.caption), 150)
-              : undefined,
         template,
         title:
-          template === "wochenspruch" ? "" : index === 0 ? content.editorial_core.title : "",
+          template === "wochenspruch" ||
+          (index === 0 &&
+            normalizeComparableText(slide) ===
+              normalizeComparableText(content.editorial_core.title))
+            ? ""
+            : index === 0
+              ? content.editorial_core.title
+              : "",
         titleNote: undefined,
         variant: "story-slide",
         width: renderFormats[format].width,
@@ -537,14 +551,16 @@ function buildStoryPageSpecs(
 
   return [
     {
-      citation: template === "wochenspruch" ? extractCitation(content, post) : undefined,
+      citation:
+        template === "wochenspruch"
+          ? extractCitation(content, post)
+          : undefined,
       eyebrow: resolveEyebrow(template),
       format,
       pageCount: 1,
       pageIndex: 1,
       pageLabel: renderFormats[format].label,
       primaryText: content.editorial_core.main_message,
-      secondaryText: truncateText(firstMeaningfulLine(content.platforms.instagram.caption), 150),
       template,
       title: content.editorial_core.title,
       variant: "story-slide",
@@ -554,7 +570,7 @@ function buildStoryPageSpecs(
   ]
 }
 
-function buildHtmlDocument(
+async function buildHtmlDocument(
   page: RenderPageSpec,
   cssClass: string,
   backgroundCss: string,
@@ -566,10 +582,31 @@ function buildHtmlDocument(
     text: string
     tint: string
   }
-): string {
-  const titleClass = page.variant === "story-slide" ? "title title-story" : "title"
-  const bodyClass =
-    page.variant === "story-slide" ? "body-text body-text-story" : "body-text"
+): Promise<string> {
+  const isLandscapePost = page.variant === "landscape-post"
+  const templateName =
+    page.variant === "landscape-post"
+      ? "facebook-mastodon"
+      : page.variant === "feed-card"
+        ? "instagram-feed"
+        : "instagram-story"
+  const panel = renderTemplate(
+    await readFile(
+      new URL(`./templates/${templateName}.html`, import.meta.url),
+      "utf8"
+    ),
+    {
+      citation: page.citation ?? "",
+      primaryText:
+        isLandscapePost || !page.primaryText
+          ? ""
+          : formatPrimaryTextHtml(page.primaryText),
+      secondaryText: isLandscapePost ? "" : (page.secondaryText ?? ""),
+      titleCard: page.titleCard ?? false,
+      title: page.title,
+      titleNote: isLandscapePost ? "" : (page.titleNote ?? "")
+    }
+  )
 
   return `<!DOCTYPE html>
 <html lang="de">
@@ -825,31 +862,18 @@ function buildHtmlDocument(
               : ""
           }
         </div>
-        <section class="panel">
-          <div class="accent-line"></div>
-          ${
-            page.title
-              ? `<h1 class="${titleClass}" data-overflow-id="title">${escapeHtml(page.title)}</h1>`
-              : ""
-          }
-          ${
-            page.titleNote
-              ? `<p class="title-note" data-overflow-id="title-note">${escapeHtml(page.titleNote)}</p>`
-              : ""
-          }
-          <p class="${bodyClass}" data-overflow-id="primary-text">${formatPrimaryTextHtml(page.primaryText)}</p>
-          ${page.citation ? `<div class="citation">${escapeHtml(page.citation)}</div>` : ""}
-          ${
-            page.secondaryText
-              ? `<p class="small-text" data-overflow-id="secondary-text">${escapeHtml(page.secondaryText)}</p>`
-              : ""
-          }
-          <p class="sender-mark">christoph-fischer.de</p>
-        </section>
+        ${panel}
       </section>
     </main>
   </body>
 </html>`
+}
+
+function renderTemplate(
+  template: string,
+  values: Record<string, unknown>
+): string {
+  return Handlebars.compile(template)(values)
 }
 
 async function assertWritableRenderTargets(
@@ -1034,7 +1058,10 @@ function resolveWeeklyVerseText(content: ContentPackage): string {
     return ""
   }
 
-  return note.replace(/^Wochenspruch:\s*/, "").replace(/\s*\([^()]+\)\s*$/, "").trim()
+  return note
+    .replace(/^Wochenspruch:\s*/, "")
+    .replace(/\s*\([^()]+\)\s*$/, "")
+    .trim()
 }
 
 function normalizeComparableText(value: string): string {
@@ -1043,23 +1070,6 @@ function normalizeComparableText(value: string): string {
     .replace(/\s+/g, " ")
     .replace(/[“”„"]/g, "")
     .replace(/[.!?]+$/g, "")
-}
-
-function resolveCardHeading(type: string): string {
-  const normalized = type.trim()
-  const lowered = normalized.toLowerCase()
-
-  if (
-    lowered.length === 0 ||
-    lowered === "text" ||
-    lowered === "card" ||
-    lowered === "slide" ||
-    lowered === "story"
-  ) {
-    return ""
-  }
-
-  return normalized
 }
 
 function extractCitation(content: ContentPackage, post: CalendarPost): string {
@@ -1083,55 +1093,6 @@ function formatOverflowWarning(
   region: RenderOverflowRegion
 ): string {
   return `Text overflow detected in ${document.format} page ${document.pageIndex}/${document.pageCount} (${region.id}). Review copy before approval.`
-}
-
-function firstMeaningfulLine(value: string): string {
-  const lines = value
-    .split("\n")
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-
-  for (const line of lines) {
-    const comparable = normalizeComparableText(line).toLowerCase()
-
-    if (comparable.length === 0) {
-      continue
-    }
-
-    if (
-      comparable === "wochenspruch für diese woche:" ||
-      comparable === "wochenspruch für diese woche" ||
-      comparable === "frage:" ||
-      comparable === "frage" ||
-      comparable === "die frage:" ||
-      comparable === "die frage" ||
-      comparable === "die übung:" ||
-      comparable === "die übung"
-    ) {
-      continue
-    }
-
-    return line
-  }
-
-  return lines[0] ?? ""
-}
-
-function splitIntoParagraphs(value: string): string[] {
-  return value
-    .split(/\n\s*\n/)
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-}
-
-function truncateText(value: string, limit: number): string {
-  const normalized = value.trim()
-
-  if (normalized.length <= limit) {
-    return normalized
-  }
-
-  return `${normalized.slice(0, limit - 1).trimEnd()}…`
 }
 
 function escapeHtml(value: string): string {

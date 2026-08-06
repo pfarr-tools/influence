@@ -1,6 +1,10 @@
 import { basename } from "node:path"
 
-import type { ReviewPostDetail, ReviewWeekOverview, ReviewWorkflowState } from "../../review-service.js"
+import type {
+  ReviewPostDetail,
+  ReviewWeekOverview,
+  ReviewWorkflowState
+} from "../../review-service.js"
 import type { ContentChatSession } from "../../content-chat-service.js"
 import type {
   ChatSessionResponse,
@@ -122,11 +126,19 @@ export function buildPostDetailResponse(
       facebookText: detail.content.platforms.facebook.text,
       fluxPrompt: detail.content.visual.flux_prompt,
       instagramCaption: detail.content.platforms.instagram.caption,
+      instagramCarousel: detail.content.platforms.instagram.carousel.map(
+        (card) => ({
+          text: card.text,
+          type: card.type
+        })
+      ),
       mainMessage: detail.content.editorial_core.main_message,
       mastodonText: detail.content.platforms.mastodon.text,
       reelHook: detail.content.platforms.reel.hook,
       reelScript: detail.content.platforms.reel.script,
-      storySlides: detail.content.platforms.story.slides.map((slide) => slide.text),
+      storySlides: detail.content.platforms.story.slides.map(
+        (slide) => slide.text
+      ),
       title: detail.content.editorial_core.title
     },
     exportDownloadHref: `/api/posts/${encodeURIComponent(detail.post.id)}/export`,
@@ -185,7 +197,10 @@ export function buildPostDetailResponse(
   }
 }
 
-function buildCacheBustedFileHref(relativePath: string, cacheVersion: number): string {
+function buildCacheBustedFileHref(
+  relativePath: string,
+  cacheVersion: number
+): string {
   return `/files/${relativePath}?v=${encodeURIComponent(String(cacheVersion))}`
 }
 
@@ -200,7 +215,9 @@ function buildVoiceoverCueSegments(detail: ReviewPostDetail): Array<{
   const script = detail.content.platforms.reel.script
   const scriptChunks = buildVoiceoverScriptChunks(script)
   const cueTexts =
-    scriptChunks.length > 0 ? scriptChunks : shots.filter((shot) => shot.trim().length > 0)
+    scriptChunks.length > 0
+      ? scriptChunks
+      : shots.filter((shot) => shot.trim().length > 0)
   const segmentCount = Math.max(cueTexts.length, shots.length, 1)
   const safeDurationSeconds = Math.max(durationSeconds, segmentCount)
   const segmentDuration = safeDurationSeconds / segmentCount
@@ -216,7 +233,9 @@ function buildVoiceoverCueSegments(detail: ReviewPostDetail): Array<{
       endSeconds: Number(((index + 1) * segmentDuration).toFixed(3)),
       index,
       startSeconds: Number((index * segmentDuration).toFixed(3)),
-      text: cueTexts[Math.min(index, cueTexts.length - 1)] ?? "Voiceover ohne Skript"
+      text:
+        cueTexts[Math.min(index, cueTexts.length - 1)] ??
+        "Voiceover ohne Skript"
     })
   }
 
@@ -242,7 +261,9 @@ function buildVoiceoverScriptChunks(script: string): string[] {
   const chunks: string[] = []
 
   for (let index = 0; index < sentences.length; index += 2) {
-    chunks.push(wrapVoiceoverChunk(sentences.slice(index, index + 2).join(" ")).join("\n"))
+    chunks.push(
+      wrapVoiceoverChunk(sentences.slice(index, index + 2).join(" ")).join("\n")
+    )
   }
 
   return chunks
@@ -287,12 +308,16 @@ function resolveVoiceoverDurationSeconds(detail: ReviewPostDetail): number {
     return persistedDuration
   }
 
-  const scriptChunks = buildVoiceoverScriptChunks(detail.content.platforms.reel.script)
+  const scriptChunks = buildVoiceoverScriptChunks(
+    detail.content.platforms.reel.script
+  )
   const shotCount = detail.content.platforms.reel.shots.length
   return Math.max(6, shotCount * 3, scriptChunks.length * 2, 1)
 }
 
-export function buildChatSessionResponse(session: ContentChatSession): ChatSessionResponse {
+export function buildChatSessionResponse(
+  session: ContentChatSession
+): ChatSessionResponse {
   const latestRevision = session.revisions.at(-1)
 
   return {
@@ -413,7 +438,11 @@ function isReviewActionDisabled(
 
 function summarizeWorkflowBadges(
   workflow: ReviewWorkflowState,
-  post: { contentExists: boolean; isApproved: boolean; qaReadyForApproval: boolean }
+  post: {
+    contentExists: boolean
+    isApproved: boolean
+    qaReadyForApproval: boolean
+  }
 ): string[] {
   return [
     post.contentExists ? "Inhalt vorhanden" : "Kein Inhalt",

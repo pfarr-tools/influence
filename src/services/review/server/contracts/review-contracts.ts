@@ -129,6 +129,12 @@ const postDetailResponseSchema = z.object({
     facebookText: z.string(),
     fluxPrompt: z.string(),
     instagramCaption: z.string(),
+    instagramCarousel: z.array(
+      z.object({
+        text: z.string(),
+        type: z.string()
+      })
+    ),
     mainMessage: z.string(),
     mastodonText: z.string(),
     reelHook: z.string(),
@@ -209,6 +215,12 @@ export const postEditRequestSchema = z.object({
   facebookText: z.string(),
   fluxPrompt: z.string(),
   instagramCaption: z.string(),
+  instagramCarousel: z.array(
+    z.object({
+      text: z.string(),
+      type: z.string()
+    })
+  ),
   mainMessage: z.string(),
   mastodonText: z.string(),
   reelHook: z.string(),
@@ -274,7 +286,9 @@ export const postDetailResponseSchemaPublic = postDetailResponseSchema
 export const chatSessionResponseSchemaPublic = chatSessionResponseSchema
 
 export type AssetKindApi = z.infer<typeof assetKindSchema>
-export type ChatSessionCreateRequest = z.infer<typeof chatSessionCreateRequestSchema>
+export type ChatSessionCreateRequest = z.infer<
+  typeof chatSessionCreateRequestSchema
+>
 export type ChatSessionResponse = z.infer<typeof chatSessionResponseSchema>
 export type PostDetailResponse = z.infer<typeof postDetailResponseSchema>
 export type PostEditRequest = z.infer<typeof postEditRequestSchema>

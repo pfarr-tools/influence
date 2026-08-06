@@ -1,8 +1,12 @@
 <template>
   <section v-if="post">
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div
+      class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4"
+    >
       <div>
-        <RouterLink class="small text-decoration-none" :to="post.viewBackHref">Zur Wochenübersicht</RouterLink>
+        <RouterLink class="small text-decoration-none" :to="post.viewBackHref"
+          >Zur Wochenübersicht</RouterLink
+        >
         <h2 class="h3 mt-2 mb-1">{{ post.content.title }}</h2>
         <div class="text-secondary">
           {{ formatGermanLongDate(post.post.date) }} · {{ post.post.rubric }}
@@ -10,25 +14,43 @@
       </div>
       <div class="d-flex align-items-center gap-2">
         <a
-          :class="['btn btn-sm btn-outline-secondary', { disabled: !post.previousPostHref }]"
+          :class="[
+            'btn btn-sm btn-outline-secondary',
+            { disabled: !post.previousPostHref }
+          ]"
           :href="post.previousPostHref ?? undefined"
           aria-label="Vorheriger Beitrag"
-        >← Vorheriger</a>
+          >← Vorheriger</a
+        >
         <a
-          :class="['btn btn-sm btn-outline-secondary', { disabled: !post.nextPostHref }]"
+          :class="[
+            'btn btn-sm btn-outline-secondary',
+            { disabled: !post.nextPostHref }
+          ]"
           :href="post.nextPostHref ?? undefined"
           aria-label="Nächster Beitrag"
-        >Nächster →</a>
-        <button class="btn btn-sm btn-outline-danger" type="button" @click="deleteCurrentPost">Löschen</button>
+          >Nächster →</a
+        >
+        <button
+          class="btn btn-sm btn-outline-danger"
+          type="button"
+          @click="deleteCurrentPost"
+        >
+          Löschen
+        </button>
         <span class="badge text-bg-light fs-6">{{ post.post.status }}</span>
       </div>
     </div>
 
-    <div v-if="reviewStore.error" class="alert alert-danger">{{ reviewStore.error }}</div>
+    <div v-if="reviewStore.error" class="alert alert-danger">
+      {{ reviewStore.error }}
+    </div>
     <div
       v-for="notice in post.notices"
       :key="notice.text"
-      :class="notice.kind === 'error' ? 'alert alert-danger' : 'alert alert-success'"
+      :class="
+        notice.kind === 'error' ? 'alert alert-danger' : 'alert alert-success'
+      "
     >
       {{ notice.text }}
     </div>
@@ -59,12 +81,21 @@
               </div>
               <div class="col-md-6">
                 <label class="form-label">Termin</label>
-                <input v-model="scheduledDate" class="form-control" lang="de-DE" type="date" />
+                <input
+                  v-model="scheduledDate"
+                  class="form-control"
+                  lang="de-DE"
+                  type="date"
+                />
               </div>
               <div class="col-md-6 align-self-end">
                 <button
                   class="btn btn-outline-secondary"
-                  :disabled="reviewStore.loading || scheduledDate.length === 0 || scheduledDate === post.post.date"
+                  :disabled="
+                    reviewStore.loading ||
+                    scheduledDate.length === 0 ||
+                    scheduledDate === post.post.date
+                  "
                   type="button"
                   @click="updateSchedule"
                 >
@@ -73,16 +104,28 @@
               </div>
               <div class="col-12">
                 <label class="form-label">Kernbotschaft</label>
-                <textarea v-model="form.mainMessage" class="form-control" rows="3" />
+                <textarea
+                  v-model="form.mainMessage"
+                  class="form-control"
+                  rows="3"
+                />
               </div>
               <div class="col-12 form-section-heading">Bild und Flux</div>
               <div class="col-12">
                 <label class="form-label">Konzept</label>
-                <textarea v-model="form.concept" class="form-control" rows="3" />
+                <textarea
+                  v-model="form.concept"
+                  class="form-control"
+                  rows="3"
+                />
               </div>
               <div class="col-12">
                 <label class="form-label">Flux-Prompt</label>
-                <textarea v-model="form.fluxPrompt" class="form-control" rows="3" />
+                <textarea
+                  v-model="form.fluxPrompt"
+                  class="form-control"
+                  rows="3"
+                />
               </div>
               <div class="col-12 form-section-heading">Facebook</div>
               <div class="col-md-6">
@@ -95,43 +138,185 @@
               </div>
               <div class="col-12">
                 <label class="form-label">Facebook-Text</label>
-                <textarea v-model="form.facebookText" class="form-control" rows="3" />
+                <textarea
+                  v-model="form.facebookText"
+                  class="form-control"
+                  rows="3"
+                />
               </div>
               <div class="col-12 form-section-heading">Instagram</div>
               <div class="col-12">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-2"
+                >
+                  <label class="form-label mb-0">Instagram-Karussell</label>
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    type="button"
+                    @click="addInstagramSlide"
+                  >
+                    Slide hinzufügen
+                  </button>
+                </div>
+                <div class="d-grid gap-2">
+                  <div
+                    v-for="(slide, index) in instagramSlides"
+                    :key="slide.id"
+                    class="story-slide-row"
+                    draggable="true"
+                    @dragover.prevent
+                    @drop="dropInstagramSlide(index)"
+                    @dragstart="draggedInstagramSlideIndex = index"
+                  >
+                    <span
+                      class="story-slide-handle"
+                      title="Zum Sortieren ziehen"
+                      >☷</span
+                    >
+                    <span class="small text-secondary">{{ index + 1 }}</span>
+                    <div class="input-group flex-grow-1">
+                      <textarea
+                        v-model="slide.text"
+                        class="form-control"
+                        rows="2"
+                        :aria-label="`Instagram-Slide ${index + 1}`"
+                      />
+                      <div class="input-group-text p-0">
+                        <div
+                          class="btn-group"
+                          role="group"
+                          :aria-label="`Instagram-Slide-Typ ${index + 1}`"
+                        >
+                          <input
+                            :id="`instagram-slide-${slide.id}-title`"
+                            v-model="slide.type"
+                            class="btn-check"
+                            type="radio"
+                            value="title"
+                          />
+                          <label
+                            class="btn btn-outline-secondary border-0 rounded-0"
+                            :for="`instagram-slide-${slide.id}-title`"
+                            title="Titel"
+                            aria-label="Titel"
+                            >T</label
+                          >
+                          <input
+                            :id="`instagram-slide-${slide.id}-content`"
+                            v-model="slide.type"
+                            class="btn-check"
+                            type="radio"
+                            value="content"
+                          />
+                          <label
+                            class="btn btn-outline-secondary border-0 rounded-0"
+                            :for="`instagram-slide-${slide.id}-content`"
+                            title="Inhalt"
+                            aria-label="Inhalt"
+                            >¶</label
+                          >
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      type="button"
+                      :disabled="instagramSlides.length <= 1"
+                      @click="deleteInstagramSlide(index)"
+                    >
+                      Löschen
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12">
                 <label class="form-label">Instagram-Caption</label>
-                <textarea v-model="form.instagramCaption" class="form-control" rows="3" />
+                <textarea
+                  v-model="form.instagramCaption"
+                  class="form-control"
+                  rows="3"
+                />
               </div>
               <div class="col-12 form-section-heading">Mastodon</div>
               <div class="col-12">
                 <label class="form-label">Mastodon-Text</label>
-                <textarea v-model="form.mastodonText" class="form-control" rows="3" />
+                <textarea
+                  v-model="form.mastodonText"
+                  class="form-control"
+                  rows="3"
+                />
               </div>
               <div class="col-12 form-section-heading">Reel</div>
               <div class="col-12">
                 <label class="form-label">Reel-Hook</label>
-                <textarea v-model="form.reelHook" class="form-control" rows="3" />
+                <textarea
+                  v-model="form.reelHook"
+                  class="form-control"
+                  rows="3"
+                />
               </div>
               <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-2"
+                >
                   <label class="form-label mb-0">Story-Slides</label>
-                  <button class="btn btn-sm btn-outline-primary" type="button" @click="addStorySlide">Slide hinzufügen</button>
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    type="button"
+                    @click="addStorySlide"
+                  >
+                    Slide hinzufügen
+                  </button>
                 </div>
                 <div class="d-grid gap-2">
-                  <div v-for="(slide, index) in storySlides" :key="slide.id" class="story-slide-row" draggable="true" @dragover.prevent @drop="dropStorySlide(index)" @dragstart="draggedSlideIndex = index">
-                    <span class="story-slide-handle" title="Zum Sortieren ziehen">☷</span>
+                  <div
+                    v-for="(slide, index) in storySlides"
+                    :key="slide.id"
+                    class="story-slide-row"
+                    draggable="true"
+                    @dragover.prevent
+                    @drop="dropStorySlide(index)"
+                    @dragstart="draggedSlideIndex = index"
+                  >
+                    <span
+                      class="story-slide-handle"
+                      title="Zum Sortieren ziehen"
+                      >☷</span
+                    >
                     <span class="small text-secondary">{{ index + 1 }}</span>
-                    <textarea v-model="slide.text" class="form-control" rows="2" :aria-label="`Story-Slide ${index + 1}`" />
-                    <button class="btn btn-sm btn-outline-danger" type="button" :disabled="storySlides.length <= 1" @click="deleteStorySlide(index)">Löschen</button>
+                    <textarea
+                      v-model="slide.text"
+                      class="form-control"
+                      rows="2"
+                      :aria-label="`Story-Slide ${index + 1}`"
+                    />
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      type="button"
+                      :disabled="storySlides.length <= 1"
+                      @click="deleteStorySlide(index)"
+                    >
+                      Löschen
+                    </button>
                   </div>
                 </div>
               </div>
               <div class="col-12">
                 <label class="form-label">Reel-Skript</label>
-                <textarea v-model="form.reelScript" class="form-control" rows="4" />
+                <textarea
+                  v-model="form.reelScript"
+                  class="form-control"
+                  rows="4"
+                />
               </div>
               <div class="col-12">
-                <button class="btn btn-primary" :disabled="reviewStore.loading" type="submit">Speichern</button>
+                <button
+                  class="btn btn-primary"
+                  :disabled="reviewStore.loading"
+                  type="submit"
+                >
+                  Speichern
+                </button>
               </div>
             </form>
           </div>
@@ -141,7 +326,11 @@
       <div class="col-xl-5">
         <div class="card shadow-sm mb-4">
           <div class="card-body d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-secondary btn-sm" type="button" @click="chatOpen = true">
+            <button
+              class="btn btn-outline-secondary btn-sm"
+              type="button"
+              @click="chatOpen = true"
+            >
               Mit ChatGPT besprechen
             </button>
           </div>
@@ -151,26 +340,45 @@
           <div class="card-body">
             <h2 class="h5">{{ germanCopy.qa }}</h2>
             <div class="mb-2">
-              <span :class="post.qaSummary.readyForApproval ? 'badge text-bg-success' : 'badge text-bg-secondary'">
-                {{ post.qaSummary.readyForApproval ? "freigabereif" : "noch nicht freigabereif" }}
+              <span
+                :class="
+                  post.qaSummary.readyForApproval
+                    ? 'badge text-bg-success'
+                    : 'badge text-bg-secondary'
+                "
+              >
+                {{
+                  post.qaSummary.readyForApproval
+                    ? "freigabereif"
+                    : "noch nicht freigabereif"
+                }}
               </span>
             </div>
             <div v-if="post.qaSummary.warnings.length > 0">
               <div class="fw-semibold">Warnungen</div>
               <ul>
-                <li v-for="warning in post.qaSummary.warnings" :key="warning">{{ warning }}</li>
+                <li v-for="warning in post.qaSummary.warnings" :key="warning">
+                  {{ warning }}
+                </li>
               </ul>
             </div>
             <div v-if="post.qaSummary.errors.length > 0">
               <div class="fw-semibold">Fehler</div>
               <ul>
-                <li v-for="error in post.qaSummary.errors" :key="error">{{ error }}</li>
+                <li v-for="error in post.qaSummary.errors" :key="error">
+                  {{ error }}
+                </li>
               </ul>
             </div>
           </div>
         </section>
 
-        <AssetPanel class="mb-4" :assets="post.assets" :on-refresh="refreshPost" :post-id="post.post.postId" />
+        <AssetPanel
+          class="mb-4"
+          :assets="post.assets"
+          :on-refresh="refreshPost"
+          :post-id="post.post.postId"
+        />
 
         <PreviewGallery
           v-for="(group, groupIndex) in post.previewGroups"
@@ -261,6 +469,10 @@ const form = reactive({
 })
 const storySlides = ref<Array<{ id: number; text: string }>>([])
 const draggedSlideIndex = ref<number | null>(null)
+const instagramSlides = ref<Array<{ id: number; text: string; type: string }>>(
+  []
+)
+const draggedInstagramSlideIndex = ref<number | null>(null)
 const chatOpen = ref(false)
 const previewOpen = ref(false)
 const previewGroupIndex = ref(0)
@@ -268,10 +480,11 @@ const previewIndex = ref(0)
 const scheduledDate = ref("")
 
 const postId = computed(() => String(route.params.postId ?? ""))
-const activePreviewItems = computed(() => post.value?.previewGroups[previewGroupIndex.value]?.items ?? [])
-const { applyCurrentRevision, chatStore, reviseCurrentSession, sendMessage } = useChatSession(
-  () => postId.value
+const activePreviewItems = computed(
+  () => post.value?.previewGroups[previewGroupIndex.value]?.items ?? []
 )
+const { applyCurrentRevision, chatStore, reviseCurrentSession, sendMessage } =
+  useChatSession(() => postId.value)
 
 async function applyPostRevision() {
   await applyCurrentRevision()
@@ -306,9 +519,20 @@ watch(post, (value) => {
   form.reelScript = value.content.reelScript
   form.title = value.content.title
   scheduledDate.value = value.post.date
-  storySlides.value = value.content.storySlides.length > 0
-    ? value.content.storySlides.map((text, index) => ({ id: index + 1, text }))
-    : [{ id: 1, text: "" }]
+  storySlides.value =
+    value.content.storySlides.length > 0
+      ? value.content.storySlides.map((text, index) => ({
+          id: index + 1,
+          text
+        }))
+      : [{ id: 1, text: "" }]
+  instagramSlides.value =
+    value.content.instagramCarousel.length > 0
+      ? value.content.instagramCarousel.map((slide, index) => ({
+          id: index + 1,
+          ...slide
+        }))
+      : [{ id: 1, text: "", type: "content" }]
 })
 
 async function refreshPost() {
@@ -347,6 +571,10 @@ async function savePost() {
     facebookText: form.facebookText,
     fluxPrompt: form.fluxPrompt,
     instagramCaption: form.instagramCaption,
+    instagramCarousel: instagramSlides.value.map(({ text, type }) => ({
+      text,
+      type
+    })),
     mainMessage: form.mainMessage,
     mastodonText: form.mastodonText,
     reelHook: form.reelHook,
@@ -369,7 +597,11 @@ function addStorySlide() {
 }
 
 function deleteStorySlide(index: number) {
-  if (storySlides.value.length <= 1 || !window.confirm(`Story-Slide ${index + 1} wirklich löschen?`)) return
+  if (
+    storySlides.value.length <= 1 ||
+    !window.confirm(`Story-Slide ${index + 1} wirklich löschen?`)
+  )
+    return
   storySlides.value.splice(index, 1)
 }
 
@@ -381,8 +613,30 @@ function dropStorySlide(targetIndex: number) {
   storySlides.value.splice(targetIndex, 0, slide)
 }
 
+function addInstagramSlide() {
+  instagramSlides.value.push({ id: Date.now(), text: "", type: "content" })
+}
+
+function deleteInstagramSlide(index: number) {
+  if (
+    instagramSlides.value.length <= 1 ||
+    !window.confirm(`Instagram-Slide ${index + 1} wirklich löschen?`)
+  )
+    return
+  instagramSlides.value.splice(index, 1)
+}
+
+function dropInstagramSlide(targetIndex: number) {
+  const sourceIndex = draggedInstagramSlideIndex.value
+  draggedInstagramSlideIndex.value = null
+  if (sourceIndex === null || sourceIndex === targetIndex) return
+  const [slide] = instagramSlides.value.splice(sourceIndex, 1)
+  instagramSlides.value.splice(targetIndex, 0, slide)
+}
+
 async function deleteCurrentPost() {
-  if (!window.confirm(`Beitrag „${post.value?.post.postId}" wirklich löschen?`)) return
+  if (!window.confirm(`Beitrag „${post.value?.post.postId}" wirklich löschen?`))
+    return
   await removePost(postId.value)
   if (!reviewStore.error) await router.push(post.value?.viewBackHref ?? "/")
 }

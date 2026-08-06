@@ -7,7 +7,9 @@ import type {
 
 async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: "Unbekannter Fehler." }))
+    const errorBody = await response
+      .json()
+      .catch(() => ({ error: "Unbekannter Fehler." }))
     throw new Error(errorBody.error ?? "Unbekannter Fehler.")
   }
 
@@ -15,12 +17,18 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export async function getDefaultWeekDate(): Promise<string> {
-  const body = await readJson<{ date: string }>(await fetch("/api/weeks/default"))
+  const body = await readJson<{ date: string }>(
+    await fetch("/api/weeks/default")
+  )
   return body.date
 }
 
-export async function fetchWeek(weekDate: string): Promise<WeekOverviewResponse> {
-  return readJson<WeekOverviewResponse>(await fetch(`/api/weeks/${encodeURIComponent(weekDate)}`))
+export async function fetchWeek(
+  weekDate: string
+): Promise<WeekOverviewResponse> {
+  return readJson<WeekOverviewResponse>(
+    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}`)
+  )
 }
 
 export async function runWeekAction(
@@ -30,16 +38,26 @@ export async function runWeekAction(
 ): Promise<WeekOverviewResponse> {
   const search = options.force ? "?force=1" : ""
   return readJson<WeekOverviewResponse>(
-    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}/actions/${action}${search}`, {
-      method: "POST"
-    })
+    await fetch(
+      `/api/weeks/${encodeURIComponent(weekDate)}/actions/${action}${search}`,
+      {
+        method: "POST"
+      }
+    )
   )
 }
 
-export async function createPostIdea(weekDate: string, body: { date: string; rubric: string; title: string }): Promise<WeekOverviewResponse> {
-  return readJson<WeekOverviewResponse>(await fetch(`/api/weeks/${encodeURIComponent(weekDate)}/posts`, {
-    body: JSON.stringify(body), headers: { "content-type": "application/json" }, method: "POST"
-  }))
+export async function createPostIdea(
+  weekDate: string,
+  body: { date: string; rubric: string; title: string }
+): Promise<WeekOverviewResponse> {
+  return readJson<WeekOverviewResponse>(
+    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}/posts`, {
+      body: JSON.stringify(body),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    })
+  )
 }
 
 export async function moveWeekPost(
@@ -48,16 +66,23 @@ export async function moveWeekPost(
   body: { date: string; position?: number }
 ): Promise<WeekOverviewResponse> {
   return readJson<WeekOverviewResponse>(
-    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}/posts/${encodeURIComponent(postId)}/move`, {
-      body: JSON.stringify(body),
-      headers: { "content-type": "application/json" },
-      method: "POST"
-    })
+    await fetch(
+      `/api/weeks/${encodeURIComponent(weekDate)}/posts/${encodeURIComponent(postId)}/move`,
+      {
+        body: JSON.stringify(body),
+        headers: { "content-type": "application/json" },
+        method: "POST"
+      }
+    )
   )
 }
 
 export async function fetchPost(postId: string): Promise<PostDetailResponse> {
-  return readJson<PostDetailResponse>(await fetch(`/api/posts/${encodeURIComponent(postId)}`))
+  return readJson<PostDetailResponse>(
+    await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+      cache: "no-store"
+    })
+  )
 }
 
 export async function runPostAction(
@@ -68,16 +93,23 @@ export async function runPostAction(
 ): Promise<PostDetailResponse> {
   const search = options.force ? "?force=1" : ""
   return readJson<PostDetailResponse>(
-    await fetch(`/api/posts/${encodeURIComponent(postId)}/actions/${action}${search}`, {
-      body: body ? JSON.stringify(body) : undefined,
-      headers: body ? { "content-type": "application/json" } : undefined,
-      method: "POST"
-    })
+    await fetch(
+      `/api/posts/${encodeURIComponent(postId)}/actions/${action}${search}`,
+      {
+        body: body ? JSON.stringify(body) : undefined,
+        headers: body ? { "content-type": "application/json" } : undefined,
+        method: "POST"
+      }
+    )
   )
 }
 
 export async function deletePost(postId: string): Promise<{ notice: string }> {
-  return readJson(await fetch(`/api/posts/${encodeURIComponent(postId)}`, { method: "DELETE" }))
+  return readJson(
+    await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+      method: "DELETE"
+    })
+  )
 }
 
 export async function schedulePost(
