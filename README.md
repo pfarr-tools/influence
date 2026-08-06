@@ -1,59 +1,86 @@
-# Influence – Codex-Startpaket
+![Influence](docs/assets/logo-wordmark.svg)
 
-Dieses Paket enthält einen umsetzbaren Plan für ein lokales Node.js-Projekt, das aus einem kirchenjahresbasierten Redaktionskalender vollständige Social-Media-Contentpakete erzeugt.
+# Influence
 
-## Ziel
+Influence ist ein lokales Node.js-Werkzeug für die Planung, Erzeugung, Prüfung und redaktionelle Freigabe von Social-Media-Inhalten auf Basis eines strukturierten Redaktionskalenders. Das Projekt kombiniert CLI-Kommandos für automatisierte Verarbeitung mit einer lokalen Review-Oberfläche für Redakteurinnen und Redakteure.
 
-Aus strukturierten Kalenderdaten entstehen mit OpenAI und Flux:
+## Zweck
 
-- Facebook-Texte
-- Instagram-Captions
-- Mastodon-Posts
-- Story-Abläufe
-- Reel-Skripte
-- Bildkonzepte und Flux-Prompts
-- Alt-Texte
-- gerenderte Social-Media-Grafiken in mehreren Formaten
-- optionale Reel-Videos mit FFmpeg, Untertiteln und externer Audiospur
+Aus Kalenderdaten entstehen pro Beitrag unter anderem:
 
-Für Reels sind Bilderzeugung und Video-Rendering getrennt: `image generate-reel` erzeugt nur die Flux-Shots, `render reel` baut daraus anschließend das MP4.
+- Plattformtexte für Facebook, Instagram und Mastodon
+- Story-Slides und Reel-Skripte
+- Flux-Prompts und Bildkonzepte
+- gerenderte Social-Grafiken in mehreren Formaten
+- optional Reel-Videos mit Untertiteln und Voiceover
 
-Canva ist nicht erforderlich. Das Layout wird reproduzierbar mit HTML/CSS und Playwright gerendert.
+Die Datenhaltung bleibt dateibasiert. Die erzeugten Inhalte liegen standardmäßig unter `output/` und können dort nachvollzogen, geprüft und exportiert werden.
 
-## Enthalten
+## Voraussetzungen
 
-- `docs/CODEX_PLAN.md` – vollständiger Arbeitsplan für Codex
-- `docs/CLI_PHASE_5.md` – Dokumentation der Flux-Bildgenerierung
-- `docs/CLI_PHASE_9.md` – Dokumentation der Reel-Erzeugung mit FFmpeg
-- `docs/ARCHITECTURE.md` – Zielarchitektur und Datenfluss
-- `docs/PROMPTS.md` – empfohlene Prompt-Struktur
-- `docs/CONTENT_SCHEMA.md` – Struktur der erzeugten Contentpakete
-- `config/.env.example` – benötigte Umgebungsvariablen
-- `config/settings.example.json` – Beispielkonfiguration
-- `data/redaktionskalender-2026-2027.json` – vorhandener Jahresplan
-- `examples/content-package.example.json` – Beispiel für ein fertiges Contentpaket
+- Node.js `22.x`
+- `npm`
+- für Grafik-Rendering: installierter Chromium-Browser über Playwright
+- optional für Reel-Video-Rendering: `ffmpeg`
+- optional für produktive KI-Nutzung:
+  - `OPENAI_API_KEY`
+  - `FLUX_API_KEY`
 
-## Empfohlener Einstieg
+## Installation
 
-1. Paket entpacken.
-2. Repository initialisieren.
-3. Codex mit `docs/CODEX_PLAN.md` arbeiten lassen.
-4. Zuerst nur Phase 1 bis 3 umsetzen.
-5. Danach echte OpenAI- und Flux-Aufrufe ergänzen.
+1. Abhängigkeiten installieren:
 
-## Technologievorschlag
+```bash
+npm install
+```
 
-- Node.js 22+
-- TypeScript
-- Zod
-- SQLite mit better-sqlite3 oder zunächst JSON-Dateien
-- OpenAI SDK
-- Flux-API per `fetch`
-- Playwright
-- optional FFmpeg
-- Vitest
-- Commander oder tsx für CLI-Kommandos
+2. Playwright-Browser für das HTML/CSS-Rendering installieren:
 
-## Grundregel
+```bash
+npx playwright install chromium
+```
 
-Die Redaktionsdatenbank bleibt die Quelle der Wahrheit. KI-Ausgaben werden stets als strukturierte JSON-Daten gespeichert und nie direkt veröffentlicht.
+3. Umgebungsdatei anlegen:
+
+```bash
+cp config/.env.example config/.env
+```
+
+4. `config/.env` an die lokale Umgebung anpassen.
+
+## Schnellstart
+
+Kalender prüfen:
+
+```bash
+npm run dev -- calendar validate data/redaktionskalender-2026-2027.json
+```
+
+Review-Oberfläche starten:
+
+```bash
+npm run dev -- review serve --host 127.0.0.1 --port 3040
+```
+
+Danach ist die Oberfläche unter `http://127.0.0.1:3040/` erreichbar.
+
+## Projektstruktur
+
+- `src/` – CLI, Services und Review-Server
+- `data/` – Redaktionskalender
+- `output/` – erzeugte Inhalte, Bilder, Renderings, QA-Ergebnisse, Chat-Sitzungen
+- `config/` – Umgebungs- und Beispielkonfiguration
+- `docs/` – Dokumentation
+
+## Dokumentation
+
+- [docs/Admin.md](docs/Admin.md) – technische Dokumentation für Installation, Betrieb und Wartung
+- [docs/Benutzer.md](docs/Benutzer.md) – Arbeitsablauf für Redakteurinnen und Redakteure in der UI
+- [docs/CLI.md](docs/CLI.md) – Nutzung aller relevanten CLI-Kommandos
+- [docs/CODEX_PLAN.md](docs/CODEX_PLAN.md) – ausführlicher Projekt- und Ausbauplan
+
+## Hinweise
+
+- Ohne API-Schlüssel funktionieren Gerüst, Dateistruktur, Review-UI und viele lokale Arbeitsabläufe weiterhin, produktive Generierung aber nicht.
+- Für Reel-Rendering ist `ffmpeg` erforderlich.
+- Die Review-Oberfläche arbeitet lokal und schreibt direkt in die Projektdateien unter `output/`.
