@@ -1,5 +1,5 @@
-import { extname, join, relative } from "node:path"
-import { mkdir, writeFile } from "node:fs/promises"
+import { dirname, extname, join, relative } from "node:path"
+import { mkdir, rename, rm, writeFile } from "node:fs/promises"
 
 import type { Calendar, CalendarPost, CalendarWeek } from "../../domain/calendar.js"
 import type { ContentPackage } from "../../domain/content.js"
@@ -91,6 +91,7 @@ export interface ReviewPostCard {
 }
 
 export interface ReviewPostDetail {
+  assetPaths: string[]
   post: CalendarPost
   content: ContentPackage
   contentPath: string
@@ -135,6 +136,11 @@ export interface UpdateReviewPostInput {
   reelScript: string
   storySlides: string[]
   title: string
+}
+
+export interface RescheduleReviewPostInput {
+  date: string
+  position?: number
 }
 
 export interface ReviewExportResult {
@@ -204,6 +210,7 @@ export async function loadReviewPost(
   const reelRenderSummary = await readOptionalJson<PersistedReelRenderSummary>(reelRenderPath)
 
   return {
+    assetPaths: resolveManualAssetPaths(contentPaths.baseDir, outputRoot, content),
     post,
     content,
     contentPath: contentPaths.contentPath,
@@ -440,6 +447,54 @@ export async function regenerateReviewPost(
   )
 }
 
+export async function rescheduleReviewPost(
+  calendar: Calendar,
+  postId: string,
+  outputRoot: string,
+  calendarPath: string,
+  input: RescheduleReviewPostInput
+): Promise<void> {
+  const post = getPostById(calendar, postId)
+  const sourceWeek = getWeekForDate(calendar, post.datum)
+  const targetWeek = getWeekForDate(calendar, input.date)
+  const sourceIndex = sourceWeek.beitraege.findIndex((entry) => entry.id === postId)
+
+  if (sourceIndex < 0) {
+    throw new CalendarValidationError(`No post found for id "${postId}"`)
+  }
+
+  if (sourceWeek !== targetWeek && sourceWeek.beitraege.length <= 1) {
+    throw new CalendarValidationError(
+      "Der letzte Beitrag einer Woche kann nicht in eine andere Woche verschoben werden."
+    )
+  }
+
+  const previousPostSnapshot = { ...post }
+  const previousPaths = getContentOutputPaths(outputRoot, previousPostSnapshot)
+
+  sourceWeek.beitraege.splice(sourceIndex, 1)
+  post.datum = input.date
+  post.wochentag = formatGermanWeekday(input.date)
+
+  const insertionIndex = clampInsertionIndex(input.position, targetWeek.beitraege.length)
+  targetWeek.beitraege.splice(insertionIndex, 0, post)
+
+  const nextPaths = getContentOutputPaths(outputRoot, post)
+  await persistCalendarWithUpdatedCounts(calendarPath, calendar)
+
+  if (previousPaths.baseDir !== nextPaths.baseDir) {
+    await movePostOutputDirectory(previousPaths.baseDir, nextPaths.baseDir)
+    await updateMovedContentArtifacts(
+      previousPaths.baseDir,
+      nextPaths.baseDir,
+      nextPaths.contentPath,
+      input.date
+    )
+  } else {
+    await updateContentSourceDate(nextPaths.contentPath, input.date)
+  }
+}
+
 async function buildReviewWeekSummary(
   week: CalendarWeek,
   outputRoot: string,
@@ -580,6 +635,16 @@ function resolveImagePreviewPaths(
   )
 
   return Array.from(new Set([...successfulJobs, ...contentAssets]))
+}
+
+function resolveManualAssetPaths(
+  baseDir: string,
+  outputRoot: string,
+  content: ContentPackage
+): string[] {
+  return content.metadata.assets
+    .filter((assetPath) => assetPath.startsWith("assets/") && !assetPath.includes(".."))
+    .map((assetPath) => toOutputRelativePath(outputRoot, join(baseDir, assetPath)))
 }
 
 function resolveRenderPreviewPaths(
@@ -732,4 +797,90 @@ function normalizeAudioExtension(fileName: string, mimeType: string): string {
 
 function toOutputRelativePath(outputRoot: string, path: string): string {
   return relative(outputRoot, path)
+}
+
+function clampInsertionIndex(position: number | undefined, length: number): number {
+  if (typeof position !== "number" || Number.isNaN(position)) {
+    return length
+  }
+
+  return Math.max(0, Math.min(position, length))
+}
+
+function formatGermanWeekday(date: string): string {
+  return new Intl.DateTimeFormat("de-DE", {
+    timeZone: "UTC",
+    weekday: "long"
+  }).format(new Date(`${date}T00:00:00Z`))
+}
+
+async function persistCalendarWithUpdatedCounts(
+  calendarPath: string,
+  calendar: Calendar
+): Promise<void> {
+  calendar.meta.umfang.wochen = calendar.wochen.length
+  calendar.meta.umfang.beitraege = calendar.wochen.reduce(
+    (total, week) => total + week.beitraege.length,
+    0
+  )
+  await writeFile(calendarPath, `${JSON.stringify(calendar, null, 2)}\n`, "utf8")
+}
+
+async function movePostOutputDirectory(sourceDir: string, targetDir: string): Promise<void> {
+  if (!(await pathExists(sourceDir))) {
+    return
+  }
+
+  if (await pathExists(targetDir)) {
+    throw new CalendarValidationError(
+      `Zielordner "${targetDir}" existiert bereits. Bitte Konflikt manuell prüfen.`
+    )
+  }
+
+  await mkdir(dirname(targetDir), { recursive: true })
+  await rename(sourceDir, targetDir)
+}
+
+async function updateMovedContentArtifacts(
+  previousBaseDir: string,
+  nextBaseDir: string,
+  contentPath: string,
+  nextDate: string
+): Promise<void> {
+  await updateContentSourceDate(contentPath, nextDate)
+
+  const imageSummaryPath = join(nextBaseDir, "image-generation-results.json")
+  if (await pathExists(imageSummaryPath)) {
+    const imageSummary = await readJsonFile<PersistedImageSummary>(imageSummaryPath)
+    await writeJsonFile(imageSummaryPath, {
+      ...imageSummary,
+      jobs: imageSummary.jobs?.map((job) => ({
+        ...job,
+        assetPath:
+          typeof job.assetPath === "string"
+            ? job.assetPath.replace(previousBaseDir, nextBaseDir)
+            : job.assetPath
+      }))
+    })
+  }
+
+  const exportPath = join(nextBaseDir, "review-export.json")
+  if (await pathExists(exportPath)) {
+    await rm(exportPath, { force: true })
+  }
+}
+
+async function updateContentSourceDate(contentPath: string, nextDate: string): Promise<void> {
+  if (!(await pathExists(contentPath))) {
+    return
+  }
+
+  const content = await readContentPackage(contentPath)
+  await writeJsonFile(contentPath, {
+    ...content,
+    source: {
+      ...content.source,
+      date: nextDate
+    }
+  })
 }

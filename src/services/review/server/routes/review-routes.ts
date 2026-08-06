@@ -29,12 +29,15 @@ import {
   createChatSession,
   getChatSession,
   requestChatRevision,
+  streamChatMessage,
   sendChatMessage
 } from "../controllers/chat-controller.js"
 import {
   downloadPostExport,
   getPostDetail,
   getWeekOverview,
+  moveWeekPost,
+  reschedulePost,
   runPostAction,
   runWeekAction
 } from "../controllers/workflow-controller.js"
@@ -130,6 +133,19 @@ async function routeReviewRequest(
     return
   }
 
+  if (method === "POST" && requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/posts\/[^/]+\/move$/)) {
+    const match = requestUrl.pathname.match(/^\/api\/weeks\/([^/]+)\/posts\/([^/]+)\/move$/)
+    const weekDate = decodeURIComponent(match?.[1] ?? "")
+    const postId = decodeURIComponent(match?.[2] ?? "")
+    respondJson(
+      response,
+      200,
+      await moveWeekPost(weekDate, postId, request, dependencies),
+      weekOverviewResponseSchemaPublic
+    )
+    return
+  }
+
   if (method === "GET" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+$/)) {
     const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\//, ""))
     respondJson(
@@ -150,6 +166,19 @@ async function routeReviewRequest(
       response,
       200,
       await runPostAction(postId, action, request, dependencies, { force }),
+      postDetailResponseSchemaPublic
+    )
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/schedule$/)) {
+    const postId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/schedule$/, "$1")
+    )
+    respondJson(
+      response,
+      200,
+      await reschedulePost(postId, request, dependencies),
       postDetailResponseSchemaPublic
     )
     return
@@ -243,6 +272,14 @@ async function routeReviewRequest(
       await sendChatMessage(sessionId, request, dependencies),
       chatSessionResponseSchemaPublic
     )
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/messages\/stream$/)) {
+    const sessionId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/chat\/sessions\/([^/]+)\/messages\/stream$/, "$1")
+    )
+    await streamChatMessage(sessionId, request, response, dependencies)
     return
   }
 

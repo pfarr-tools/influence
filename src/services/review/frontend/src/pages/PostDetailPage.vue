@@ -5,7 +5,7 @@
         <RouterLink class="small text-decoration-none" :to="post.viewBackHref">Zur Wochenübersicht</RouterLink>
         <h2 class="h3 mt-2 mb-1">{{ post.content.title }}</h2>
         <div class="text-secondary">
-          {{ formatGermanLongDate(post.post.date) }} · {{ post.post.weekday }} · {{ post.post.rubric }}
+          {{ formatGermanLongDate(post.post.date) }} · {{ post.post.rubric }}
         </div>
       </div>
       <div class="d-flex align-items-center gap-2">
@@ -56,6 +56,20 @@
               <div class="col-md-6">
                 <label class="form-label">Zielgruppe</label>
                 <input v-model="form.audience" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Termin</label>
+                <input v-model="scheduledDate" class="form-control" lang="de-DE" type="date" />
+              </div>
+              <div class="col-md-6 align-self-end">
+                <button
+                  class="btn btn-outline-secondary"
+                  :disabled="reviewStore.loading || scheduledDate.length === 0 || scheduledDate === post.post.date"
+                  type="button"
+                  @click="updateSchedule"
+                >
+                  Termin ändern
+                </button>
               </div>
               <div class="col-12">
                 <label class="form-label">Kernbotschaft</label>
@@ -183,8 +197,10 @@
     </div>
 
     <ChatModal
+      :assistant-draft="chatStore.assistantDraft"
       :busy="chatStore.loading"
       :error="chatStore.error"
+      :loading-message="chatStore.loadingMessage"
       :open="chatOpen"
       :session="chatStore.session"
       @apply="applyCurrentRevision"
@@ -216,7 +232,13 @@ import PreviewModal from "../components/PreviewModal.vue"
 import ReelModal from "../components/ReelModal.vue"
 import VoiceoverModal from "../components/VoiceoverModal.vue"
 import { useChatSession } from "../composables/useChatSession.js"
-import { loadPost, removePost, reviewStore, triggerPostAction } from "../stores/review-store.js"
+import {
+  loadPost,
+  removePost,
+  reschedulePost,
+  reviewStore,
+  triggerPostAction
+} from "../stores/review-store.js"
 import { formatGermanLongDate } from "../utils/date-format.js"
 import { germanCopy } from "../utils/german-copy.js"
 
@@ -243,6 +265,7 @@ const chatOpen = ref(false)
 const previewOpen = ref(false)
 const previewGroupIndex = ref(0)
 const previewIndex = ref(0)
+const scheduledDate = ref("")
 
 const postId = computed(() => String(route.params.postId ?? ""))
 const activePreviewItems = computed(() => post.value?.previewGroups[previewGroupIndex.value]?.items ?? [])
@@ -275,6 +298,7 @@ watch(post, (value) => {
   form.reelHook = value.content.reelHook
   form.reelScript = value.content.reelScript
   form.title = value.content.title
+  scheduledDate.value = value.post.date
   storySlides.value = value.content.storySlides.length > 0
     ? value.content.storySlides.map((text, index) => ({ id: index + 1, text }))
     : [{ id: 1, text: "" }]
@@ -307,6 +331,10 @@ async function savePost() {
     ...form,
     storySlides: storySlides.value.map((slide) => slide.text)
   })
+}
+
+async function updateSchedule() {
+  await reschedulePost(postId.value, { date: scheduledDate.value })
 }
 
 function addStorySlide() {

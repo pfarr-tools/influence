@@ -42,6 +42,20 @@ export async function createPostIdea(weekDate: string, body: { date: string; rub
   }))
 }
 
+export async function moveWeekPost(
+  weekDate: string,
+  postId: string,
+  body: { date: string; position?: number }
+): Promise<WeekOverviewResponse> {
+  return readJson<WeekOverviewResponse>(
+    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}/posts/${encodeURIComponent(postId)}/move`, {
+      body: JSON.stringify(body),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    })
+  )
+}
+
 export async function fetchPost(postId: string): Promise<PostDetailResponse> {
   return readJson<PostDetailResponse>(await fetch(`/api/posts/${encodeURIComponent(postId)}`))
 }
@@ -64,4 +78,17 @@ export async function runPostAction(
 
 export async function deletePost(postId: string): Promise<{ notice: string }> {
   return readJson(await fetch(`/api/posts/${encodeURIComponent(postId)}`, { method: "DELETE" }))
+}
+
+export async function schedulePost(
+  postId: string,
+  body: { date: string; position?: number }
+): Promise<PostDetailResponse> {
+  return readJson<PostDetailResponse>(
+    await fetch(`/api/posts/${encodeURIComponent(postId)}/schedule`, {
+      body: JSON.stringify(body),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    })
+  )
 }

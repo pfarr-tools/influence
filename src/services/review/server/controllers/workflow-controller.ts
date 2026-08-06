@@ -23,10 +23,15 @@ import {
   exportReviewPost,
   loadReviewPost,
   loadReviewWeek,
+  rescheduleReviewPost,
   regenerateReviewPost,
   updateReviewPost
 } from "../../review-service.js"
-import { postEditRequestSchema } from "../contracts/review-contracts.js"
+import {
+  postEditRequestSchema,
+  postScheduleRequestSchema,
+  weekPostMoveRequestSchema
+} from "../contracts/review-contracts.js"
 import type { PostIdeaRequest } from "../contracts/review-contracts.js"
 import { parseJsonBody } from "../request/parse-json-body.js"
 import {
@@ -162,6 +167,30 @@ export async function createReviewPostIdea(weekDate: string, input: PostIdeaRequ
   await writeFile(dependencies.runtimeConfig.calendarPath, `${JSON.stringify(dependencies.calendar, null, 2)}\n`, "utf8")
   await scaffoldPostById(dependencies.calendar, id, dependencies.runtimeConfig.outputDir)
   return getWeekOverview(weekDate, dependencies, [{ kind: "notice", text: "Neue Beitragsidee angelegt." }])
+}
+
+export async function moveWeekPost(
+  weekDate: string,
+  postId: string,
+  request: IncomingMessage,
+  dependencies: ReviewServerDependencies
+) {
+  const body = weekPostMoveRequestSchema.parse(await parseJsonBody(request))
+  const week = getWeekForDate(dependencies.calendar, weekDate)
+
+  if (body.date < week.zeitraum.von || body.date > week.zeitraum.bis) {
+    throw new Error("Beiträge können in der Wochenansicht nur innerhalb der ausgewählten Woche verschoben werden.")
+  }
+
+  await rescheduleReviewPost(
+    dependencies.calendar,
+    postId,
+    dependencies.runtimeConfig.outputDir,
+    dependencies.runtimeConfig.calendarPath,
+    body
+  )
+
+  return getWeekOverview(weekDate, dependencies, [{ kind: "notice", text: "Beitrag innerhalb der Woche verschoben." }])
 }
 
 export async function getPostDetail(
@@ -300,6 +329,24 @@ export async function runPostAction(
     default:
       throw new Error("Nicht unterstützte Beitragsaktion.")
   }
+}
+
+export async function reschedulePost(
+  postId: string,
+  request: IncomingMessage,
+  dependencies: ReviewServerDependencies
+) {
+  const body = postScheduleRequestSchema.parse(await parseJsonBody(request))
+
+  await rescheduleReviewPost(
+    dependencies.calendar,
+    postId,
+    dependencies.runtimeConfig.outputDir,
+    dependencies.runtimeConfig.calendarPath,
+    body
+  )
+
+  return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Termin aktualisiert." }])
 }
 
 export async function downloadPostExport(

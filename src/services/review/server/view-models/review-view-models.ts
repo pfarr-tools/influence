@@ -1,3 +1,5 @@
+import { basename } from "node:path"
+
 import type { ReviewPostDetail, ReviewWeekOverview, ReviewWorkflowState } from "../../review-service.js"
 import type { ContentChatSession } from "../../content-chat-service.js"
 import type {
@@ -103,10 +105,10 @@ export function buildPostDetailResponse(
   const cacheVersion = Date.now()
 
   return {
-    assets: detail.content.metadata.assets.map((assetPath) => ({
+    assets: detail.assetPaths.map((assetPath) => ({
       href: buildCacheBustedFileHref(assetPath, cacheVersion),
       kind: inferAssetKind(assetPath),
-      label: assetPath
+      label: basename(assetPath)
     })),
     chatContext: {
       contextType: "post",

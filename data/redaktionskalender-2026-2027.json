@@ -72,22 +72,22 @@
   },
   "workflow": {
     "monatlicher_block": {
-      "dauer": "2–3 Stunden",
       "aufgaben": [
         "Sonntags- und Montagsbeiträge zu den Wochensprüchen vorproduzieren",
         "Mittwochsserie für den ganzen Monat produzieren",
         "Freitagsgebete bzw. Liedgedanken vorbereiten",
         "Bilder, Reels, Untertitel und Alt-Texte erstellen",
         "Beiträge terminieren"
-      ]
+      ],
+      "dauer": "2–3 Stunden"
     },
     "woechentlicher_block": {
-      "empfohlener_zeitpunkt": "Donnerstag oder Freitag",
       "aufgaben": [
         "Gemeinde- und Reli-Beiträge auswählen",
         "aktuelle Termine und Datenschutz prüfen",
         "Samstags-Preview technisch vorbereiten"
-      ]
+      ],
+      "empfohlener_zeitpunkt": "Donnerstag oder Freitag"
     },
     "samstag": {
       "aufgaben": [

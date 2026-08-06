@@ -90,7 +90,7 @@ export function createContentScaffold(
       model: "",
       generated_at: "",
       prompt_version: "1.0",
-      assets: post.redaktionsfelder.asset_pfade
+      assets: normalizeScaffoldAssets(post.redaktionsfelder.asset_pfade)
     }
   })
 }
@@ -164,6 +164,10 @@ async function writeScaffold(
     content,
     outputPath
   }
+}
+
+function normalizeScaffoldAssets(assetPaths: string[]): string[] {
+  return assetPaths.filter((value) => value.startsWith("assets/") && !value.includes(".."))
 }
 
 /**

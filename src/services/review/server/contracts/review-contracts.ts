@@ -221,6 +221,16 @@ export const postIdeaRequestSchema = z.object({
   title: z.string().min(1)
 })
 
+export const weekPostMoveRequestSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  position: z.number().int().min(0).optional()
+})
+
+export const postScheduleRequestSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  position: z.number().int().min(0).optional()
+})
+
 export const chatSessionCreateRequestSchema = z.object({
   contextType: z.enum(["plan", "post", "week"]),
   model: z.string().optional(),

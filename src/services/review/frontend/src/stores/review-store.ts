@@ -9,7 +9,9 @@ import {
   fetchPost,
   fetchWeek,
   getDefaultWeekDate,
+  moveWeekPost as moveWeekPostApi,
   runPostAction,
+  schedulePost as schedulePostApi,
   runWeekAction
 } from "../api/review-api.js"
 import { createPostIdea, deletePost } from "../api/review-api.js"
@@ -52,6 +54,16 @@ export async function addPostIdea(weekDate: string, body: { date: string; rubric
   }, "Idee konnte nicht angelegt werden.")
 }
 
+export async function moveWeekPost(
+  weekDate: string,
+  postId: string,
+  body: { date: string; position?: number }
+) {
+  await withLoading("", async () => {
+    reviewStore.week = await moveWeekPostApi(weekDate, postId, body)
+  }, "Beitrag konnte nicht verschoben werden.")
+}
+
 export async function removePost(postId: string) {
   await withLoading("", async () => {
     await deletePost(postId)
@@ -78,6 +90,15 @@ export async function triggerPostAction(
     "Beitragsaktion fehlgeschlagen.",
     action
   )
+}
+
+export async function reschedulePost(
+  postId: string,
+  body: { date: string; position?: number }
+) {
+  await withLoading("", async () => {
+    reviewStore.post = await schedulePostApi(postId, body)
+  }, "Termin konnte nicht aktualisiert werden.")
 }
 
 async function withLoading(

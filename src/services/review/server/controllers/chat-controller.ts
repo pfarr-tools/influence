@@ -1,4 +1,4 @@
-import type { IncomingMessage } from "node:http"
+import type { IncomingMessage, ServerResponse } from "node:http"
 
 import { CalendarValidationError } from "../../../calendar/errors.js"
 import {
@@ -93,6 +93,82 @@ export async function sendChatMessage(
   )
 
   return buildChatSessionResponse(session)
+}
+
+export async function streamChatMessage(
+  sessionId: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ReviewServerDependencies
+) {
+  const body = chatMessageRequestSchema.parse(await parseJsonBody(request))
+  const preparedRequest = await prepareDiscussionRequest(
+    sessionId,
+    body.text,
+    { model: body.model ?? dependencies.runtimeConfig.openAiModel },
+    {
+      calendar: dependencies.calendar,
+      runtimeConfig: dependencies.runtimeConfig
+    }
+  )
+  const client = dependencies.chatModelClient
+
+  if (!client) {
+    throw new CalendarValidationError(
+      "OPENAI_API_KEY ist für Chat-Anfragen erforderlich."
+    )
+  }
+
+  response.writeHead(200, {
+    "cache-control": "no-cache",
+    connection: "keep-alive",
+    "content-type": "application/x-ndjson; charset=utf-8"
+  })
+
+  const writeEvent = (event: Record<string, unknown>) => {
+    response.write(`${JSON.stringify(event)}\n`)
+  }
+
+  try {
+    const discussionResponse = client.discussJsonStream
+      ? await client.discussJsonStream(preparedRequest.request, async (delta, snapshot) => {
+          writeEvent({
+            delta,
+            snapshot,
+            type: "delta"
+          })
+        })
+      : await client.discussJson(preparedRequest.request)
+
+    if (!client.discussJsonStream) {
+      writeEvent({
+        delta: discussionResponse.text,
+        snapshot: discussionResponse.text,
+        type: "delta"
+      })
+    }
+
+    const session = await persistDiscussionReply(
+      preparedRequest.session,
+      preparedRequest.prompt,
+      discussionResponse.text,
+      {
+        runtimeConfig: dependencies.runtimeConfig
+      }
+    )
+
+    writeEvent({
+      session: buildChatSessionResponse(session),
+      type: "done"
+    })
+  } catch (error) {
+    writeEvent({
+      error: error instanceof Error ? error.message : "Unbekannter Fehler.",
+      type: "error"
+    })
+  } finally {
+    response.end()
+  }
 }
 
 export async function requestChatRevision(

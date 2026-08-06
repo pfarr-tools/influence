@@ -16,7 +16,15 @@
       <div class="chat-stream border rounded p-3 mb-3">
         <div v-for="message in session?.messages ?? []" :key="message.id" class="mb-3">
           <div class="fw-semibold text-capitalize">{{ message.role }}</div>
-          <div class="small whitespace-pre-wrap">{{ message.text }}</div>
+          <div class="small chat-markdown" v-html="renderMarkdown(message.text)" />
+        </div>
+        <div v-if="assistantDraft.length > 0" class="mb-3">
+          <div class="fw-semibold text-capitalize">assistant</div>
+          <div class="small chat-markdown" v-html="renderMarkdown(assistantDraft)" />
+        </div>
+        <div v-if="busy" class="chat-status text-secondary small">
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true" />
+          {{ loadingMessage || "Antwort wird geladen ..." }}
         </div>
       </div>
       <div v-if="session?.revision" class="alert alert-light border">
@@ -35,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import { marked } from "marked"
 import { ref } from "vue"
 import type { ChatSessionResponse } from "../../../server/contracts/review-contracts.js"
 import BaseModal from "./BaseModal.vue"
@@ -42,8 +51,10 @@ import BaseModal from "./BaseModal.vue"
 const draft = ref("")
 
 defineProps<{
+  assistantDraft: string
   busy: boolean
   error: string
+  loadingMessage: string
   open: boolean
   session: ChatSessionResponse | null
 }>()
@@ -59,6 +70,19 @@ function submitMessage() {
   emit("send", draft.value)
   draft.value = ""
 }
+
+function renderMarkdown(text: string): string {
+  return marked.parse(escapeHtml(text), { breaks: true }) as string
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+}
 </script>
 
 <style scoped>
@@ -67,8 +91,13 @@ function submitMessage() {
   overflow: auto;
 }
 
-.whitespace-pre-wrap {
-  white-space: pre-wrap;
+.chat-markdown :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.chat-status {
+  align-items: center;
+  display: flex;
 }
 
 :deep(.chat-modal-dialog) {
