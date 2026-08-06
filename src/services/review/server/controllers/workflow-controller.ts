@@ -20,6 +20,7 @@ import {
 } from "../../../render/index.js"
 import {
   approveReviewPost,
+  approveReviewPostForPublication,
   exportReviewPost,
   loadReviewPost,
   loadReviewWeek,
@@ -39,6 +40,7 @@ import {
   buildWeekOverviewResponse
 } from "../view-models/review-view-models.js"
 import type { ReviewServerDependencies } from "../routes/review-routes.js"
+import { createConfiguredAdapters, PublishingService, type PublicationPlatform } from "../../../publishing/index.js"
 
 export async function getWeekOverview(
   weekDate: string,
@@ -207,6 +209,7 @@ export async function getPostDetail(
 
   const postIndex = week.beitraege.findIndex((entry) => entry.id === postId)
   return buildPostDetailResponse(detail, week.zeitraum.von, notices, {
+    publicBaseUrl: dependencies.runtimeConfig.publicBaseUrl,
     nextPostId: week.beitraege[postIndex + 1]?.id,
     previousPostId: week.beitraege[postIndex - 1]?.id
   })
@@ -326,6 +329,14 @@ export async function runPostAction(
         dependencies.runtimeConfig.outputDir
       )
       return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Beitrag freigegeben." }])
+    case "approve-publication":
+      await approveReviewPostForPublication(
+        dependencies.calendar,
+        postId,
+        dependencies.runtimeConfig.outputDir,
+        dependencies.runtimeConfig
+      )
+      return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Veröffentlichung freigegeben und geplant." }])
     default:
       throw new Error("Nicht unterstützte Beitragsaktion.")
   }
@@ -358,6 +369,21 @@ export async function downloadPostExport(
     postId,
     dependencies.runtimeConfig.outputDir
   )
+}
+
+/** Executes one existing automatic publication job immediately from the review UI. */
+export async function publishPostNow(
+  postId: string,
+  platform: PublicationPlatform,
+  dependencies: ReviewServerDependencies
+) {
+  await new PublishingService(
+    dependencies.runtimeConfig.outputDir,
+    createConfiguredAdapters()
+  ).publishNow(postId, platform)
+  return getPostDetail(postId, dependencies, [
+    { kind: "notice", text: `${platform} wurde veröffentlicht.` }
+  ])
 }
 
 export async function deleteReviewPost(postId: string, dependencies: ReviewServerDependencies) {

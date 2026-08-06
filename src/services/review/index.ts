@@ -9,9 +9,11 @@ export {
 } from "./content-chat-service.js"
 export {
   approveReviewPost,
+  approveReviewPostForPublication,
   exportReviewPost,
   loadReviewPost,
   loadReviewWeek,
+  rescheduleReviewPost,
   regenerateReviewPost,
   storeReviewAsset,
   storeReviewReelAudioAsset,
@@ -21,6 +23,7 @@ export type {
   ReviewAssetKind,
   ReviewExportResult,
   ReviewPostDetail,
+  RescheduleReviewPostInput,
   ReviewUploadedFile,
   ReviewWeekOverview,
   StoreReviewAssetInput,

@@ -38,7 +38,14 @@
         >
           Löschen
         </button>
-        <span class="badge text-bg-light fs-6">{{ post.post.status }}</span>
+        <span
+          :class="[
+            'badge fs-6',
+            post.publicationApproved ? 'text-bg-success' : 'text-bg-light'
+          ]"
+        >
+          {{ post.post.status }}
+        </span>
       </div>
     </div>
 
@@ -65,6 +72,44 @@
           :workflow="post.workflow"
           @trigger="handleAction"
         />
+
+        <section v-if="post.publicationApproved" class="card shadow-sm mt-4">
+          <div class="card-body">
+            <h2 class="h5">Veröffentlichung</h2>
+            <p class="small text-secondary mb-3">
+              Veröffentlichungen erfolgen erst nach Freigabe. Facebook-Profile
+              werden bewusst manuell geteilt.
+            </p>
+            <div v-if="post.publicationChannels.length > 0" class="row g-2">
+              <div v-for="channel in post.publicationChannels" :key="`${channel.platform}-${channel.format}`" class="col-sm-6">
+                <div class="border rounded p-2 d-flex justify-content-between align-items-center">
+                  <div>
+                    <div>{{ publicationLabel(channel.platform) }}</div>
+                    <small class="text-secondary">{{ publicationDate(channel.scheduledAt, channel.timezone) }}</small>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge text-bg-light">{{ publicationStatusLabel(channel.status) }}</span>
+                    <button
+                      class="btn btn-sm btn-outline-secondary"
+                      type="button"
+                      :aria-label="`Jetzt auf ${publicationLabel(channel.platform)} veröffentlichen`"
+                      :title="`Jetzt auf ${publicationLabel(channel.platform)} veröffentlichen`"
+                      :disabled="reviewStore.loading || channel.status === 'published'"
+                      @click="publishChannel(channel.platform)"
+                    >↗</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p v-else class="small text-secondary">Noch keine Kanäle geplant.</p>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-primary btn-sm" type="button" :disabled="!post.workflow.qaReadyForApproval" @click="shareFacebook">
+                Auf Facebook teilen
+              </button>
+              <span v-if="facebookNotice" class="small text-secondary" role="status">{{ facebookNotice }}</span>
+            </div>
+          </div>
+        </section>
 
         <section class="card shadow-sm mt-4">
           <div class="card-body">
@@ -444,6 +489,7 @@ import {
   loadPost,
   removePost,
   reschedulePost,
+  publishPostNow,
   reviewStore,
   triggerPostAction
 } from "../stores/review-store.js"
@@ -453,6 +499,7 @@ import { germanCopy } from "../utils/german-copy.js"
 const route = useRoute()
 const router = useRouter()
 const post = computed(() => reviewStore.post)
+const facebookNotice = ref("")
 const form = reactive({
   altText: "",
   audience: "",
@@ -590,6 +637,75 @@ async function savePost() {
 
 async function updateSchedule() {
   await reschedulePost(postId.value, { date: scheduledDate.value })
+}
+
+async function shareFacebook() {
+  if (!post.value) return
+  const text = form.facebookText
+  try {
+    if (!navigator.clipboard) throw new Error("Die Zwischenablage ist nicht verfügbar.")
+    if (typeof ClipboardItem === "undefined") {
+      throw new Error("Dieses Browserfenster unterstützt kein gemeinsames Kopieren von Bild und Text.")
+    }
+    if (!post.value.facebookImageHref) {
+      throw new Error("Kein Facebook-Bild gefunden. Rendere zuerst die Social-Bilder für diesen Beitrag.")
+    }
+    const imageBlob = await fetch(post.value.facebookImageHref).then((response) => {
+      if (!response.ok) {
+        throw new Error("Das Facebook-Bild konnte nicht geladen werden.")
+      }
+      return response.blob()
+    })
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        [imageBlob.type || "image/png"]: imageBlob,
+        "text/plain": new Blob([text], { type: "text/plain" })
+      })
+    ])
+    facebookNotice.value = "Bild und Text kopiert. Facebook wurde geöffnet; bitte dort direkt einfügen."
+    window.open("https://www.facebook.com/sharer/sharer.php", "facebook-share", "width=700,height=700,noopener,noreferrer")
+  } catch (error) {
+    facebookNotice.value = error instanceof Error ? error.message : "Kopieren fehlgeschlagen."
+  }
+}
+
+async function publishChannel(platform: string) {
+  if (platform === "facebook") {
+    await shareFacebook()
+    return
+  }
+  await publishPostNow(postId.value, platform)
+}
+
+function publicationLabel(platform: string): string {
+  return {
+    instagram: "Instagram",
+    mastodon: "Mastodon",
+    threads: "Threads",
+    bluesky: "Bluesky",
+    linkedin: "LinkedIn",
+    facebook: "Facebook-Profil"
+  }[platform] ?? platform
+}
+
+function publicationDate(scheduledAt: string | null, timezone: string): string {
+  if (!scheduledAt) return "sofort"
+  return `${new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: timezone
+  }).format(new Date(scheduledAt))} (${timezone})`
+}
+
+function publicationStatusLabel(status: string): string {
+  return {
+    approved: "bereit",
+    scheduled: "geplant",
+    processing: "läuft",
+    published: "veröffentlicht",
+    failed: "Fehler",
+    cancelled: "abgebrochen"
+  }[status] ?? status
 }
 
 function addStorySlide() {

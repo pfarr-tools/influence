@@ -15,6 +15,7 @@ import {
 } from "../src/services/content/content-storage.js"
 import {
   approveReviewPost,
+  approveReviewPostForPublication,
   exportReviewPost,
   regenerateReviewPost,
   storeReviewAsset,
@@ -101,6 +102,47 @@ describe("review service", () => {
 
     expect(written.status).toBe("freigegeben")
     expect(written.qa.approved).toBe(true)
+  })
+
+  it("plans publication jobs automatically on publication approval", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    await writeQaReadyContent(calendar, tempDir, "post-0001")
+    await runQaForPost(calendar, "post-0001", tempDir)
+    await approveReviewPost(calendar, "post-0001", tempDir)
+
+    await approveReviewPostForPublication(calendar, "post-0001", tempDir, {
+      calendarPath: fixturePath,
+      ffmpegBinary: "ffmpeg",
+      fluxApiBaseUrl: "",
+      fluxApiGeneratePath: "/v1",
+      fluxApiKey: "",
+      fluxModel: "flux",
+      openAiApiKey: "",
+      openAiModel: "gpt-5.6",
+      outputDir: tempDir,
+      publicationDefaultTimeBluesky: "08:30",
+      publicationDefaultTimeFacebook: "12:00",
+      publicationDefaultTimeInstagram: "08:00",
+      publicationDefaultTimeLinkedin: "09:30",
+      publicationDefaultTimeMastodon: "08:15",
+      publicationDefaultTimeThreads: "08:45",
+      publicationPlatforms: "facebook,instagram,mastodon",
+      publicationTimezone: "Europe/Berlin",
+      publicBaseUrl: "https://example.org",
+      reelSubtitleFontName: "Atkinson Hyperlegible Next",
+      reelSubtitleFontsDir: ""
+    })
+
+    const jobs = await readJsonFile<Array<{ platform: string; scheduledAt: string | null }>>(
+      join(tempDir, "publication-jobs.json")
+    )
+
+    expect(jobs.map((job) => job.platform)).toEqual([
+      "facebook",
+      "instagram",
+      "mastodon"
+    ])
+    expect(jobs.every((job) => typeof job.scheduledAt === "string")).toBe(true)
   })
 
   it("writes a downloadable review export manifest", async () => {

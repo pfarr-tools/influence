@@ -19,6 +19,24 @@ npm run dev -- <kommando>
 - für Rendering: installierter Playwright-Chromium
 - für Reel-Video-Rendering: optional `ffmpeg`
 
+Playwright-Chromium installierst du einmalig so:
+
+```bash
+npx playwright install chromium
+```
+
+Für öffentliche Share-Links und automatische Kanalplanung sind diese
+`config/.env`-Werte relevant:
+
+```dotenv
+PUBLIC_BASE_URL=https://example.org
+PUBLICATION_TIMEZONE=Europe/Berlin
+PUBLICATION_PLATFORMS=facebook,instagram,mastodon
+PUBLICATION_DEFAULT_TIME_FACEBOOK=12:00
+PUBLICATION_DEFAULT_TIME_INSTAGRAM=08:00
+PUBLICATION_DEFAULT_TIME_MASTODON=08:15
+```
+
 ## Allgemeine Konventionen
 
 - `--post-id <id>` arbeitet auf einem einzelnen Beitrag
@@ -236,6 +254,21 @@ Beispiel:
 npm run dev -- review serve --host 127.0.0.1 --port 3040
 ```
 
+`Auf Facebook teilen` in der Review-Oberfläche verwendet `PUBLIC_BASE_URL`.
+Ohne diesen Wert würde Facebook sonst eine lokale URL wie `127.0.0.1`
+bekommen.
+
+## Veröffentlichung planen
+
+Sobald ein Beitrag in der Review-Oberfläche mit `Veröffentlichung freigeben`
+freigegeben wird, legt Influence automatisch Publication-Jobs für die in
+`PUBLICATION_PLATFORMS` konfigurierten Kanäle an. Die Uhrzeiten kommen aus den
+jeweiligen `PUBLICATION_DEFAULT_TIME_*`-Variablen.
+
+Wenn der Beitrags-Termin später verschoben wird, werden bestehende geplante
+Kanaltermine auf das neue Datum übernommen, die lokale Uhrzeit pro Kanal bleibt
+dabei erhalten.
+
 ## Typische Arbeitssequenzen
 
 ### Einzelner Beitrag
@@ -285,3 +318,24 @@ Häufige Ursachen:
 - [Admin.md](Admin.md)
 - [Benutzer.md](Benutzer.md)
 - [CODEX_PLAN.md](CODEX_PLAN.md)
+## Veröffentlichen und terminieren
+
+Freigegebene Inhalte können als lokale Publication Jobs geplant werden. Ohne den Status `freigegeben` wird kein Job angelegt.
+
+```bash
+npm run dev -- publish preview --post-id post-0007 --platform instagram
+npm run dev -- publish schedule --post-id post-0007 --platform mastodon --at 2026-08-16T08:05:00+02:00
+npm run dev -- publish run
+npm run dev -- publish retry --job-id <id>
+```
+
+Jobs werden in `output/publication-jobs.json` mit Text, Assets, Status und Retry-Historie gespeichert. Zugangsdaten werden nicht in Jobs oder API-Metadaten abgelegt.
+
+Facebook-Profile bleiben manuell:
+
+```bash
+npm run dev -- publish facebook --post-id post-0007
+npm run dev -- publish mark-published --post-id post-0007 --platform facebook
+```
+
+Die Ausgabe enthält Text, Assets und – bei gesetztem `PUBLIC_BASE_URL` – den Facebook-Sharer-Link. Der Share-Dialog wird nicht automatisiert bedient.

@@ -43,6 +43,15 @@ describe("content chat service", () => {
       openAiApiKey: "test-key",
       openAiModel: "gpt-5.6",
       outputDir: tempDir,
+      publicationDefaultTimeBluesky: "08:30",
+      publicationDefaultTimeFacebook: "12:00",
+      publicationDefaultTimeInstagram: "08:00",
+      publicationDefaultTimeLinkedin: "09:30",
+      publicationDefaultTimeMastodon: "08:15",
+      publicationDefaultTimeThreads: "08:45",
+      publicationPlatforms: "facebook,instagram,mastodon",
+      publicationTimezone: "Europe/Berlin",
+      publicBaseUrl: "https://example.org",
       reelSubtitleFontName: "Atkinson Hyperlegible Next",
       reelSubtitleFontsDir: ""
     }

@@ -3,13 +3,14 @@
     <span
       v-for="step in steps"
       :key="step.key"
-      :class="['workflow-icon', `workflow-icon--${step.state}`]"
+      :class="['workflow-icon', 'badge', `workflow-icon--${step.state}`]"
       :title="step.label"
       :aria-label="step.label"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path :d="step.path" />
       </svg>
+      <span class="visually-hidden">{{ step.label }}</span>
     </span>
   </div>
 </template>
@@ -60,11 +61,9 @@ const steps = computed(() => [
   },
   {
     key: "qa",
-    label: props.workflow.qaReadyForApproval
-      ? "QA freigabereif"
-      : props.workflow.qaRun
-        ? "QA mit offenen Punkten"
-        : "QA ausstehend",
+    label: props.workflow.qaReadyForApproval || props.workflow.qaRun
+      ? "QA bereit"
+      : "QA ausstehend",
     path: iconPaths.qa,
     state: props.workflow.qaReadyForApproval ? "done" : props.workflow.qaRun ? "warning" : "idle"
   },

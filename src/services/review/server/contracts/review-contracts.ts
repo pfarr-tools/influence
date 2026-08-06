@@ -14,6 +14,7 @@ const workflowSchema = z.object({
 
 const reviewActionSchema = z.enum([
   "approve",
+  "approve-publication",
   "edit",
   "export",
   "generate",
@@ -143,6 +144,8 @@ const postDetailResponseSchema = z.object({
     title: z.string()
   }),
   exportDownloadHref: z.string(),
+  facebookImageHref: z.string().nullable(),
+  facebookShareUrl: z.string().nullable(),
   notices: z.array(noticeSchema),
   post: z.object({
     date: z.string(),
@@ -152,6 +155,15 @@ const postDetailResponseSchema = z.object({
     theme: z.string(),
     weekday: z.string()
   }),
+  publicationApproved: z.boolean(),
+  publicationChannels: z.array(z.object({
+    platform: z.string(),
+    format: z.string(),
+    scheduledAt: z.string().nullable(),
+    timezone: z.string(),
+    status: z.string(),
+    remoteUrl: z.string().nullable()
+  })),
   previousPostHref: z.string().nullable(),
   nextPostHref: z.string().nullable(),
   previewGroups: z.array(
@@ -280,6 +292,14 @@ export const noticeResponseSchema = z.object({
 export const reviewActionSchemaPublic = reviewActionSchema
 export const weekActionSchemaPublic = weekActionSchema
 export const assetKindSchemaPublic = assetKindSchema
+export const publicationPlatformSchemaPublic = z.enum([
+  "instagram",
+  "mastodon",
+  "threads",
+  "bluesky",
+  "linkedin",
+  "facebook"
+])
 export const workflowSchemaPublic = workflowSchema
 export const weekOverviewResponseSchemaPublic = weekOverviewResponseSchema
 export const postDetailResponseSchemaPublic = postDetailResponseSchema

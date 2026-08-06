@@ -147,5 +147,7 @@ describe("review view models", () => {
     expect(response.content.instagramCarousel).toEqual([
       { type: "content", text: "Karussellkarte" }
     ])
+    expect(response.facebookImageHref).toBeNull()
+    expect(response.facebookShareUrl).toBeNull()
   })
 })

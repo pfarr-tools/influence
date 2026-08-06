@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises"
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { constants } from "node:fs"
 import { dirname, join } from "node:path"
 
@@ -23,7 +23,8 @@ export function getContentOutputPaths(
   return {
     baseDir,
     contentPath: join(baseDir, "content.json"),
-    rawResponsePath: join(baseDir, "raw-openai-response.json")
+    rawResponsePath: join(baseDir, "raw-openai-response.json"),
+    publicationApprovalPath: join(baseDir, "publication-approval.json")
   }
 }
 
@@ -126,4 +127,34 @@ export interface ContentOutputPaths {
   baseDir: string
   contentPath: string
   rawResponsePath: string
+  publicationApprovalPath: string
+}
+
+/** Persisted, explicit permission to send this post to external platforms. */
+export interface PublicationApproval {
+  approved: true
+  approvedAt: string
+}
+
+/** Reads the separate publication permission without changing the content package. */
+export async function isPublicationApproved(path: string): Promise<boolean> {
+  if (!(await pathExists(path))) return false
+  try {
+    const approval = await readJsonFile<Partial<PublicationApproval>>(path)
+    return approval.approved === true
+  } catch {
+    return false
+  }
+}
+
+/** Grants explicit publication permission for a content package. */
+export async function approvePublication(path: string): Promise<PublicationApproval> {
+  const approval: PublicationApproval = { approved: true, approvedAt: new Date().toISOString() }
+  await writeJsonFile(path, approval)
+  return approval
+}
+
+/** Revokes publication permission whenever the approved content changes. */
+export async function revokePublicationApproval(path: string): Promise<void> {
+  await rm(path, { force: true })
 }

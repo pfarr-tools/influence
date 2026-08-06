@@ -10,6 +10,7 @@ import {
   fetchWeek,
   getDefaultWeekDate,
   moveWeekPost as moveWeekPostApi,
+  publishPostNow as publishPostNowApi,
   runPostAction,
   schedulePost as schedulePostApi,
   runWeekAction
@@ -99,6 +100,17 @@ export async function reschedulePost(
   await withLoading("", async () => {
     reviewStore.post = await schedulePostApi(postId, body)
   }, "Termin konnte nicht aktualisiert werden.")
+}
+
+export async function publishPostNow(postId: string, platform: string) {
+  await withLoading(
+    "Veröffentlichung wird gestartet ...",
+    async () => {
+      reviewStore.post = await publishPostNowApi(postId, platform)
+    },
+    "Veröffentlichung konnte nicht gestartet werden.",
+    platform
+  )
 }
 
 async function withLoading(

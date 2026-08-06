@@ -9,7 +9,7 @@
       :key="action.action"
       :class="
         variant === 'menu'
-          ? 'dropdown-item'
+          ? ['dropdown-item', 'workflow-action', `workflow-action--${actionState(action)}`]
           : action.primary
             ? 'btn btn-primary'
             : 'btn btn-outline-secondary'
@@ -18,6 +18,7 @@
       type="button"
       @click="triggerAction(action)"
     >
+      <span class="workflow-action__icon" aria-hidden="true">{{ actionIcon(action.action) }}</span>
       <span
         v-if="busy && busyAction === action.action"
         class="spinner-border spinner-border-sm me-2"
@@ -25,11 +26,13 @@
       />
       {{ action.label }}
     </button>
+    <div v-if="downloadHref" class="dropdown-divider" role="separator" />
     <a
       v-if="downloadHref"
       :class="variant === 'menu' ? 'dropdown-item' : 'btn btn-outline-success'"
       :href="downloadHref"
     >
+      <span class="workflow-action__icon" aria-hidden="true">⇩</span>
       Exportieren
     </a>
   </div>
@@ -68,6 +71,7 @@ type ActionButton = {
   label: string
   primary: boolean
   supportsForce: boolean
+  state?: "done" | "idle" | "warning"
 }
 
 const props = defineProps<{
@@ -116,4 +120,46 @@ function confirmForceAction() {
   emit("trigger", { action: pendingForceAction.value.action, force: true })
   closeForceModal()
 }
+
+function actionState(action: ActionButton): "done" | "idle" | "warning" {
+  if (action.completed) return "done"
+  if (action.disabled) return "warning"
+  return "idle"
+}
+
+function actionIcon(action: string): string {
+  return {
+    scaffold: "＋",
+    generate: "▤",
+    qa: "!",
+    approve: "✓",
+    images: "▧",
+    "images-reel": "▶",
+    render: "▰",
+    "render-reel": "▶",
+    "approve-publication": "↗"
+  }[action] ?? "•"
+}
 </script>
+
+<style scoped>
+.workflow-action__icon {
+  display: inline-block;
+  font-weight: 700;
+  margin-right: 0.5rem;
+  text-align: center;
+  width: 1.1rem;
+}
+
+.workflow-action--done {
+  color: #198754;
+}
+
+.workflow-action--warning {
+  color: #9a6700;
+}
+
+.workflow-action--idle {
+  color: #495057;
+}
+</style>

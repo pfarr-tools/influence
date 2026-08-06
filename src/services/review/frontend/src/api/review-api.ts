@@ -124,3 +124,16 @@ export async function schedulePost(
     })
   )
 }
+
+/** Starts one existing automatic publication job immediately. */
+export async function publishPostNow(
+  postId: string,
+  platform: string
+): Promise<PostDetailResponse> {
+  return readJson<PostDetailResponse>(
+    await fetch(
+      `/api/posts/${encodeURIComponent(postId)}/publication/${encodeURIComponent(platform)}/now`,
+      { method: "POST" }
+    )
+  )
+}

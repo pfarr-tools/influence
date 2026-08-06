@@ -14,6 +14,7 @@ import type {
   WeekActionApi,
   WeekOverviewResponse
 } from "../contracts/review-contracts.js"
+import { getPublicationStatus } from "../../review-service.js"
 
 const reviewActionOrder: ReviewActionApi[] = [
   "edit",
@@ -25,6 +26,7 @@ const reviewActionOrder: ReviewActionApi[] = [
   "images-reel",
   "render",
   "render-reel",
+  "approve-publication",
   "export"
 ]
 
@@ -40,6 +42,7 @@ const weekActionOrder: WeekActionApi[] = [
 
 const reviewActionLabels: Record<ReviewActionApi, string> = {
   approve: "Freigeben",
+  "approve-publication": "Veröffentlichung freigeben",
   edit: "Speichern",
   export: "Exportieren",
   generate: "Generieren",
@@ -104,9 +107,18 @@ export function buildPostDetailResponse(
   detail: ReviewPostDetail,
   weekDate: string,
   notices: Array<{ kind: "error" | "notice"; text: string }> = [],
-  navigation: { previousPostId?: string; nextPostId?: string } = {}
+  navigation: {
+    nextPostId?: string
+    previousPostId?: string
+    publicBaseUrl?: string
+  } = {}
 ): PostDetailResponse {
   const cacheVersion = Date.now()
+  const facebookPublicUrl = buildPublicPostUrl(
+    detail.post.id,
+    navigation.publicBaseUrl
+  )
+  const facebookImagePath = resolveFacebookImagePath(detail)
 
   return {
     assets: detail.assetPaths.map((assetPath) => ({
@@ -142,15 +154,33 @@ export function buildPostDetailResponse(
       title: detail.content.editorial_core.title
     },
     exportDownloadHref: `/api/posts/${encodeURIComponent(detail.post.id)}/export`,
+    facebookImageHref: facebookImagePath
+      ? buildCacheBustedFileHref(facebookImagePath, cacheVersion)
+      : null,
+    facebookShareUrl: facebookPublicUrl
+      ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(facebookPublicUrl)}`
+      : null,
     notices,
     post: {
       date: detail.post.datum,
       postId: detail.post.id,
       rubric: detail.post.rubrik,
-      status: detail.content.status,
+      status: getPublicationStatus(
+        detail.content.status,
+        detail.publicationApproved ?? false,
+        detail.publicationJobs
+      ),
       theme: detail.post.thema,
       weekday: detail.post.wochentag
     },
+    publicationChannels: (detail.publicationJobs ?? []).map((job) => ({
+      platform: job.platform,
+      format: job.format,
+      scheduledAt: job.scheduledAt,
+      timezone: job.timezone,
+      status: job.status,
+      remoteUrl: job.remoteUrl
+    })),
     previousPostHref: navigation.previousPostId
       ? `/posts/${encodeURIComponent(navigation.previousPostId)}`
       : null,
@@ -193,7 +223,12 @@ export function buildPostDetailResponse(
     },
     viewBackHref: `/weeks/${encodeURIComponent(weekDate)}`,
     workflow: detail.workflow,
-    workflowActions: buildReviewActionButtons(detail.workflow)
+    workflowActions: buildReviewActionButtons(
+      detail.workflow,
+      detail.publicationApproved ?? false,
+      detail.content.status === "freigegeben"
+    ),
+    publicationApproved: detail.publicationApproved ?? false
   }
 }
 
@@ -202,6 +237,36 @@ function buildCacheBustedFileHref(
   cacheVersion: number
 ): string {
   return `/files/${relativePath}?v=${encodeURIComponent(String(cacheVersion))}`
+}
+
+function buildPublicPostUrl(postId: string, publicBaseUrl?: string): string | null {
+  const normalizedBaseUrl = publicBaseUrl?.trim().replace(/\/$/, "")
+  if (!normalizedBaseUrl) return null
+  return `${normalizedBaseUrl}/posts/${postId}/`
+}
+
+function resolveFacebookImagePath(detail: ReviewPostDetail): string | null {
+  const explicitRenderFileName = detail.renderSummary?.renders?.find(
+    (render) => render.format === "facebook-mastodon"
+  )?.image_path
+
+  if (
+    typeof explicitRenderFileName === "string" &&
+    explicitRenderFileName.length > 0
+  ) {
+    const resolvedPreviewPath = detail.renderPreviewPaths.find((path) =>
+      path.endsWith(`/${explicitRenderFileName}`)
+    )
+    if (resolvedPreviewPath) {
+      return resolvedPreviewPath
+    }
+  }
+
+  const fallback = detail.renderPreviewPaths.find((path) =>
+    path.includes("render-facebook-mastodon")
+  )
+
+  return fallback ?? null
 }
 
 function buildVoiceoverCueSegments(detail: ReviewPostDetail): Array<{
@@ -349,12 +414,22 @@ export function buildChatSessionResponse(
 }
 
 function buildReviewActionButtons(
-  workflow: ReviewWorkflowState
+  workflow: ReviewWorkflowState,
+  publicationApproved: boolean,
+  contentApproved: boolean
 ): ReviewActionButton[] {
   return reviewActionOrder.map((action, index) => ({
     action,
-    completed: isReviewActionCompleted(action, workflow),
-    disabled: isReviewActionDisabled(action, workflow),
+    completed:
+      action === "approve-publication"
+        ? publicationApproved
+        : action === "approve"
+          ? contentApproved
+        : isReviewActionCompleted(action, workflow),
+    disabled:
+      action === "approve-publication"
+        ? !workflow.qaReadyForApproval || !workflow.contentGenerated || publicationApproved
+        : isReviewActionDisabled(action, workflow),
     label: reviewActionLabels[action],
     method: action === "export" ? "GET" : "POST",
     primary: index === 0,

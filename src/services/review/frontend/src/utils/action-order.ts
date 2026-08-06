@@ -8,5 +8,6 @@ export const actionOrder = [
   "images",
   "images-reel",
   "render",
-  "render-reel"
+  "render-reel",
+  "approve-publication"
 ] as const

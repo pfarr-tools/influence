@@ -2,6 +2,7 @@ import { Command, InvalidArgumentError } from "commander"
 
 import {
   getPostsForMonth,
+  getPostById,
   getWeekForDate,
   loadCalendarFromFile
 } from "./services/calendar/calendar-service.js"
@@ -47,6 +48,20 @@ import {
   startContentChatSession,
   type ContentChatSessionInput
 } from "./services/review/index.js"
+import {
+  assertContentApproved,
+  getContentOutputPaths,
+  isPublicationApproved,
+  readContentPackage
+} from "./services/content/content-storage.js"
+import {
+  createConfiguredAdapters,
+  DryRunPublicationAdapter,
+  buildFacebookAssistant,
+  PublicationJobStore,
+  PublishingService,
+  type PublicationPlatform
+} from "./services/publishing/index.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -66,6 +81,79 @@ const qaCommand = program.command("qa").description("Quality assurance checks")
 const renderCommand = program.command("render").description("Render commands")
 const chatCommand = program.command("chat").description("Discuss and revise JSON content")
 const reviewCommand = program.command("review").description("Local review UI")
+const publishCommand = program.command("publish").description("Publication and scheduling commands")
+
+publishCommand.command("preview")
+  .requiredOption("--post-id <postId>", "Approved calendar post identifier")
+  .option("--platform <platform>", "Platform to preview", "instagram")
+  .description("Show a publication payload without an external API call")
+  .action(async (options: { postId: string; platform: string }) => {
+    try {
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const platform = options.platform as PublicationPlatform
+      const service = new PublishingService(defaultOutputRoot, new Map([[platform, new DryRunPublicationAdapter(platform)]]))
+      const job = await service.schedulePost(calendar, options.postId, platform, null)
+      console.log(JSON.stringify({ dryRun: true, target: platform, job }, null, 2))
+    } catch (error) { handleCliError(error) }
+  })
+
+publishCommand.command("schedule")
+  .requiredOption("--post-id <postId>", "Approved calendar post identifier")
+  .requiredOption("--platform <platform>", "Target platform")
+  .requiredOption("--at <dateTime>", "ISO date/time with timezone")
+  .option("--format <format>", "Publication format", "default")
+  .description("Schedule an approved post")
+  .action(async (options: { postId: string; platform: string; at: string; format: string }) => {
+    try {
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const job = await new PublishingService(defaultOutputRoot, createConfiguredAdapters()).schedulePost(calendar, options.postId, options.platform as PublicationPlatform, options.at, options.format, runtimeConfig.publicationTimezone)
+      console.log(`Scheduled ${job.id} for ${job.platform} at ${job.scheduledAt}`)
+    } catch (error) { handleCliError(error) }
+  })
+
+publishCommand.command("run").description("Run due publication jobs").action(async () => {
+  try {
+    for (const job of await new PublishingService(defaultOutputRoot, createConfiguredAdapters()).runDue()) console.log(`${job.id}: ${job.status}`)
+  } catch (error) { handleCliError(error) }
+})
+
+publishCommand.command("retry")
+  .requiredOption("--job-id <jobId>", "Publication job identifier")
+  .description("Retry a failed job")
+  .action(async (options: { jobId: string }) => {
+    try { console.log((await new PublishingService(defaultOutputRoot, createConfiguredAdapters()).retry(options.jobId)).status) } catch (error) { handleCliError(error) }
+  })
+
+publishCommand.command("facebook")
+  .requiredOption("--post-id <postId>", "Calendar post identifier")
+  .description("Prepare the manual Facebook hand-off")
+  .action(async (options: { postId: string }) => {
+    try {
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const post = getPostById(calendar, options.postId)
+      const path = getContentOutputPaths(defaultOutputRoot, post).contentPath
+      const content = await readContentPackage(path)
+      assertContentApproved(content, path)
+      if (!(await isPublicationApproved(getContentOutputPaths(defaultOutputRoot, post).publicationApprovalPath))) {
+        throw new Error("Die Veröffentlichung ist für diesen Beitrag noch nicht ausdrücklich freigegeben.")
+      }
+      console.log(JSON.stringify(buildFacebookAssistant(post, content, defaultOutputRoot, runtimeConfig.publicBaseUrl ?? ""), null, 2))
+    } catch (error) { handleCliError(error) }
+  })
+
+publishCommand.command("mark-published")
+  .requiredOption("--post-id <postId>", "Calendar post identifier")
+  .requiredOption("--platform <platform>", "Platform")
+  .description("Mark a manual publication as complete")
+  .action(async (options: { postId: string; platform: PublicationPlatform }) => {
+    try {
+      const store = new PublicationJobStore(defaultOutputRoot)
+      const job = (await store.list()).find((item) => item.postId === options.postId && item.platform === options.platform)
+      if (!job) throw new Error("Kein passender Publication Job gefunden.")
+      await store.save({ ...job, status: "published", lastError: null, updatedAt: new Date().toISOString() })
+      console.log(`${job.id}: published`)
+    } catch (error) { handleCliError(error) }
+  })
 
 calendarCommand
   .command("validate")

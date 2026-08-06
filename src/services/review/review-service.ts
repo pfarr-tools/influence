@@ -1,6 +1,7 @@
 import { dirname, extname, join, relative } from "node:path"
 import { mkdir, rename, rm, writeFile } from "node:fs/promises"
 
+import type { RuntimeConfig } from "../../config/runtime-config.js"
 import type {
   Calendar,
   CalendarPost,
@@ -16,10 +17,20 @@ import type {
 } from "../content/content-generator.js"
 import { generateContentForPost } from "../content/content-generator.js"
 import {
+  createConfiguredAdapters,
+  PublishingService,
+  type PublicationPlatform
+} from "../publishing/index.js"
+import { PublicationJobStore } from "../publishing/job-store.js"
+import type { PublicationJob } from "../publishing/types.js"
+import {
+  approvePublication,
   getContentOutputPaths,
+  isPublicationApproved,
   pathExists,
   readContentPackage,
   readJsonFile,
+  revokePublicationApproval,
   writeJsonFile
 } from "../content/content-storage.js"
 
@@ -97,6 +108,8 @@ export interface ReviewPostCard {
 export interface ReviewPostDetail {
   assetPaths: string[]
   post: CalendarPost
+  publicationApproved?: boolean
+  publicationJobs: PublicationJob[]
   content: ContentPackage
   contentPath: string
   exportPath: string
@@ -219,6 +232,12 @@ export async function loadReviewPost(
   const imageSummary = await readOptionalJson<PersistedImageSummary>(imagePath)
   const reelRenderSummary =
     await readOptionalJson<PersistedReelRenderSummary>(reelRenderPath)
+  const publicationApproved = await isPublicationApproved(
+    contentPaths.publicationApprovalPath
+  )
+  const publicationJobs = (await new PublicationJobStore(outputRoot).list()).filter(
+    (job) => job.postId === postId
+  )
 
   return {
     assetPaths: resolveManualAssetPaths(
@@ -227,6 +246,8 @@ export async function loadReviewPost(
       content
     ),
     post,
+    publicationApproved,
+    publicationJobs,
     content,
     contentPath: contentPaths.contentPath,
     exportPath: join(contentPaths.baseDir, "review-export.json"),
@@ -379,6 +400,7 @@ export async function updateReviewPost(
   }
 
   await writeJsonFile(contentPaths.contentPath, updatedContent)
+  await revokePublicationApproval(contentPaths.publicationApprovalPath)
 
   return updatedContent
 }
@@ -413,6 +435,41 @@ export async function approveReviewPost(
   await writeJsonFile(contentPaths.contentPath, approvedContent)
 
   return approvedContent
+}
+
+/** Grants the separate permission required before any external publication. */
+export async function approveReviewPostForPublication(
+  calendar: Calendar,
+  postId: string,
+  outputRoot: string,
+  runtimeConfig?: RuntimeConfig
+): Promise<void> {
+  const post = getPostById(calendar, postId)
+  const contentPaths = getContentOutputPaths(outputRoot, post)
+  const content = await readContentPackage(contentPaths.contentPath)
+  if (content.status !== "freigegeben") {
+    throw new CalendarValidationError(
+      "Die Veröffentlichung kann erst freigegeben werden, wenn der Inhalt freigegeben ist."
+    )
+  }
+  await approvePublication(contentPaths.publicationApprovalPath)
+  if (!runtimeConfig) return
+
+  const publishingService = new PublishingService(
+    outputRoot,
+    createConfiguredAdapters()
+  )
+
+  for (const platform of resolvePublicationPlatforms(runtimeConfig.publicationPlatforms)) {
+    await publishingService.schedulePost(
+      calendar,
+      postId,
+      platform,
+      resolvePublicationScheduledAt(post.datum, platform, runtimeConfig),
+      "default",
+      runtimeConfig.publicationTimezone
+    )
+  }
 }
 
 export async function exportReviewPost(
@@ -541,6 +598,8 @@ export async function rescheduleReviewPost(
   } else {
     await updateContentSourceDate(nextPaths.contentPath, input.date)
   }
+
+  await updatePublicationJobsForRescheduledPost(outputRoot, postId, input.date)
 }
 
 async function buildReviewWeekSummary(
@@ -597,6 +656,12 @@ async function buildReviewPostCard(
   }
 
   const content = await readContentPackage(contentPaths.contentPath)
+  const publicationApproved = await isPublicationApproved(
+    contentPaths.publicationApprovalPath
+  )
+  const publicationJobs = (await new PublicationJobStore(outputRoot).list()).filter(
+    (job) => job.postId === post.id
+  )
   const qaSummary = await readOptionalJson<PersistedQaSummary>(
     join(contentPaths.baseDir, "qa-results.json")
   )
@@ -627,11 +692,183 @@ async function buildReviewPostCard(
     postId: post.id,
     qaReadyForApproval: qaSummary?.ready_for_approval ?? false,
     rubric: post.rubrik,
-    status: content.status,
+    status: getPublicationStatus(content.status, publicationApproved, publicationJobs),
     theme: content.editorial_core.title || post.thema,
     weekday: post.wochentag,
     workflow
   }
+}
+
+/** Derives the single status shown in list and detail views. */
+export function getPublicationStatus(
+  contentStatus: string,
+  publicationApproved: boolean,
+  jobs: PublicationJob[]
+): string {
+  if (!publicationApproved) return contentStatus
+  const automaticJobs = jobs.filter((job) => job.platform !== "facebook")
+  if (automaticJobs.length > 0 && automaticJobs.every((job) => job.status === "published")) {
+    return "veröffentlicht"
+  }
+  if (jobs.length > 0) {
+    return "terminiert"
+  }
+  return "Publizierbar"
+}
+
+function resolvePublicationPlatforms(value: string): PublicationPlatform[] {
+  const supported = new Set<PublicationPlatform>([
+    "facebook",
+    "instagram",
+    "mastodon",
+    "threads",
+    "bluesky",
+    "linkedin"
+  ])
+  const parsed = value
+    .split(",")
+    .map((platform) => platform.trim().toLowerCase())
+    .filter(
+      (platform): platform is PublicationPlatform =>
+        supported.has(platform as PublicationPlatform)
+    )
+
+  return parsed.length > 0
+    ? [...new Set(parsed)]
+    : ["facebook", "instagram", "mastodon"]
+}
+
+function resolvePublicationScheduledAt(
+  date: string,
+  platform: PublicationPlatform,
+  runtimeConfig: RuntimeConfig
+): string {
+  const defaultTimeByPlatform: Record<PublicationPlatform, string> = {
+    bluesky: runtimeConfig.publicationDefaultTimeBluesky,
+    facebook: runtimeConfig.publicationDefaultTimeFacebook,
+    instagram: runtimeConfig.publicationDefaultTimeInstagram,
+    linkedin: runtimeConfig.publicationDefaultTimeLinkedin,
+    mastodon: runtimeConfig.publicationDefaultTimeMastodon,
+    threads: runtimeConfig.publicationDefaultTimeThreads
+  }
+
+  return buildZonedIsoTimestamp(
+    date,
+    defaultTimeByPlatform[platform] ?? "09:00",
+    runtimeConfig.publicationTimezone
+  )
+}
+
+function buildZonedIsoTimestamp(
+  date: string,
+  time: string,
+  timezone: string
+): string {
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const timeMatch = time.match(/^(\d{2}):(\d{2})$/)
+  if (!match || !timeMatch) {
+    throw new CalendarValidationError(
+      `Ungültige Veröffentlichungszeit: ${date} ${time}`
+    )
+  }
+
+  const [, yearText, monthText, dayText] = match
+  const [, hourText, minuteText] = timeMatch
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const hour = Number(hourText)
+  const minute = Number(minuteText)
+  const intendedMinutes = hour * 60 + minute
+  let timestamp = Date.UTC(year, month - 1, day, hour, minute, 0, 0)
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const actual = getLocalDateTimeParts(timestamp, timezone)
+    const actualMinutes = actual.hour * 60 + actual.minute
+    const actualDateKey = `${actual.year}-${String(actual.month).padStart(2, "0")}-${String(actual.day).padStart(2, "0")}`
+    const intendedDateKey = `${yearText}-${monthText}-${dayText}`
+    const dayDeltaMinutes =
+      Math.round(
+        (Date.UTC(actual.year, actual.month - 1, actual.day) -
+          Date.UTC(year, month - 1, day)) /
+          86_400_000
+      ) * 1_440
+    const minuteDelta =
+      actualMinutes - intendedMinutes + dayDeltaMinutes
+
+    if (minuteDelta === 0 && actualDateKey === intendedDateKey) {
+      break
+    }
+
+    timestamp -= minuteDelta * 60_000
+  }
+
+  return new Date(timestamp).toISOString()
+}
+
+function getLocalDateTimeParts(timestamp: number, timezone: string) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: "2-digit",
+    timeZone: timezone,
+    year: "numeric"
+  })
+  const values = Object.fromEntries(
+    formatter
+      .formatToParts(new Date(timestamp))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  )
+
+  return {
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+    month: Number(values.month),
+    year: Number(values.year)
+  }
+}
+
+async function updatePublicationJobsForRescheduledPost(
+  outputRoot: string,
+  postId: string,
+  nextDate: string
+) {
+  const store = new PublicationJobStore(outputRoot)
+  const jobs = await store.list()
+
+  for (const job of jobs) {
+    if (job.postId !== postId || !job.scheduledAt || job.status === "published") {
+      continue
+    }
+
+    await store.save({
+      ...job,
+      contentDate: nextDate,
+      scheduledAt: replaceScheduledDate(
+        job.scheduledAt,
+        nextDate,
+        job.timezone
+      ),
+      updatedAt: new Date().toISOString()
+    })
+  }
+}
+
+function replaceScheduledDate(
+  scheduledAt: string,
+  nextDate: string,
+  timezone: string
+): string {
+  const current = getLocalDateTimeParts(
+    new Date(scheduledAt).getTime(),
+    timezone
+  )
+  const localTime = `${String(current.hour).padStart(2, "0")}:${String(current.minute).padStart(2, "0")}`
+  return buildZonedIsoTimestamp(nextDate, localTime, timezone)
 }
 
 async function buildWorkflowState(

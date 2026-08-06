@@ -15,6 +15,7 @@ import {
   chatSessionResponseSchemaPublic,
   noticeResponseSchema,
   postDetailResponseSchemaPublic,
+  publicationPlatformSchemaPublic,
   reviewActionSchemaPublic,
   voiceoverUploadResponseSchema,
   weekActionSchemaPublic,
@@ -39,6 +40,7 @@ import {
   moveWeekPost,
   reschedulePost,
   runPostAction,
+  publishPostNow,
   runWeekAction
 } from "../controllers/workflow-controller.js"
 import { isValidationError, respondJson } from "../responses/json-response.js"
@@ -222,6 +224,26 @@ async function routeReviewRequest(
       response,
       200,
       await reschedulePost(postId, request, dependencies),
+      postDetailResponseSchemaPublic
+    )
+    return
+  }
+
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/publication\/[^/]+\/now$/)
+  ) {
+    const match = requestUrl.pathname.match(
+      /^\/api\/posts\/([^/]+)\/publication\/([^/]+)\/now$/
+    )
+    respondJson(
+      response,
+      200,
+      await publishPostNow(
+        decodeURIComponent(match?.[1] ?? ""),
+        publicationPlatformSchemaPublic.parse(match?.[2] ?? ""),
+        dependencies
+      ),
       postDetailResponseSchemaPublic
     )
     return
