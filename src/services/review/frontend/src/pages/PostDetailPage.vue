@@ -94,9 +94,9 @@
                 <textarea v-model="form.mastodonText" class="form-control" rows="3" />
               </div>
               <div class="col-12 form-section-heading">Reel</div>
-              <div class="col-md-6">
+              <div class="col-12">
                 <label class="form-label">Reel-Hook</label>
-                <input v-model="form.reelHook" class="form-control" />
+                <textarea v-model="form.reelHook" class="form-control" rows="3" />
               </div>
               <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -171,9 +171,11 @@
           class="mb-4"
           :audio-asset-href="post.reel.audioAssetHref"
           :audio-label="post.reel.audioLabel"
+          :duration-seconds="post.reel.durationSeconds"
           :on-refresh="refreshPost"
           :post-id="post.post.postId"
           :subtitle-font-name="post.reel.subtitleFontName"
+          :voiceover-segments="post.reel.voiceoverSegments"
         />
 
         <ReelModal class="mb-4" :preview-href="post.reel.previewHref" />

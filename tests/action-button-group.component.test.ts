@@ -36,7 +36,7 @@ describe("ActionButtonGroup", () => {
             action: "render",
             completed: true,
             disabled: false,
-            label: "Vorschauen rendern",
+            label: "Social-Bilder rendern",
             primary: false,
             supportsForce: true
           }

@@ -162,9 +162,18 @@ const postDetailResponseSchema = z.object({
   reel: z.object({
     audioAssetHref: z.string().nullable(),
     audioLabel: z.string(),
+    durationSeconds: z.number(),
     previewHref: z.string().nullable(),
     subtitleFontName: z.string(),
-    subtitleFontsDir: z.string()
+    subtitleFontsDir: z.string(),
+    voiceoverSegments: z.array(
+      z.object({
+        endSeconds: z.number(),
+        index: z.number(),
+        startSeconds: z.number(),
+        text: z.string()
+      })
+    )
   }),
   viewBackHref: z.string(),
   workflow: workflowSchema,

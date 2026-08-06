@@ -40,7 +40,7 @@ const reviewActionLabels: Record<ReviewActionApi, string> = {
   images: "Bilder erzeugen",
   "images-reel": "Reelbilder erzeugen",
   qa: "Prüfen",
-  render: "Vorschauen rendern",
+  render: "Social-Bilder rendern",
   "render-reel": "Reel rendern",
   scaffold: "Gerüst anlegen"
 }
@@ -100,9 +100,11 @@ export function buildPostDetailResponse(
   notices: Array<{ kind: "error" | "notice"; text: string }> = [],
   navigation: { previousPostId?: string; nextPostId?: string } = {}
 ): PostDetailResponse {
+  const cacheVersion = Date.now()
+
   return {
     assets: detail.content.metadata.assets.map((assetPath) => ({
-      href: `/files/${assetPath}`,
+      href: buildCacheBustedFileHref(assetPath, cacheVersion),
       kind: inferAssetKind(assetPath),
       label: assetPath
     })),
@@ -144,14 +146,14 @@ export function buildPostDetailResponse(
     previewGroups: [
       {
         items: detail.renderPreviewPaths.map((path, index) => ({
-          href: `/files/${path}`,
-          label: `Vorschau ${index + 1}`
+          href: buildCacheBustedFileHref(path, cacheVersion),
+          label: `Social-Bild ${index + 1}`
         })),
-        title: "Feed- und Story-Vorschauen"
+        title: "Social-Bilder"
       },
       {
         items: detail.imagePreviewPaths.map((path, index) => ({
-          href: `/files/${path}`,
+          href: buildCacheBustedFileHref(path, cacheVersion),
           label: `Bild ${index + 1}`
         })),
         title: "Generierte Assets"
@@ -163,16 +165,129 @@ export function buildPostDetailResponse(
       warnings: detail.qaSummary?.warnings ?? []
     },
     reel: {
-      audioAssetHref: detail.reelAudioAssetPath ? `/files/${detail.reelAudioAssetPath}` : null,
+      audioAssetHref: detail.reelAudioAssetPath
+        ? buildCacheBustedFileHref(detail.reelAudioAssetPath, cacheVersion)
+        : null,
       audioLabel: detail.reelAudioPath,
-      previewHref: detail.reelPreviewPath ? `/files/${detail.reelPreviewPath}` : null,
+      durationSeconds: resolveVoiceoverDurationSeconds(detail),
+      previewHref: detail.reelPreviewPath
+        ? buildCacheBustedFileHref(detail.reelPreviewPath, cacheVersion)
+        : null,
       subtitleFontName: detail.reelSubtitleFontName,
-      subtitleFontsDir: detail.reelSubtitleFontsDir
+      subtitleFontsDir: detail.reelSubtitleFontsDir,
+      voiceoverSegments: buildVoiceoverCueSegments(detail)
     },
     viewBackHref: `/weeks/${encodeURIComponent(weekDate)}`,
     workflow: detail.workflow,
     workflowActions: buildReviewActionButtons(detail.workflow)
   }
+}
+
+function buildCacheBustedFileHref(relativePath: string, cacheVersion: number): string {
+  return `/files/${relativePath}?v=${encodeURIComponent(String(cacheVersion))}`
+}
+
+function buildVoiceoverCueSegments(detail: ReviewPostDetail): Array<{
+  endSeconds: number
+  index: number
+  startSeconds: number
+  text: string
+}> {
+  const durationSeconds = resolveVoiceoverDurationSeconds(detail)
+  const shots = detail.content.platforms.reel.shots
+  const script = detail.content.platforms.reel.script
+  const scriptChunks = buildVoiceoverScriptChunks(script)
+  const cueTexts =
+    scriptChunks.length > 0 ? scriptChunks : shots.filter((shot) => shot.trim().length > 0)
+  const segmentCount = Math.max(cueTexts.length, shots.length, 1)
+  const safeDurationSeconds = Math.max(durationSeconds, segmentCount)
+  const segmentDuration = safeDurationSeconds / segmentCount
+  const segments: Array<{
+    endSeconds: number
+    index: number
+    startSeconds: number
+    text: string
+  }> = []
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    segments.push({
+      endSeconds: Number(((index + 1) * segmentDuration).toFixed(3)),
+      index,
+      startSeconds: Number((index * segmentDuration).toFixed(3)),
+      text: cueTexts[Math.min(index, cueTexts.length - 1)] ?? "Voiceover ohne Skript"
+    })
+  }
+
+  return segments
+}
+
+function buildVoiceoverScriptChunks(script: string): string[] {
+  const normalized = script.replace(/\s+/g, " ").trim()
+
+  if (normalized.length === 0) {
+    return []
+  }
+
+  const sentences = normalized
+    .split(/(?<=[.!?])\s+/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0)
+
+  if (sentences.length <= 1) {
+    return wrapVoiceoverChunk(normalized)
+  }
+
+  const chunks: string[] = []
+
+  for (let index = 0; index < sentences.length; index += 2) {
+    chunks.push(wrapVoiceoverChunk(sentences.slice(index, index + 2).join(" ")).join("\n"))
+  }
+
+  return chunks
+}
+
+function wrapVoiceoverChunk(text: string): string[] {
+  if (text.length <= 54) {
+    return [text]
+  }
+
+  const words = text.split(" ")
+  const lines: string[] = []
+  let currentLine = ""
+
+  for (const word of words) {
+    const candidate = currentLine.length === 0 ? word : `${currentLine} ${word}`
+
+    if (candidate.length > 54 && currentLine.length > 0) {
+      lines.push(currentLine)
+      currentLine = word
+      continue
+    }
+
+    currentLine = candidate
+  }
+
+  if (currentLine.length > 0) {
+    lines.push(currentLine)
+  }
+
+  return lines
+}
+
+function resolveVoiceoverDurationSeconds(detail: ReviewPostDetail): number {
+  const persistedDuration = detail.reelRenderSummary?.duration_seconds
+
+  if (
+    typeof persistedDuration === "number" &&
+    Number.isFinite(persistedDuration) &&
+    persistedDuration > 0
+  ) {
+    return persistedDuration
+  }
+
+  const scriptChunks = buildVoiceoverScriptChunks(detail.content.platforms.reel.script)
+  const shotCount = detail.content.platforms.reel.shots.length
+  return Math.max(6, shotCount * 3, scriptChunks.length * 2, 1)
 }
 
 export function buildChatSessionResponse(session: ContentChatSession): ChatSessionResponse {

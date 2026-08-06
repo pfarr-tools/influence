@@ -114,7 +114,9 @@ function getPostActionLoadingMessage(
     case "images-reel":
       return force ? "Reelbilder werden neu erzeugt ..." : "Reelbilder werden erzeugt ..."
     case "render":
-      return force ? "Vorschauen werden neu gerendert ..." : "Vorschauen werden gerendert ..."
+      return force
+        ? "Social-Bilder werden neu gerendert ..."
+        : "Social-Bilder werden gerendert ..."
     case "render-reel":
       return force ? "Reel wird neu gerendert ..." : "Reel wird gerendert ..."
     default:

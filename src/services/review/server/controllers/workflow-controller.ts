@@ -276,7 +276,7 @@ export async function runPostAction(
           pageRenderClient: dependencies.pageRenderClient
         }
       )
-      return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Vorschauen gerendert." }])
+      return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Social-Bilder gerendert." }])
     case "render-reel":
       await renderReelById(
         dependencies.calendar,

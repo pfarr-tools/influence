@@ -2,7 +2,7 @@
   <section class="card shadow-sm">
     <div class="card-body">
       <h2 class="h5">{{ title }}</h2>
-      <div v-if="items.length === 0" class="text-secondary">Noch keine Vorschauen vorhanden.</div>
+      <div v-if="items.length === 0" class="text-secondary">Noch keine Bilder vorhanden.</div>
       <div v-else class="preview-grid-compact">
         <button
           v-for="(item, index) in items"

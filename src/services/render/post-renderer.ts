@@ -586,7 +586,7 @@ function buildHtmlDocument(
         --text-secondary: ${palette.muted};
         --accent: ${palette.accent};
         --surface: rgba(255, 255, 255, 0.1);
-        --surface-strong: rgba(10, 14, 22, 0.74);
+        --surface-strong: rgba(10, 14, 22, 0.54);
         --border: rgba(255, 255, 255, 0.22);
         --shadow: rgba(0, 0, 0, 0.24);
       }
@@ -625,8 +625,8 @@ function buildHtmlDocument(
         position: absolute;
         inset: 0;
         background:
-          linear-gradient(150deg, rgba(255, 255, 255, 0.06), transparent 42%),
-          linear-gradient(0deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.28));
+          linear-gradient(150deg, rgba(255, 255, 255, 0.08), transparent 42%),
+          linear-gradient(0deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.12));
         pointer-events: none;
       }
 
@@ -698,7 +698,7 @@ function buildHtmlDocument(
         min-height: 0;
         padding: 36px;
         border-radius: 34px;
-        background: linear-gradient(180deg, rgba(11, 17, 27, 0.54), rgba(11, 17, 27, 0.86));
+        background: linear-gradient(180deg, rgba(11, 17, 27, 0.28), rgba(11, 17, 27, 0.58));
         backdrop-filter: blur(10px);
         box-shadow: 0 24px 64px var(--shadow);
       }
@@ -916,7 +916,7 @@ async function buildBackgroundCss(
   const mimeType = resolveImageMimeType(backgroundImagePath)
 
   return `background-image:
-      linear-gradient(180deg, rgba(20, 20, 24, 0.18), rgba(20, 20, 24, 0.82)),
+      linear-gradient(180deg, rgba(20, 20, 24, 0.08), rgba(20, 20, 24, 0.34)),
       url("data:${mimeType};base64,${imageBuffer.toString("base64")}");`
 }
 
