@@ -1,9 +1,19 @@
 <template>
-  <div class="d-flex flex-wrap gap-2">
+  <div
+    :class="
+      variant === 'menu' ? 'dropdown-menu-items' : 'd-flex flex-wrap gap-2'
+    "
+  >
     <button
       v-for="action in actions"
       :key="action.action"
-      :class="action.primary ? 'btn btn-primary' : 'btn btn-outline-secondary'"
+      :class="
+        variant === 'menu'
+          ? 'dropdown-item'
+          : action.primary
+            ? 'btn btn-primary'
+            : 'btn btn-outline-secondary'
+      "
       :disabled="action.disabled || busy"
       type="button"
       @click="triggerAction(action)"
@@ -15,18 +25,34 @@
       />
       {{ action.label }}
     </button>
-    <a v-if="downloadHref" class="btn btn-outline-success" :href="downloadHref">
+    <a
+      v-if="downloadHref"
+      :class="variant === 'menu' ? 'dropdown-item' : 'btn btn-outline-success'"
+      :href="downloadHref"
+    >
       Exportieren
     </a>
   </div>
 
-  <BaseModal :open="forceModalOpen" title="Aktion erneut ausführen?" @close="closeForceModal">
+  <BaseModal
+    :open="forceModalOpen"
+    title="Aktion erneut ausführen?"
+    @close="closeForceModal"
+  >
     <p class="mb-0">
       {{ forceModalText }}
     </p>
     <template #footer>
-      <button class="btn btn-outline-secondary" type="button" @click="closeForceModal">Abbrechen</button>
-      <button class="btn btn-primary" type="button" @click="confirmForceAction">Mit Force erneut ausführen</button>
+      <button
+        class="btn btn-outline-secondary"
+        type="button"
+        @click="closeForceModal"
+      >
+        Abbrechen
+      </button>
+      <button class="btn btn-primary" type="button" @click="confirmForceAction">
+        Mit Force erneut ausführen
+      </button>
     </template>
   </BaseModal>
 </template>
@@ -49,7 +75,10 @@ const props = defineProps<{
   busy?: boolean
   busyAction?: string
   downloadHref?: string
+  variant?: "buttons" | "menu"
 }>()
+
+const variant = computed(() => props.variant ?? "buttons")
 
 const emit = defineEmits<{
   trigger: [payload: { action: string; force: boolean }]

@@ -4,39 +4,79 @@
       <div class="week-toolbar__title">
         <h2 class="h4 mb-0">{{ germanCopy.weekOverview }}</h2>
         <div class="text-secondary small" v-if="week">
-          {{ formatWeekRangeLabel(week.selectedWeek.startDate, week.selectedWeek.endDate) }}
+          {{
+            formatWeekRangeLabel(
+              week.selectedWeek.startDate,
+              week.selectedWeek.endDate
+            )
+          }}
         </div>
       </div>
-      <details ref="actionsMenu" class="week-actions-menu">
-        <summary class="btn btn-outline-secondary week-actions-trigger" aria-label="Wochenaktionen">
+      <div class="week-toolbar__actions">
+        <button
+          class="btn btn-outline-primary week-toolbar__icon-action"
+          type="button"
+          aria-label="Neue Idee"
+          title="Neue Idee"
+          @click="openIdeaModal"
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" />
+            <path
+              d="M9,21C8.45,21 8,20.55 8,20V19H16V20C16,20.55 15.55,21 15,21H9M12,2C8.69,2 6,4.69 6,8C6,10.22 7.2,11.67 8.27,12.94C9,13.81 9.67,14.6 9.86,16H14.14C14.33,14.6 15,13.81 15.73,12.94C16.8,11.67 18,10.22 18,8C18,4.69 15.31,2 12,2M10,18V17H14V18H10M12,4C14.21,4 16,5.79 16,8C16,9.5 15.18,10.5 14.2,11.67C13.31,12.73 12.38,13.84 12.08,16H11.92C11.62,13.84 10.69,12.73 9.8,11.67C8.82,10.5 8,9.5 8,8C8,5.79 9.79,4 12,4Z"
+            />
           </svg>
-        </summary>
-        <div class="card shadow-sm week-actions-popover">
-          <div class="card-body">
-            <div class="d-grid gap-2 mb-3">
-              <button class="btn btn-outline-primary btn-sm" type="button" @click="openIdeaModal">Neue Idee</button>
-              <button class="btn btn-outline-secondary btn-sm" type="button" @click="openChat('week')">
-                Woche mit ChatGPT besprechen
-              </button>
-              <button class="btn btn-outline-secondary btn-sm" type="button" @click="openChat('plan')">
+        </button>
+        <button
+          class="btn btn-outline-secondary week-toolbar__icon-action"
+          type="button"
+          aria-label="Woche mit ChatGPT besprechen"
+          title="Woche mit ChatGPT besprechen"
+          @click="openChat('week')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4,4H20C21.1,4 22,4.9 22,6V17C22,18.1 21.1,19 20,19H8L4,22V19H4C2.9,19 2,18.1 2,17V6C2,4.9 2.9,4 4,4M4,6V16.17L7.17,17H20V6H4M6,8H18V10H6V8M6,12H15V14H6V12Z"
+            />
+          </svg>
+        </button>
+        <details ref="actionsMenu" class="week-actions-menu">
+          <summary
+            class="btn btn-outline-secondary week-actions-trigger"
+            aria-label="Wochenaktionen"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" />
+            </svg>
+          </summary>
+          <div class="card shadow-sm week-actions-popover">
+            <div class="card-body">
+              <ActionButtonGroup
+                :actions="week?.weekActions ?? []"
+                :busy="reviewStore.loading"
+                :busy-action="reviewStore.activeAction"
+                variant="menu"
+                @trigger="triggerWeek"
+              />
+              <div class="dropdown-divider" role="separator" />
+              <button
+                class="dropdown-item"
+                type="button"
+                @click="openChat('plan')"
+              >
                 Redaktionsplan mit ChatGPT besprechen
               </button>
             </div>
-            <ActionButtonGroup
-              :actions="week?.weekActions ?? []"
-              :busy="reviewStore.loading"
-              :busy-action="reviewStore.activeAction"
-              @trigger="triggerWeek"
-            />
           </div>
-        </div>
-      </details>
+        </details>
+      </div>
     </div>
 
     <div class="week-navigation mb-3">
-      <div class="btn-group btn-group-sm" role="group" aria-label="Wochennavigation">
+      <div
+        class="btn-group btn-group-sm"
+        role="group"
+        aria-label="Wochennavigation"
+      >
         <button
           class="btn btn-outline-secondary"
           :disabled="!previousWeekDate"
@@ -61,18 +101,30 @@
         type="date"
         @change="jumpToCalendarDate"
       />
-      <select v-model="selectedWeekDate" class="form-select form-select-sm week-selector" @change="navigateToWeek">
-        <option v-for="option in week?.weekOptions ?? []" :key="option.startDate" :value="option.startDate">
+      <select
+        v-model="selectedWeekDate"
+        class="form-select form-select-sm week-selector"
+        @change="navigateToWeek"
+      >
+        <option
+          v-for="option in week?.weekOptions ?? []"
+          :key="option.startDate"
+          :value="option.startDate"
+        >
           {{ formatWeekRangeLabel(option.startDate, option.endDate) }}
         </option>
       </select>
     </div>
 
-    <div v-if="reviewStore.error" class="alert alert-danger">{{ reviewStore.error }}</div>
+    <div v-if="reviewStore.error" class="alert alert-danger">
+      {{ reviewStore.error }}
+    </div>
     <div
       v-for="notice in week?.notices ?? []"
       :key="notice.text"
-      :class="notice.kind === 'error' ? 'alert alert-danger' : 'alert alert-success'"
+      :class="
+        notice.kind === 'error' ? 'alert alert-danger' : 'alert alert-success'
+      "
     >
       {{ notice.text }}
     </div>
@@ -93,8 +145,12 @@
       >
         <div class="card-header week-day-header">
           <span class="fw-semibold text-capitalize">{{ day.weekday }}</span>
-          <span class="small text-secondary">{{ formatGermanDate(day.date) }}</span>
-          <span class="badge rounded-pill text-bg-light">{{ day.posts.length }}</span>
+          <span class="small text-secondary">{{
+            formatGermanDate(day.date)
+          }}</span>
+          <span class="badge rounded-pill text-bg-light">{{
+            day.posts.length
+          }}</span>
         </div>
         <div class="card-body week-day-body">
           <div v-if="day.posts.length === 0" class="week-empty-slot">
@@ -112,20 +168,36 @@
             @drop.stop="dropPost(day.date, index, $event)"
           >
             <div class="card-body week-post-card__body">
-              <div class="d-flex justify-content-between gap-3 mb-1 align-items-start">
+              <div
+                class="d-flex justify-content-between gap-3 mb-1 align-items-start"
+              >
                 <div>
                   <h3 class="h6 mb-1">{{ post.theme }}</h3>
-                  <div class="small text-secondary"><strong>{{ post.postId }}</strong> · {{ post.rubric }}</div>
+                  <div class="small text-secondary">
+                    <strong>{{ post.postId }}</strong> · {{ post.rubric }}
+                  </div>
                 </div>
-                <span class="badge text-bg-light week-post-status">{{ post.status }}</span>
+                <span class="badge text-bg-light week-post-status">{{
+                  post.status
+                }}</span>
               </div>
-              <div class="d-flex justify-content-between align-items-center gap-2">
+              <div
+                class="d-flex justify-content-between align-items-center gap-2"
+              >
                 <WorkflowBadges compact :workflow="post.workflow" />
                 <div class="d-flex flex-wrap gap-1">
-                  <RouterLink v-if="post.actionHref" class="btn btn-sm btn-outline-secondary" :to="post.actionHref">
+                  <RouterLink
+                    v-if="post.actionHref"
+                    class="btn btn-sm btn-outline-secondary"
+                    :to="post.actionHref"
+                  >
                     Öffnen
                   </RouterLink>
-                  <button class="btn btn-sm btn-outline-danger" type="button" @click.prevent="deletePost(post.postId)">
+                  <button
+                    class="btn btn-sm btn-outline-danger"
+                    type="button"
+                    @click.prevent="deletePost(post.postId)"
+                  >
                     Löschen
                   </button>
                 </div>
@@ -149,24 +221,42 @@
       @send="sendMessage"
     />
 
-    <BaseModal :open="ideaOpen" title="Neue Beitragsidee" @close="ideaOpen = false">
+    <BaseModal
+      :open="ideaOpen"
+      title="Neue Beitragsidee"
+      @close="ideaOpen = false"
+    >
       <div class="mb-3">
         <label class="form-label" for="idea-title">Titel</label>
         <input id="idea-title" v-model="idea.title" class="form-control" />
       </div>
       <div class="mb-3">
         <label class="form-label" for="idea-date">Datum</label>
-        <input id="idea-date" v-model="idea.date" class="form-control" lang="de-DE" type="date" />
+        <input
+          id="idea-date"
+          v-model="idea.date"
+          class="form-control"
+          lang="de-DE"
+          type="date"
+        />
       </div>
       <div>
         <label class="form-label" for="idea-rubric">Rubrik</label>
         <input id="idea-rubric" v-model="idea.rubric" class="form-control" />
       </div>
       <template #footer>
-        <button class="btn btn-outline-secondary" type="button" @click="ideaOpen = false">Abbrechen</button>
+        <button
+          class="btn btn-outline-secondary"
+          type="button"
+          @click="ideaOpen = false"
+        >
+          Abbrechen
+        </button>
         <button
           class="btn btn-primary"
-          :disabled="reviewStore.loading || !idea.title || !idea.date || !idea.rubric"
+          :disabled="
+            reviewStore.loading || !idea.title || !idea.date || !idea.rubric
+          "
           type="button"
           @click="createIdea"
         >
@@ -235,7 +325,11 @@ const weekDays = computed(() => {
     postsByDate.set(post.date, existing)
   }
 
-  const days: Array<{ date: string; posts: typeof selectedWeek.posts; weekday: string }> = []
+  const days: Array<{
+    date: string
+    posts: typeof selectedWeek.posts
+    weekday: string
+  }> = []
   const cursor = new Date(`${selectedWeek.startDate}T00:00:00Z`)
 
   for (let offset = 0; offset < 7; offset += 1) {
@@ -254,8 +348,11 @@ const weekDays = computed(() => {
   return days
 })
 
-const currentWeekIndex = computed(() =>
-  week.value?.weekOptions.findIndex((option) => option.startDate === selectedWeekDate.value) ?? -1
+const currentWeekIndex = computed(
+  () =>
+    week.value?.weekOptions.findIndex(
+      (option) => option.startDate === selectedWeekDate.value
+    ) ?? -1
 )
 
 const previousWeekDate = computed(() => {
@@ -288,8 +385,14 @@ watch(
 )
 
 async function loadCurrentWeek() {
-  const routeWeekDate = typeof route.params.weekDate === "string" ? route.params.weekDate : undefined
-  const weekDate = routeWeekDate ?? window.localStorage.getItem(lastWeekStorageKey) ?? undefined
+  const routeWeekDate =
+    typeof route.params.weekDate === "string"
+      ? route.params.weekDate
+      : undefined
+  const weekDate =
+    routeWeekDate ??
+    window.localStorage.getItem(lastWeekStorageKey) ??
+    undefined
   await loadWeek(weekDate)
   selectedWeekDate.value = reviewStore.week?.selectedWeek.startDate ?? ""
   calendarJumpDate.value = selectedWeekDate.value
@@ -305,9 +408,13 @@ async function triggerWeek(payload: { action: string; force: boolean }) {
     return
   }
 
-  await triggerWeekAction(selectedWeekDate.value, payload.action as WeekActionApi, {
-    force: payload.force
-  })
+  await triggerWeekAction(
+    selectedWeekDate.value,
+    payload.action as WeekActionApi,
+    {
+      force: payload.force
+    }
+  )
 }
 
 async function navigateToWeek() {
@@ -347,8 +454,16 @@ async function createIdea() {
   }
 }
 
-function startDrag(event: DragEvent, postId: string, date: string, index: number) {
-  event.dataTransfer?.setData("application/x-influence-post", JSON.stringify({ date, index, postId }))
+function startDrag(
+  event: DragEvent,
+  postId: string,
+  date: string,
+  index: number
+) {
+  event.dataTransfer?.setData(
+    "application/x-influence-post",
+    JSON.stringify({ date, index, postId })
+  )
   event.dataTransfer?.setData("text/plain", postId)
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = "move"
@@ -366,7 +481,9 @@ async function dropPost(date: string, position: number, event: DragEvent) {
   }
 
   const dayPosition =
-    currentDrag.date === date && currentDrag.index < position ? position - 1 : position
+    currentDrag.date === date && currentDrag.index < position
+      ? position - 1
+      : position
   if (currentDrag.date === date && currentDrag.index === dayPosition) {
     return
   }
@@ -382,7 +499,9 @@ async function dropPost(date: string, position: number, event: DragEvent) {
   // Translate the day-local position before the dragged post is removed.
   let absolutePosition: number
   if (targetIndexes.length > 0) {
-    absolutePosition = targetIndexes[Math.min(dayPosition, targetIndexes.length - 1)] ?? posts.length
+    absolutePosition =
+      targetIndexes[Math.min(dayPosition, targetIndexes.length - 1)] ??
+      posts.length
     if (dayPosition >= targetIndexes.length) {
       absolutePosition = targetIndexes[targetIndexes.length - 1]! + 1
     }
@@ -393,7 +512,9 @@ async function dropPost(date: string, position: number, event: DragEvent) {
     }
   }
 
-  const sourceIndex = posts.findIndex((post) => post.postId === currentDrag.postId)
+  const sourceIndex = posts.findIndex(
+    (post) => post.postId === currentDrag.postId
+  )
   if (sourceIndex >= 0 && sourceIndex < absolutePosition) {
     absolutePosition -= 1
   }
@@ -469,6 +590,25 @@ function closeActionsMenu() {
   min-width: 0;
 }
 
+.week-toolbar__actions {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.week-toolbar__icon-action {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
+}
+
+.week-toolbar__icon-action svg {
+  fill: currentColor;
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
 .week-actions-menu {
   position: relative;
 }
@@ -500,6 +640,14 @@ function closeActionsMenu() {
   right: 0;
   width: min(24rem, 90vw);
   z-index: 3;
+}
+
+.week-actions-popover .card-body {
+  padding: 0.5rem;
+}
+
+.week-actions-popover :deep(.dropdown-menu-items) {
+  display: grid;
 }
 
 .week-navigation {
@@ -562,7 +710,9 @@ function closeActionsMenu() {
 
 .week-post-card {
   cursor: grab;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .week-post-card__body {
