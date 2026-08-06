@@ -1,4 +1,13 @@
 export {
+  appendDiscussionMessage,
+  applyContentChatRevision,
+  loadContentChatSession,
+  persistDiscussionReply,
+  prepareDiscussionRequest,
+  requestContentChatRevision,
+  startContentChatSession,
+} from "./content-chat-service.js"
+export {
   approveReviewPost,
   exportReviewPost,
   loadReviewPost,
@@ -14,6 +23,13 @@ export type {
   ReviewWeekOverview,
   UpdateReviewPostInput
 } from "./review-service.js"
+export type {
+  ContentChatActionResult,
+  ContentChatServiceDependencies,
+  ContentChatSession,
+  ContentChatSessionInput,
+  JsonChatModelClient
+} from "./content-chat-service.js"
 export {
   createReviewServer
 } from "./review-server.js"

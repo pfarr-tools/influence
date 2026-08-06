@@ -27,6 +27,15 @@ import {
   renderWeekByDate
 } from "../render/index.js"
 import {
+  applyContentChatRevision,
+  loadContentChatSession,
+  persistDiscussionReply,
+  prepareDiscussionRequest,
+  requestContentChatRevision,
+  startContentChatSession,
+  type JsonChatModelClient
+} from "./content-chat-service.js"
+import {
   approveReviewPost,
   exportReviewPost,
   loadReviewPost,
@@ -40,9 +49,11 @@ const bootstrapCssHref =
   "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
 const bootstrapJsHref =
   "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+const markedVendorPath = resolve(process.cwd(), "node_modules", "marked", "lib", "marked.umd.js")
 
 export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   calendar: Calendar
+  chatModelClient?: JsonChatModelClient
   imageClient?: ImageModelClient
   pageRenderClient: HtmlRenderClient
   runtimeConfig: RuntimeConfig
@@ -74,6 +85,12 @@ export function createReviewServer(dependencies: ReviewServerDependencies) {
     } catch (error) {
       const statusCode = error instanceof CalendarValidationError ? 400 : 500
       const message = error instanceof Error ? error.message : "Unknown error"
+      const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1")
+
+      if (requestUrl.pathname.startsWith("/chat/")) {
+        respondJson(response, statusCode, { error: message })
+        return
+      }
 
       response.writeHead(statusCode, { "content-type": "text/html; charset=utf-8" })
       response.end(renderDocument("Review-Fehler", renderAlert("danger", message)))
@@ -96,6 +113,149 @@ async function routeRequest(
 
   if (method === "GET" && requestUrl.pathname === "/") {
     redirect(response, `/weeks/${requestUrl.searchParams.get("date") ?? defaultDate}`)
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname === "/chat/sessions/stream") {
+    const body = await parseJsonBody<{
+      contextType: "plan" | "post" | "week"
+      model?: string
+      planPath?: string
+      postId?: string
+      prompt?: string
+      weekDate?: string
+    }>(request)
+
+    const sessionInput =
+      body.contextType === "post"
+        ? { contextType: "post" as const, postId: body.postId ?? "" }
+        : body.contextType === "week"
+          ? { contextType: "week" as const, weekDate: body.weekDate ?? "" }
+          : { contextType: "plan" as const, planPath: body.planPath }
+    await streamNewDiscussionSession(response, sessionInput, body, dependencies)
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname.match(/^\/chat\/sessions\/[^/]+\/messages\/stream$/)) {
+    const sessionId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/chat\/sessions\/([^/]+)\/messages\/stream$/, "$1")
+    )
+    const body = await parseJsonBody<{ model?: string; text: string }>(request)
+    await streamDiscussionMessage(response, sessionId, body.text, body.model, dependencies)
+    return
+  }
+
+  if (method === "GET" && requestUrl.pathname.match(/^\/chat\/sessions\/[^/]+$/)) {
+    const sessionId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/chat\/sessions\/([^/]+)$/, "$1")
+    )
+    const session = await loadContentChatSession(
+      sessionId,
+      dependencies.runtimeConfig.outputDir
+    )
+    respondJson(response, 200, serializeChatSession(session))
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname === "/chat/sessions") {
+    const body = await parseJsonBody<{
+      contextType: "plan" | "post" | "week"
+      model?: string
+      planPath?: string
+      postId?: string
+      prompt?: string
+      weekDate?: string
+    }>(request)
+
+    const sessionInput =
+      body.contextType === "post"
+        ? { contextType: "post" as const, postId: body.postId ?? "" }
+        : body.contextType === "week"
+          ? { contextType: "week" as const, weekDate: body.weekDate ?? "" }
+          : { contextType: "plan" as const, planPath: body.planPath }
+    const result = await startContentChatSession(
+      sessionInput,
+      {
+        initialPrompt: body.prompt,
+        model: body.model ?? dependencies.runtimeConfig.openAiModel
+      },
+      {
+        calendar: dependencies.calendar,
+        modelClient: dependencies.chatModelClient,
+        runtimeConfig: dependencies.runtimeConfig
+      }
+    )
+
+    respondJson(response, 200, serializeChatSession(result.session))
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname.match(/^\/chat\/sessions\/[^/]+\/messages$/)) {
+    const sessionId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/chat\/sessions\/([^/]+)\/messages$/, "$1")
+    )
+    const body = await parseJsonBody<{ model?: string; text: string }>(request)
+    const preparedRequest = await prepareDiscussionRequest(
+      sessionId,
+      body.text,
+      { model: body.model ?? dependencies.runtimeConfig.openAiModel },
+      {
+        calendar: dependencies.calendar,
+        runtimeConfig: dependencies.runtimeConfig
+      }
+    )
+    const discussionResponse = await dependencies.chatModelClient?.discussJson(
+      preparedRequest.request
+    )
+
+    if (!discussionResponse) {
+      throw new CalendarValidationError(
+        "OPENAI_API_KEY is required for chat discussion requests."
+      )
+    }
+    const session = await persistDiscussionReply(
+      preparedRequest.session,
+      preparedRequest.prompt,
+      discussionResponse.text,
+      {
+        runtimeConfig: dependencies.runtimeConfig
+      }
+    )
+
+    respondJson(response, 200, serializeChatSession(session))
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname.match(/^\/chat\/sessions\/[^/]+\/revise$/)) {
+    const sessionId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/chat\/sessions\/([^/]+)\/revise$/, "$1")
+    )
+    const body = await parseJsonBody<{ model?: string }>(request)
+    const result = await requestContentChatRevision(
+      sessionId,
+      {
+        model: body.model ?? dependencies.runtimeConfig.openAiModel
+      },
+      {
+        calendar: dependencies.calendar,
+        modelClient: dependencies.chatModelClient,
+        runtimeConfig: dependencies.runtimeConfig
+      }
+    )
+
+    respondJson(response, 200, serializeChatSession(result.session))
+    return
+  }
+
+  if (method === "POST" && requestUrl.pathname.match(/^\/chat\/sessions\/[^/]+\/apply$/)) {
+    const sessionId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/chat\/sessions\/([^/]+)\/apply$/, "$1")
+    )
+    const session = await applyContentChatRevision(sessionId, {
+      calendar: dependencies.calendar,
+      runtimeConfig: dependencies.runtimeConfig
+    })
+    respondJson(response, 200, serializeChatSession(session))
     return
   }
 
@@ -549,6 +709,11 @@ async function routeRequest(
     return
   }
 
+  if (method === "GET" && requestUrl.pathname === "/vendor/marked.js") {
+    await serveStaticFile(response, markedVendorPath)
+    return
+  }
+
   response.writeHead(404, { "content-type": "text/plain; charset=utf-8" })
   response.end("Nicht gefunden")
 }
@@ -588,6 +753,134 @@ async function parseFormBody(
     getAll: (name: string) => values.get(name) ?? [],
     getFile: (name: string) => files.get(name)
   }
+}
+
+async function parseJsonBody<T>(request: IncomingMessage): Promise<T> {
+  const chunks: Buffer[] = []
+
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+
+  if (chunks.length === 0) {
+    return {} as T
+  }
+
+  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T
+}
+
+async function streamNewDiscussionSession(
+  response: ServerResponse,
+  sessionInput:
+    | { contextType: "post"; postId: string }
+    | { contextType: "week"; weekDate: string }
+    | { contextType: "plan"; planPath?: string },
+  body: { model?: string; prompt?: string },
+  dependencies: ReviewServerDependencies
+): Promise<void> {
+  const sessionResult = await startContentChatSession(
+    sessionInput,
+    {
+      model: body.model ?? dependencies.runtimeConfig.openAiModel
+    },
+    {
+      calendar: dependencies.calendar,
+      runtimeConfig: dependencies.runtimeConfig
+    }
+  )
+
+  const prompt = body.prompt?.trim() ?? ""
+
+  if (prompt.length === 0) {
+    respondJson(response, 200, serializeChatSession(sessionResult.session))
+    return
+  }
+
+  await streamDiscussionMessage(
+    response,
+    sessionResult.session.id,
+    prompt,
+    body.model,
+    dependencies
+  )
+}
+
+async function streamDiscussionMessage(
+  response: ServerResponse,
+  sessionId: string,
+  text: string,
+  model: string | undefined,
+  dependencies: ReviewServerDependencies
+): Promise<void> {
+  const chatModelClient = dependencies.chatModelClient
+
+  if (!chatModelClient) {
+    throw new CalendarValidationError(
+      "OPENAI_API_KEY is required for chat discussion requests."
+    )
+  }
+
+  const preparedRequest = await prepareDiscussionRequest(
+    sessionId,
+    text,
+    { model: model ?? dependencies.runtimeConfig.openAiModel },
+    {
+      calendar: dependencies.calendar,
+      runtimeConfig: dependencies.runtimeConfig
+    }
+  )
+
+  response.writeHead(200, {
+    "cache-control": "no-cache",
+    connection: "keep-alive",
+    "content-type": "application/x-ndjson; charset=utf-8"
+  })
+
+  writeJsonStreamEvent(response, {
+    sessionId: preparedRequest.session.id,
+    type: "session"
+  })
+
+  let latestSnapshot = ""
+
+  try {
+    const finalResponse = chatModelClient.discussJsonStream
+      ? await chatModelClient.discussJsonStream(preparedRequest.request, (_delta, snapshot) => {
+          latestSnapshot = snapshot
+          writeJsonStreamEvent(response, {
+            snapshot,
+            type: "delta"
+          })
+        })
+      : await chatModelClient.discussJson(preparedRequest.request)
+
+    latestSnapshot = latestSnapshot || finalResponse.text
+    const updatedSession = await persistDiscussionReply(
+      preparedRequest.session,
+      preparedRequest.prompt,
+      latestSnapshot,
+      {
+        runtimeConfig: dependencies.runtimeConfig
+      }
+    )
+
+    writeJsonStreamEvent(response, {
+      session: serializeChatSession(updatedSession),
+      type: "done"
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unbekannter Streaming-Fehler."
+    writeJsonStreamEvent(response, {
+      error: message,
+      type: "error"
+    })
+  } finally {
+    response.end()
+  }
+}
+
+function writeJsonStreamEvent(response: ServerResponse, payload: unknown): void {
+  response.write(`${JSON.stringify(payload)}\n`)
 }
 
 function renderWeekPage(
@@ -636,6 +929,17 @@ function renderWeekPage(
                     <p class="mb-0">${escapeHtml(overview.selectedWeek.focus)}</p>
                   </div>
                   <div class="d-flex flex-wrap gap-2">
+                    ${renderChatLaunchButton({
+                      contextType: "plan",
+                      label: "Plan mit ChatGPT",
+                      tone: "dark"
+                    })}
+                    ${renderChatLaunchButton({
+                      contextType: "week",
+                      label: "Wochen-JSON besprechen",
+                      tone: "dark",
+                      weekDate: overview.selectedWeek.startDate
+                    })}
                     ${renderWeekActionForm(overview.selectedWeek.startDate, "scaffold", "Woche Gerüst", "outline-secondary")}
                     ${renderWeekActionForm(overview.selectedWeek.startDate, "generate", "Woche Inhalt", "outline-secondary")}
                     ${renderWeekActionForm(overview.selectedWeek.startDate, "qa", "Woche QA", "outline-secondary")}
@@ -655,6 +959,30 @@ function renderWeekPage(
       </div>
     `
   )
+}
+
+function renderChatLaunchButton(input: {
+  contextType: "plan" | "post" | "week"
+  label: string
+  planPath?: string
+  postId?: string
+  tone: string
+  weekDate?: string
+}): string {
+  return `
+    <button
+      class="btn btn-${input.tone} btn-sm"
+      type="button"
+      data-chat-launch="true"
+      data-chat-context-type="${escapeHtml(input.contextType)}"
+      data-chat-post-id="${escapeHtml(input.postId ?? "")}"
+      data-chat-week-date="${escapeHtml(input.weekDate ?? "")}"
+      data-chat-plan-path="${escapeHtml(input.planPath ?? "")}"
+      data-chat-title="${escapeHtml(input.label)}"
+    >
+      ${escapeHtml(input.label)}
+    </button>
+  `
 }
 
 function renderPostPage(
@@ -688,6 +1016,12 @@ function renderPostPage(
             )}</span></p>
           </div>
           <div class="d-flex flex-wrap gap-2">
+            ${renderChatLaunchButton({
+              contextType: "post",
+              label: "JSON mit ChatGPT",
+              postId: detail.post.id,
+              tone: "dark"
+            })}
             ${renderPostActionForm(detail.post.id, "generate", "Inhalt generieren", "outline-secondary")}
             ${renderPostActionForm(detail.post.id, "qa", "QA ausführen", "outline-secondary")}
             ${renderPostActionForm(detail.post.id, "images", "Bilder generieren", "outline-secondary")}
@@ -876,6 +1210,20 @@ function renderDocument(title: string, body: string): string {
       .page-loading-overlay { align-items: center; background: rgba(244, 241, 234, 0.92); display: none; inset: 0; justify-content: center; position: fixed; z-index: 2000; }
       .page-loading-overlay.active { display: flex; }
       .page-loading-panel { background: #fffdfa; border: 1px solid #d6d0c4; border-radius: 1rem; box-shadow: 0 1rem 2rem rgba(75, 62, 40, 0.12); min-width: min(28rem, calc(100vw - 2rem)); padding: 1.25rem 1.5rem; }
+      .chat-message { border: 1px solid #d6d0c4; border-radius: 0.85rem; padding: 0.85rem 1rem; background: #fffdfa; }
+      .chat-message-user { background: #eef7ef; border-color: #bed5c2; }
+      .chat-message-assistant { background: #fff8ea; border-color: #e2d3ad; }
+      .chat-message-streaming { box-shadow: inset 0 0 0 1px rgba(200, 157, 42, 0.18); }
+      .chat-message-pending { border-style: dashed; }
+      .chat-spinner { width: 1rem; height: 1rem; vertical-align: -0.125em; }
+      .chat-markdown p:last-child { margin-bottom: 0; }
+      .chat-markdown pre { background: rgba(20, 24, 31, 0.08); border-radius: 0.75rem; padding: 0.85rem 1rem; overflow: auto; }
+      .chat-markdown code { background: rgba(20, 24, 31, 0.08); border-radius: 0.35rem; padding: 0.1rem 0.35rem; }
+      .chat-markdown pre code { background: transparent; padding: 0; }
+      .chat-markdown ul, .chat-markdown ol { margin-bottom: 0.75rem; padding-left: 1.25rem; }
+      .chat-markdown blockquote { border-left: 3px solid #d8c9a8; color: #6b6458; margin: 0 0 0.75rem; padding-left: 0.9rem; }
+      .chat-json-panel { background: #1f2430; color: #f4f4f4; border-radius: 0.85rem; padding: 1rem; max-height: 18rem; overflow: auto; font-size: 0.85rem; }
+      .chat-diff-list { max-height: 12rem; overflow: auto; }
     </style>
   </head>
   <body>
@@ -891,6 +1239,8 @@ function renderDocument(title: string, body: string): string {
         </div>
       </div>
     </div>
+    ${renderChatModal()}
+    <script src="/vendor/marked.js"></script>
     <script src="${bootstrapJsHref}"></script>
     <script>
       (() => {
@@ -930,9 +1280,540 @@ function renderDocument(title: string, body: string): string {
           });
         }
       })();
+
+      (() => {
+        const modalElement = document.getElementById("contentChatModal");
+
+        if (!modalElement || !window.bootstrap) {
+          return;
+        }
+
+        const bootstrapModal = window.bootstrap.Modal.getOrCreateInstance(modalElement);
+        const titleElement = document.getElementById("contentChatModalTitle");
+        const contextElement = document.getElementById("contentChatContext");
+        const promptForm = document.getElementById("contentChatPromptForm");
+        const promptInput = document.getElementById("contentChatInitialPrompt");
+        const workspaceElement = document.getElementById("contentChatWorkspace");
+        const messageForm = document.getElementById("contentChatMessageForm");
+        const messageInput = document.getElementById("contentChatMessageInput");
+        const messagesElement = document.getElementById("contentChatMessages");
+        const revisionBox = document.getElementById("contentChatRevisionJson");
+        const revisionMeta = document.getElementById("contentChatRevisionMeta");
+        const diffList = document.getElementById("contentChatDiffList");
+        const validationList = document.getElementById("contentChatValidationList");
+        const statusElement = document.getElementById("contentChatStatus");
+        const reviseButton = document.getElementById("contentChatReviseButton");
+        const applyButton = document.getElementById("contentChatApplyButton");
+        const refreshButton = document.getElementById("contentChatRefreshButton");
+        const sessionIdInput = document.getElementById("contentChatSessionId");
+        const contextTypeInput = document.getElementById("contentChatContextType");
+        const postIdInput = document.getElementById("contentChatPostId");
+        const weekDateInput = document.getElementById("contentChatWeekDate");
+        const planPathInput = document.getElementById("contentChatPlanPath");
+        let currentSession = null;
+        let shouldRefreshPageOnClose = false;
+
+        function setStatus(message, tone = "secondary") {
+          if (!statusElement) {
+            return;
+          }
+
+          statusElement.className = "alert alert-" + tone + " py-2 px-3 mb-0";
+          statusElement.textContent = message;
+        }
+
+        function setWorkspaceVisible(isVisible) {
+          promptForm.classList.toggle("d-none", isVisible);
+          workspaceElement.classList.toggle("d-none", !isVisible);
+        }
+
+        function getLaunchPayload(button) {
+          return {
+            contextType: button.dataset.chatContextType || "",
+            planPath: button.dataset.chatPlanPath || "",
+            postId: button.dataset.chatPostId || "",
+            title: button.dataset.chatTitle || "JSON mit ChatGPT",
+            weekDate: button.dataset.chatWeekDate || ""
+          };
+        }
+
+        function renderMessages(session, transientState = null) {
+          if (!messagesElement) {
+            return;
+          }
+
+          const renderedMessages = [...session.messages];
+
+          if (transientState?.discussion) {
+            renderedMessages.push({
+              content: transientState.discussion.prompt,
+              createdAt: new Date().toISOString(),
+              kind: "discussion",
+              role: "user"
+            });
+            renderedMessages.push({
+              content: transientState.discussion.snapshot || "",
+              createdAt: new Date().toISOString(),
+              kind: "discussion",
+              role: "assistant",
+              streaming: true
+            });
+          }
+
+          if (transientState?.revisionPending) {
+            renderedMessages.push({
+              content: "Bitte liefere jetzt eine überarbeitete JSON-Fassung im gleichen Schema.",
+              createdAt: new Date().toISOString(),
+              kind: "revision_request",
+              role: "user"
+            });
+            renderedMessages.push({
+              content: "Strukturierte Revision wird erstellt ...",
+              createdAt: new Date().toISOString(),
+              kind: "revision_result",
+              pending: true,
+              role: "assistant"
+            });
+          }
+
+          if (!renderedMessages.length) {
+            messagesElement.innerHTML = '<p class="text-body-secondary mb-0">Noch keine Chat-Nachrichten.</p>';
+            return;
+          }
+
+          messagesElement.innerHTML = renderedMessages.map((message) => {
+            const tone = message.role === "user" ? "chat-message-user" : "chat-message-assistant";
+            const streamingClass = message.streaming ? " chat-message-streaming" : "";
+            const pendingClass = message.pending ? " chat-message-pending" : "";
+            const body = message.pending
+              ? '<div class="d-flex align-items-center gap-2"><span class="spinner-border spinner-border-sm chat-spinner" aria-hidden="true"></span><span>' + escapeHtmlForClient(message.content) + '</span></div>'
+              : '<div class="chat-markdown">' + renderMarkdown(message.content) + '</div>';
+            return '<div class="chat-message ' + tone + streamingClass + pendingClass + ' mb-2"><div class="small text-body-secondary mb-1">' +
+              escapeHtmlForClient(labelForRole(message.role) + " · " + labelForKind(message.kind) + " · " + new Date(message.createdAt).toLocaleString("de-DE")) +
+              '</div>' + body + '</div>';
+          }).join("");
+          scrollChatToBottom();
+        }
+
+        function renderRevision(session) {
+          const latestRevision = session.revisions.length > 0 ? session.revisions[session.revisions.length - 1] : null;
+
+          if (!latestRevision) {
+            revisionMeta.textContent = "Noch keine strukturierte Revision angefordert.";
+            revisionBox.textContent = "";
+            diffList.innerHTML = '<li class="text-body-secondary">Noch keine Änderungen.</li>';
+            validationList.innerHTML = '<li class="text-body-secondary">Noch keine Validierungsprüfung vorhanden.</li>';
+            applyButton.disabled = true;
+            return;
+          }
+
+          revisionMeta.textContent =
+            latestRevision.model + " · " + localizeValidationStatus(latestRevision.validationStatus) + " · " +
+            new Date(latestRevision.createdAt).toLocaleString("de-DE");
+          revisionBox.textContent = latestRevision.validatedJson
+            ? JSON.stringify(latestRevision.validatedJson, null, 2)
+            : "";
+          diffList.innerHTML = latestRevision.diff
+            .map((entry) => '<li>' + escapeHtmlForClient(entry) + '</li>')
+            .join("");
+          validationList.innerHTML = latestRevision.validationErrors.length > 0
+            ? latestRevision.validationErrors
+                .map((entry) => '<li>' + escapeHtmlForClient(entry) + '</li>')
+                .join("")
+            : '<li class="text-success">Keine Validierungsfehler.</li>';
+          applyButton.disabled = latestRevision.validationStatus !== "valid";
+        }
+
+        function renderSession(session) {
+          currentSession = session;
+          sessionIdInput.value = session.id;
+          refreshButton.disabled = false;
+          reviseButton.disabled = session.messages.length === 0;
+          contextElement.textContent =
+            session.contextType + " · " + session.contextRef + " · " + session.schemaName;
+          setWorkspaceVisible(session.messages.length > 0);
+          renderMessages(session);
+          renderRevision(session);
+        }
+
+        function scrollChatToBottom() {
+          window.requestAnimationFrame(() => {
+            if (messagesElement.lastElementChild instanceof HTMLElement) {
+              messagesElement.lastElementChild.scrollIntoView({
+                behavior: "smooth",
+                block: "end"
+              });
+              return;
+            }
+
+            messagesElement.scrollTop = messagesElement.scrollHeight;
+          });
+        }
+
+        async function loadSession(sessionId) {
+          const response = await fetch("/chat/sessions/" + encodeURIComponent(sessionId));
+          const payload = await response.json();
+
+          if (!response.ok) {
+            throw new Error(payload.error || "Chat-Session konnte nicht geladen werden.");
+          }
+
+          renderSession(payload);
+          return payload;
+        }
+
+        async function postJson(path, body) {
+          const response = await fetch(path, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify(body)
+          });
+          const payload = await response.json();
+
+          if (!response.ok) {
+            throw new Error(payload.error || "Chat-Anfrage fehlgeschlagen.");
+          }
+
+          return payload;
+        }
+
+        async function postJsonStream(path, body, onEvent) {
+          const response = await fetch(path, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify(body)
+          });
+
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || "Streaming-Antwort fehlgeschlagen.");
+          }
+
+          if (!response.body) {
+            throw new Error("Der Browser hat keinen Streaming-Body geliefert.");
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const result = await reader.read();
+
+            if (result.done) {
+              break;
+            }
+
+            buffer += decoder.decode(result.value, { stream: true });
+            const lines = buffer.split("\\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.trim()) {
+                continue;
+              }
+
+              onEvent(JSON.parse(line));
+            }
+          }
+
+          if (buffer.trim()) {
+            onEvent(JSON.parse(buffer));
+          }
+        }
+
+        function openForButton(button) {
+          const payload = getLaunchPayload(button);
+          titleElement.textContent = payload.title;
+          contextTypeInput.value = payload.contextType;
+          postIdInput.value = payload.postId;
+          weekDateInput.value = payload.weekDate;
+          planPathInput.value = payload.planPath;
+          sessionIdInput.value = "";
+          currentSession = {
+            messages: [],
+            revisions: []
+          };
+          messagesElement.innerHTML = '<p class="text-body-secondary mb-0">Noch keine Chat-Nachrichten.</p>';
+          revisionMeta.textContent = "Noch keine strukturierte Revision angefordert.";
+          revisionBox.textContent = "";
+          diffList.innerHTML = '<li class="text-body-secondary">Noch keine Änderungen.</li>';
+          validationList.innerHTML = '<li class="text-body-secondary">Noch keine Validierungsprüfung vorhanden.</li>';
+          reviseButton.disabled = true;
+          applyButton.disabled = true;
+          refreshButton.disabled = true;
+          promptInput.value = "";
+          messageInput.value = "";
+          shouldRefreshPageOnClose = false;
+          setWorkspaceVisible(false);
+          setStatus("Initialen Prompt eingeben, um die Diskussion zu starten.");
+          bootstrapModal.show();
+          window.setTimeout(() => promptInput.focus(), 150);
+        }
+
+        async function runDiscussionStream(path, body, prompt, startedMessage) {
+          let activeSessionId = "";
+          setWorkspaceVisible(true);
+          renderMessages(currentSession || { messages: [] }, {
+            discussion: {
+              prompt,
+              snapshot: ""
+            }
+          });
+          setStatus(startedMessage, "info");
+          messageForm.classList.add("d-none");
+          reviseButton.disabled = true;
+
+          await postJsonStream(path, body, (event) => {
+            if (event.type === "session") {
+              activeSessionId = event.sessionId || activeSessionId;
+              sessionIdInput.value = activeSessionId;
+              return;
+            }
+
+            if (event.type === "delta") {
+              renderMessages(currentSession || { messages: [] }, {
+                discussion: {
+                  prompt,
+                  snapshot: event.snapshot || ""
+                }
+              });
+              return;
+            }
+
+            if (event.type === "done") {
+              renderSession(event.session);
+              messageForm.classList.remove("d-none");
+              setStatus("Antwort eingetroffen.", "success");
+              return;
+            }
+
+            if (event.type === "error") {
+              messageForm.classList.remove("d-none");
+              setStatus(event.error || "Streaming fehlgeschlagen.", "danger");
+            }
+          });
+
+          reviseButton.disabled = !currentSession || currentSession.messages.length === 0;
+        }
+
+        document.querySelectorAll("[data-chat-launch='true']").forEach((button) => {
+          button.addEventListener("click", () => openForButton(button));
+        });
+
+        promptForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          try {
+            await runDiscussionStream("/chat/sessions/stream", {
+              contextType: contextTypeInput.value,
+              planPath: planPathInput.value || undefined,
+              postId: postIdInput.value || undefined,
+              prompt: promptInput.value,
+              weekDate: weekDateInput.value || undefined
+            }, promptInput.value, "Chat-Session wird gestartet ...");
+            promptInput.value = "";
+            messageInput.focus();
+          } catch (error) {
+            setWorkspaceVisible(false);
+            setStatus(error instanceof Error ? error.message : "Chat-Session fehlgeschlagen.", "danger");
+          }
+        });
+
+        messageForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          try {
+            const prompt = messageInput.value;
+            messageInput.value = "";
+            await runDiscussionStream(
+              "/chat/sessions/" + encodeURIComponent(sessionIdInput.value) + "/messages/stream",
+              { text: prompt },
+              prompt,
+              "Nachricht wird gesendet ..."
+            );
+            messageInput.focus();
+          } catch (error) {
+            setStatus(error instanceof Error ? error.message : "Nachricht fehlgeschlagen.", "danger");
+          }
+        });
+
+        reviseButton.addEventListener("click", async () => {
+          try {
+            setStatus("Strukturierte Revision wird angefordert ...", "info");
+            renderMessages(currentSession || { messages: [] }, { revisionPending: true });
+            reviseButton.disabled = true;
+            const session = await postJson(
+              "/chat/sessions/" + encodeURIComponent(sessionIdInput.value) + "/revise",
+              {}
+            );
+            renderSession(session);
+            setStatus(
+              "Revision verarbeitet.",
+              session.revisions.at(-1)?.validationStatus === "valid" ? "success" : "warning"
+            );
+          } catch (error) {
+            renderMessages(currentSession || { messages: [] });
+            setStatus(error instanceof Error ? error.message : "Revision fehlgeschlagen.", "danger");
+          }
+        });
+
+        applyButton.addEventListener("click", async () => {
+          try {
+            setStatus("Revision wird übernommen ...", "info");
+            const session = await postJson(
+              "/chat/sessions/" + encodeURIComponent(sessionIdInput.value) + "/apply",
+              {}
+            );
+            renderSession(session);
+            shouldRefreshPageOnClose = true;
+            setStatus("Revision in die aktive JSON übernommen.", "success");
+          } catch (error) {
+            setStatus(error instanceof Error ? error.message : "Übernahme fehlgeschlagen.", "danger");
+          }
+        });
+
+        refreshButton.addEventListener("click", async () => {
+          try {
+            setStatus("Session wird neu geladen ...", "info");
+            await loadSession(sessionIdInput.value);
+            setStatus("Session aktualisiert.", "success");
+          } catch (error) {
+            setStatus(error instanceof Error ? error.message : "Neuladen fehlgeschlagen.", "danger");
+          }
+        });
+
+        modalElement.addEventListener("hidden.bs.modal", () => {
+          if (shouldRefreshPageOnClose) {
+            window.location.reload();
+          }
+        });
+
+        function labelForKind(kind) {
+          if (kind === "discussion") {
+            return "Diskussion";
+          }
+
+          if (kind === "revision_request") {
+            return "Revisionsanfrage";
+          }
+
+          return "Revisionsergebnis";
+        }
+
+        function labelForRole(role) {
+          if (role === "user") {
+            return "Du";
+          }
+
+          if (role === "assistant") {
+            return "ChatGPT";
+          }
+
+          return "System";
+        }
+
+        function localizeValidationStatus(status) {
+          return status === "valid" ? "gültig" : "ungültig";
+        }
+
+        function renderMarkdown(markdown) {
+          const escaped = escapeHtmlForClient(String(markdown || ""));
+
+          if (!window.marked || typeof window.marked.parse !== "function") {
+            return "<p>" + escaped.replaceAll("\\n", "<br>") + "</p>";
+          }
+
+          return window.marked.parse(escaped, {
+            breaks: true,
+            gfm: true
+          });
+        }
+
+        function escapeHtmlForClient(value) {
+          return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+      })();
     </script>
   </body>
 </html>`
+}
+
+function renderChatModal(): string {
+  return `
+    <div class="modal fade" id="contentChatModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h2 class="modal-title fs-5" id="contentChatModalTitle">JSON mit ChatGPT</h2>
+              <div class="small text-body-secondary" id="contentChatContext">Noch kein Kontext geladen.</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+          </div>
+          <div class="modal-body">
+            <div id="contentChatStatus" class="alert alert-secondary py-2 px-3 mb-3">
+              Initialen Prompt eingeben, um die Diskussion zu starten.
+            </div>
+            <input type="hidden" id="contentChatSessionId" value="">
+            <input type="hidden" id="contentChatContextType" value="">
+            <input type="hidden" id="contentChatPostId" value="">
+            <input type="hidden" id="contentChatWeekDate" value="">
+            <input type="hidden" id="contentChatPlanPath" value="">
+            <form id="contentChatPromptForm" class="mb-4">
+              <label class="form-label" for="contentChatInitialPrompt">Initialer Prompt</label>
+              <textarea class="form-control" id="contentChatInitialPrompt" rows="4" placeholder="Was soll am Inhalt besser werden?"></textarea>
+              <div class="d-flex justify-content-end mt-3">
+                <button class="btn btn-primary" type="submit" data-skip-loading="true">Diskussion starten</button>
+              </div>
+            </form>
+            <div class="row g-4 d-none" id="contentChatWorkspace">
+              <div class="col-lg-7">
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                  <h3 class="h5 mb-0">Diskussion</h3>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" id="contentChatRefreshButton" data-skip-loading="true">Neu laden</button>
+                </div>
+                <div id="contentChatMessages" class="mb-3">
+                  <p class="text-body-secondary mb-0">Noch keine Chat-Nachrichten.</p>
+                </div>
+                <form id="contentChatMessageForm" class="d-none">
+                  <label class="form-label" for="contentChatMessageInput">Nachricht</label>
+                  <textarea class="form-control" id="contentChatMessageInput" rows="4" placeholder="Weiter nachfragen oder konkrete Änderungswünsche formulieren"></textarea>
+                  <div class="d-flex justify-content-between mt-3">
+                    <button class="btn btn-outline-primary" id="contentChatReviseButton" type="button" data-skip-loading="true">JSON überarbeiten lassen</button>
+                    <button class="btn btn-primary" type="submit" data-skip-loading="true">Nachricht senden</button>
+                  </div>
+                </form>
+              </div>
+              <div class="col-lg-5">
+                <h3 class="h5 mb-2">Letzte Revision</h3>
+                <p class="small text-body-secondary" id="contentChatRevisionMeta">Noch keine strukturierte Revision angefordert.</p>
+                <pre class="chat-json-panel" id="contentChatRevisionJson"></pre>
+                <div class="d-flex gap-2 mt-3 mb-3">
+                  <button class="btn btn-success" id="contentChatApplyButton" type="button" data-skip-loading="true" disabled>Revision übernehmen</button>
+                </div>
+                <h4 class="h6">Änderungsübersicht</h4>
+                <ul class="chat-diff-list" id="contentChatDiffList">
+                  <li class="text-body-secondary">Noch keine Änderungen.</li>
+                </ul>
+                <h4 class="h6 mt-3">Validierungsprüfung</h4>
+                <ul id="contentChatValidationList">
+                  <li class="text-body-secondary">Noch keine Validierungsprüfung vorhanden.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
 }
 
 function renderLayoutHeader(title: string, subtitle: string): string {
@@ -945,6 +1826,32 @@ function renderLayoutHeader(title: string, subtitle: string): string {
       </div>
     </div>
   `
+}
+
+function respondJson(
+  response: ServerResponse,
+  statusCode: number,
+  payload: unknown
+): void {
+  response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" })
+  response.end(JSON.stringify(payload))
+}
+
+function serializeChatSession(
+  session: Awaited<ReturnType<typeof loadContentChatSession>>
+): Record<string, unknown> {
+  return {
+    contextRef: session.contextRef,
+    contextType: session.contextType,
+    createdAt: session.createdAt,
+    id: session.id,
+    lastRevisionJson: session.lastRevisionJson,
+    messages: session.messages,
+    revisions: session.revisions,
+    schemaName: session.schemaName,
+    sourceJsonPath: session.sourceJsonPath,
+    updatedAt: session.updatedAt
+  }
 }
 
 function renderWeekPostCard(
@@ -1985,6 +2892,19 @@ async function serveLocalFile(
   response.end(file)
 }
 
+async function serveStaticFile(
+  response: ServerResponse,
+  filePath: string
+): Promise<void> {
+  const file = await readFile(filePath)
+  response.writeHead(200, {
+    "cache-control": "no-store, max-age=0",
+    pragma: "no-cache",
+    "content-type": resolveMimeType(extname(filePath))
+  })
+  response.end(file)
+}
+
 function resolveMimeType(extension: string): string {
   if (extension === ".png") {
     return "image/png"
@@ -2000,6 +2920,10 @@ function resolveMimeType(extension: string): string {
 
   if (extension === ".json") {
     return "application/json; charset=utf-8"
+  }
+
+  if (extension === ".js") {
+    return "text/javascript; charset=utf-8"
   }
 
   if (extension === ".mp4") {

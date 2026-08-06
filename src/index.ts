@@ -29,6 +29,7 @@ import {
 } from "./services/image/image-generator.js"
 import { createFluxImageClient } from "./services/image/flux-client.js"
 import { createLiturgicalSourceClient } from "./services/liturgy/liturgical-source.js"
+import { createOpenAIJsonChatClient } from "./services/openai/json-chat-client.js"
 import { createOpenAIContentClient } from "./services/openai/openai-client.js"
 import {
   createPlaywrightHtmlRenderClient,
@@ -37,7 +38,15 @@ import {
   renderPostById,
   renderWeekByDate
 } from "./services/render/index.js"
-import { createReviewServer } from "./services/review/index.js"
+import {
+  appendDiscussionMessage,
+  applyContentChatRevision,
+  createReviewServer,
+  loadContentChatSession,
+  requestContentChatRevision,
+  startContentChatSession,
+  type ContentChatSessionInput
+} from "./services/review/index.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -55,6 +64,7 @@ const contentCommand = program.command("content").description("Content commands"
 const imageCommand = program.command("image").description("Image commands")
 const qaCommand = program.command("qa").description("Quality assurance checks")
 const renderCommand = program.command("render").description("Render commands")
+const chatCommand = program.command("chat").description("Discuss and revise JSON content")
 const reviewCommand = program.command("review").description("Local review UI")
 
 calendarCommand
@@ -665,6 +675,145 @@ renderCommand
     }
   )
 
+chatCommand
+  .command("start")
+  .option("--post-id <postId>", "Open a chat session for one generated content.json")
+  .option("--date <date>", "Open a chat session for one calendar week")
+  .option("--plan <path>", "Open a chat session for the full editorial plan JSON")
+  .option("--prompt <prompt>", "Optional initial prompt to send immediately")
+  .option("--model <name>", "OpenAI model to use", runtimeConfig.openAiModel)
+  .description("Create a persistent JSON discussion session")
+  .action(
+    async (options: {
+      date?: string
+      model: string
+      plan?: string
+      postId?: string
+      prompt?: string
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const sessionInput = resolveChatSessionInput(options)
+        const result = await startContentChatSession(
+          sessionInput,
+          {
+            initialPrompt: options.prompt,
+            model: options.model
+          },
+          {
+            calendar,
+            modelClient:
+              options.prompt && runtimeConfig.openAiApiKey !== ""
+                ? createOpenAIJsonChatClient(runtimeConfig.openAiApiKey)
+                : undefined,
+            runtimeConfig
+          }
+        )
+
+        printChatSessionSummary(result.session)
+
+        if (options.prompt) {
+          printLatestAssistantMessage(result.session)
+        }
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
+chatCommand
+  .command("message")
+  .requiredOption("--session-id <sessionId>", "Persistent chat session identifier")
+  .requiredOption("--text <text>", "Message to send to ChatGPT")
+  .option("--model <name>", "OpenAI model to use", runtimeConfig.openAiModel)
+  .description("Continue a JSON discussion session")
+  .action(async (options: { model: string; sessionId: string; text: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const result = await appendDiscussionMessage(
+        options.sessionId,
+        options.text,
+        { model: options.model },
+        {
+          calendar,
+          modelClient: createRequiredJsonChatClient(),
+          runtimeConfig
+        }
+      )
+
+      printChatSessionSummary(result.session)
+      printLatestAssistantMessage(result.session)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+chatCommand
+  .command("revise")
+  .requiredOption("--session-id <sessionId>", "Persistent chat session identifier")
+  .option("--model <name>", "OpenAI model to use", runtimeConfig.openAiModel)
+  .description("Request a schema-valid JSON revision for the current session")
+  .action(async (options: { model: string; sessionId: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const result = await requestContentChatRevision(
+        options.sessionId,
+        { model: options.model },
+        {
+          calendar,
+          modelClient: createRequiredJsonChatClient(),
+          runtimeConfig
+        }
+      )
+
+      printLatestRevision(result.session)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+chatCommand
+  .command("apply")
+  .requiredOption("--session-id <sessionId>", "Persistent chat session identifier")
+  .description("Apply the latest valid revision back to the source JSON")
+  .action(async (options: { sessionId: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const session = await applyContentChatRevision(options.sessionId, {
+        calendar,
+        runtimeConfig
+      })
+
+      printChatSessionSummary(session)
+      console.log("Latest valid revision was applied to the source JSON.")
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+chatCommand
+  .command("show")
+  .requiredOption("--session-id <sessionId>", "Persistent chat session identifier")
+  .description("Show the current state of a chat session")
+  .action(async (options: { sessionId: string }) => {
+    try {
+      const session = await loadContentChatSession(
+        options.sessionId,
+        defaultOutputRoot
+      )
+
+      printChatSessionSummary(session)
+      printLatestAssistantMessage(session)
+      printLatestRevision(session)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
 reviewCommand
   .command("serve")
   .option("--host <host>", "Interface to bind the local review server to", "127.0.0.1")
@@ -685,6 +834,10 @@ reviewCommand
                 generatePath: runtimeConfig.fluxApiGeneratePath
               }),
         liturgicalSourceClient,
+        chatModelClient:
+          runtimeConfig.openAiApiKey === ""
+            ? undefined
+            : createOpenAIJsonChatClient(runtimeConfig.openAiApiKey),
         modelClient:
           runtimeConfig.openAiApiKey === ""
             ? undefined
@@ -856,6 +1009,113 @@ function printImageGenerationResult(result: {
     console.log(
       `- ${job.aspectRatio}: failed -> ${job.error ?? "unknown error"} (raw: ${job.rawResponsePath})`
     )
+  }
+}
+
+function resolveChatSessionInput(options: {
+  date?: string
+  plan?: string
+  postId?: string
+}): ContentChatSessionInput {
+  const providedTargets = [options.postId, options.date, options.plan].filter(
+    (value): value is string => typeof value === "string" && value.length > 0
+  )
+
+  if (providedTargets.length !== 1) {
+    throw new CalendarValidationError(
+      "Provide exactly one of --post-id, --date, or --plan."
+    )
+  }
+
+  if (options.postId) {
+    return { contextType: "post", postId: options.postId }
+  }
+
+  if (options.date) {
+    return { contextType: "week", weekDate: options.date }
+  }
+
+  return { contextType: "plan", planPath: options.plan }
+}
+
+function createRequiredJsonChatClient() {
+  if (runtimeConfig.openAiApiKey === "") {
+    throw new CalendarValidationError(
+      "OPENAI_API_KEY is required for chat discussion and revision commands."
+    )
+  }
+
+  return createOpenAIJsonChatClient(runtimeConfig.openAiApiKey)
+}
+
+function printChatSessionSummary(session: {
+  contextRef: string
+  contextType: string
+  createdAt: string
+  id: string
+  messages: Array<unknown>
+  revisions: Array<unknown>
+  schemaName: string
+  sourceJsonPath: string | null
+}): void {
+  console.log(`session: ${session.id}`)
+  console.log(`context: ${session.contextType} (${session.contextRef})`)
+  console.log(`schema: ${session.schemaName}`)
+  console.log(`source: ${session.sourceJsonPath ?? "in-memory only"}`)
+  console.log(`created: ${session.createdAt}`)
+  console.log(`messages: ${session.messages.length}`)
+  console.log(`revisions: ${session.revisions.length}`)
+}
+
+function printLatestAssistantMessage(session: {
+  messages: Array<{ content: string; role: string }>
+}): void {
+  const latestAssistant = [...session.messages]
+    .reverse()
+    .find((message) => message.role === "assistant")
+
+  if (!latestAssistant) {
+    return
+  }
+
+  console.log("")
+  console.log(latestAssistant.content)
+}
+
+function printLatestRevision(session: {
+  revisions: Array<{
+    appliedAt: string | null
+    diff: string[]
+    id: string
+    model: string
+    validationErrors: string[]
+    validationStatus: "invalid" | "valid"
+  }>
+}): void {
+  const latestRevision = session.revisions.at(-1)
+
+  if (!latestRevision) {
+    console.log("No revision has been requested yet.")
+    return
+  }
+
+  console.log(`revision: ${latestRevision.id}`)
+  console.log(`model: ${latestRevision.model}`)
+  console.log(`status: ${latestRevision.validationStatus}`)
+  console.log(`applied: ${latestRevision.appliedAt ?? "not yet"}`)
+
+  if (latestRevision.validationErrors.length > 0) {
+    console.log("validation errors:")
+
+    for (const error of latestRevision.validationErrors) {
+      console.log(`- ${error}`)
+    }
+  }
+
+  console.log("diff:")
+
+  for (const line of latestRevision.diff) {
+    console.log(`- ${line}`)
   }
 }
 
