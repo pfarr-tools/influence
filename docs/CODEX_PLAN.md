@@ -469,7 +469,269 @@ GET /chat/sessions/:id
 - Verlauf, Revisionen und Diff sind nach einem Neuladen der lokalen UI weiter verfügbar.
 - Tests decken mindestens Session-Persistenz, Schema-Validierung, Revisionsfehler und den Übernahme-Workflow ab.
 
-# Phase 11 – Publishing, Scheduling und manueller Facebook-Assistent
+# Phase 11 – Server-renderte Review-Oberfläche modularisieren
+
+## Ziel
+
+Die bisher kleine lokale Review-Oberfläche ist zu einer eigenständigen App-Oberfläche gewachsen. Die aktuelle Implementierung in einer großen `review-server.ts` soll deshalb nicht durch ein Frontend-Framework ersetzt, sondern als server-renderte Anwendung architektonisch sauber modularisiert werden.
+
+Ziele dieser Phase:
+
+- klare Trennung von HTTP-Routing, UI-Komposition, Client-Skripten, Styles und Review-Anwendungslogik
+- bessere Testbarkeit für UI-nahe Logik und Endpunkte
+- geringere Kopplung zwischen Seitenstruktur und interaktiven Funktionen
+- explizite JSON-Endpunkte für interaktive UI-Teile
+- Erhalt der bestehenden serverseitigen Renderstrategie ohne Vue, React oder SPA-Migration
+
+## Ausgangsproblem
+
+Die Review-Oberfläche enthält inzwischen:
+
+- Wochenansicht
+- Beitragsdetail mit Workflow-Steuerung
+- Bearbeitungsformulare
+- Preview- und Medienbereiche
+- Chat-Modal mit Streaming und Revisionsübernahme
+- Asset-Upload mit Cropping
+- Voiceover- und Reel-bezogene Interaktionen
+
+Diese Funktionen dürfen nicht länger in einer einzigen Datei dieselben Verantwortlichkeiten mischen:
+
+- Routing
+- Request-Parsing
+- Response-Erzeugung
+- HTML-Rendering
+- CSS-Auslieferung
+- Browserlogik
+- implizite API-Verträge
+
+## Zielarchitektur
+
+Behalte eine server-renderte Architektur bei, führe aber klare Modulgrenzen ein.
+
+Empfohlene Struktur:
+
+```text
+src/services/review/
+  server/
+    review-server.ts
+    routes/
+      page-routes.ts
+      action-routes.ts
+      api-routes.ts
+    responses/
+      html-response.ts
+      json-response.ts
+      redirect-response.ts
+    request/
+      parse-form-body.ts
+      parse-json-body.ts
+  ui/
+    layout/
+      document.ts
+      header.ts
+      flash.ts
+    pages/
+      week-page.ts
+      post-page.ts
+    components/
+      workflow-badges.ts
+      action-forms.ts
+      preview-gallery.ts
+      asset-list.ts
+      chat-modal.ts
+      asset-upload-modal.ts
+      voiceover-modal.ts
+      reel-modal.ts
+    client/
+      page-loading.ts
+      chat-modal.ts
+      asset-upload.ts
+      voiceover-recorder.ts
+      preview-modal.ts
+    styles/
+      review.css
+  review-service.ts
+  content-chat-service.ts
+```
+
+Die exakten Dateinamen dürfen angepasst werden. Wichtig ist die Trennung der Schichten, nicht die wörtliche Verzeichnisstruktur.
+
+## Architekturprinzipien
+
+### 1. Dünner HTTP-Einstiegspunkt
+
+`review-server.ts` soll nur noch:
+
+- Dependencies entgegennehmen
+- Requests an eine Routing-Schicht delegieren
+- Fehler zentral behandeln
+
+Es soll nicht mehr seitenlange HTML-Strings und Browserlogik direkt enthalten.
+
+### 2. Getrennte Route-Typen
+
+Teile die Endpunkte mindestens in drei Gruppen:
+
+- Page-Routes für servergerenderte HTML-Seiten
+- Action-Routes für klassische POST-Aktionen mit Redirect
+- API-Routes für JSON- oder Streaming-Endpunkte interaktiver UI-Module
+
+Beispiele:
+
+- `GET /weeks/:date` bleibt eine Page-Route
+- `POST /posts/:id/approve` bleibt eine Action-Route
+- `POST /chat/sessions/:id/messages/stream` ist eine API-Route
+- Asset-Uploads können als API-Route modelliert werden, auch wenn sie von einer servergerenderten Seite aus aufgerufen werden
+
+### 3. UI als modulare serverseitige View-Schicht
+
+HTML-Erzeugung bleibt serverseitig, wird aber in:
+
+- Page-Module
+- wiederverwendbare Komponenten
+- Layout-Helfer
+
+zerlegt.
+
+Regeln:
+
+- Eine Page-Funktion komponiert nur noch Komponenten und Page-Daten.
+- Komponenten sollen keine Request-Objekte oder Server-Dependencies kennen.
+- Komponenten erhalten vorbereitete, einfache View-Model-Daten.
+
+### 4. Explizite View-Model-Schicht
+
+Zwischen Review-Services und HTML-Rendering soll eine kleine View-Model-Schicht eingeführt werden.
+
+Sie bereitet Daten auf für:
+
+- Labels
+- Status-Badges
+- Aktionsverfügbarkeit
+- Preview-Listen
+- QA-Zusammenfassungen
+- Chat- und Medien-Metadaten
+
+Dadurch bleibt Fachlogik aus Template-Funktionen heraus.
+
+### 5. Client-Skripte als eigenständige Module
+
+Inline-Skripte sollen in getrennte Client-Module verschoben werden.
+
+Mindestens diese Bereiche sind getrennt zu kapseln:
+
+- globales Loading-Overlay
+- Chat-Modal
+- Asset-Upload und Cropper
+- Voiceover-Recorder
+- Preview-Modal
+
+Regeln:
+
+- Client-Module initialisieren sich über `data-*`-Attribute oder klar benannte DOM-Root-Elemente.
+- Sie lesen keine serverseitigen Werte aus zusammengebauten JavaScript-Strings, wenn strukturierte JSON-Daten oder `data-*`-Attribute ausreichen.
+- Jede Interaktion verwendet explizite API-Endpunkte statt impliziter Seiteneffekte.
+
+### 6. Styles und Assets entkoppeln
+
+Inline-CSS im Dokument-Renderer soll in eine eigene statische CSS-Datei ausgelagert werden.
+
+Anforderungen:
+
+- Bootstrap bleibt erhalten.
+- projektspezifische Styles liegen in einer eigenen Review-CSS-Datei
+- Vendor-Dateien und eigene Assets werden über klar benannte statische Pfade ausgeliefert
+
+### 7. API-Verträge sichtbar machen
+
+Für alle interaktiven Module sollen Request- und Response-Formate explizit benannt und dokumentiert werden.
+
+Mindestens für:
+
+- Chat-Session laden
+- Chat-Nachricht senden
+- Chat-Streaming
+- Revision anfordern
+- Revision übernehmen
+- Asset hochladen
+- Voiceover speichern
+
+Wo sinnvoll, sollen Zod-Schemas oder gleichwertige Validatoren verwendet werden.
+
+## Umsetzungsreihenfolge
+
+Die Phase soll inkrementell umgesetzt werden. Nach jedem Teilabschnitt muss die bestehende UI weiter benutzbar bleiben.
+
+### Schritt 1 – Bestandsaufnahme und Schnittgrenzen
+
+- Verantwortlichkeiten der bisherigen `review-server.ts` katalogisieren
+- Seiten, Komponenten und Client-Features identifizieren
+- Zielgrenzen zwischen Review-Service, View-Models, Pages und Client-Modulen festlegen
+- bestehende Endpunkte in Page-, Action- und API-Routes einordnen
+
+### Schritt 2 – HTTP- und Response-Schicht extrahieren
+
+- Helper für HTML-, JSON- und Redirect-Responses extrahieren
+- Form- und JSON-Parsing in eigene Request-Module verschieben
+- Routing in kleinere, testbare Handler aufteilen
+
+### Schritt 3 – View-Schicht modularisieren
+
+- Document-Layout, Header, Flash-Messages und wiederverwendbare UI-Bausteine auslagern
+- Wochen- und Beitragsseite in eigene Page-Module aufteilen
+- komplexe Teilbereiche wie Workflow, QA, Preview, Assets und Reel-Status als Komponenten kapseln
+
+### Schritt 4 – Client-Interaktionen aus Inline-Skripten lösen
+
+- Chat-Modal in ein Client-Modul überführen
+- Asset-Upload inklusive Cropping in ein Client-Modul überführen
+- Voiceover- und Preview-Interaktionen in getrennte Module verschieben
+- globale Seitenskripte vom Dokument-Renderer trennen
+
+### Schritt 5 – API-Verträge härten
+
+- JSON- und Streaming-Endpunkte für interaktive Module sauber definieren
+- Request-Validierung vereinheitlichen
+- Fehlerobjekte konsistent machen
+- DOM-Initialisierung mit stabilen `data-*`-Verträgen absichern
+
+### Schritt 6 – Tests und Dokumentation ergänzen
+
+- Unit-Tests für View-Model-Helfer und Route-Helfer
+- Integrations-Tests für zentrale Review-Endpunkte
+- UI-nahe Tests für Client-Module, soweit ohne Browser-E2E sinnvoll
+- End-User-Dokumentation für die Review-Oberfläche und ihre erweiterten Interaktionen aktualisieren
+
+## Nicht-Ziele
+
+- keine Einführung von Vue, React oder einem anderen SPA-Framework
+- keine vollständige Neugestaltung der Review-Oberfläche
+- keine Änderung der fachlichen Review-Workflows nur aus Architekturgründen
+- keine Umstellung auf clientseitiges Routing
+- kein Build-System-Zwang allein für die Modultrennung, solange einfache statische Auslieferung ausreicht
+
+## Akzeptanzkriterien
+
+- `review-server.ts` ist nur noch ein dünner Einstiegspunkt und enthält keine umfangreichen HTML- oder Client-Skript-Blöcke mehr.
+- HTML-Pages, UI-Komponenten, Client-Module und Response-Helfer liegen in getrennten Modulen.
+- Wochen- und Beitragsseite lassen sich unabhängig voneinander lesen und weiterentwickeln.
+- Chat, Asset-Upload und Voiceover verwenden explizite API-Verträge statt eng verkoppelter Inline-Logik.
+- Projektspezifische Styles werden nicht mehr ausschließlich inline im Dokument-Renderer definiert.
+- Tests decken mindestens Routing-Helfer, View-Model-Aufbereitung und ausgewählte API-Endpunkte ab.
+- Die lokale UI bleibt während der Refaktorierung nach jedem Zwischenstand benutzbar.
+- Alle bis dahin implementierten Workflow-Schritte bleiben in der UI sichtbar und funktional.
+
+## Changelog dieser Phase
+
+Dokumentiere nach der Umsetzung mindestens:
+
+- welche Module aus `review-server.ts` extrahiert wurden
+- welche API-Verträge neu oder klarer definiert wurden
+- welche Inline-Skripte und Styles ausgelagert wurden
+- welche Tests ergänzt oder angepasst wurden
+
+# Phase 12 – Publishing, Scheduling und manueller Facebook-Assistent
 
 ## Ziel
 
@@ -798,7 +1060,7 @@ npm run dev -- publish mark-published --post-id post-0007 --platform facebook
 - Umgehung von Plattformrichtlinien oder Berechtigungsprüfungen
 - interaktive Instagram-Story-Sticker
 
-# Phase 12 – Tageslosungen importieren und als Story veröffentlichen
+# Phase 13 – Tageslosungen importieren und als Story veröffentlichen
 
 ## Ziel
 
@@ -904,7 +1166,7 @@ npm run dev -- losungen schedule-story --date 2026-08-10 --at 07:00
 - Zielplattform zunächst Instagram Story.
 - Optional später Facebook-Seiten-Story, falls ein entsprechender Kanal verwendet wird.
 - Das persönliche Facebook-Profil wird nicht automatisiert beliefert.
-- Veröffentlichung läuft über Phase 11.
+- Veröffentlichung läuft über Phase 12.
 
 ## Akzeptanzkriterien
 
@@ -914,7 +1176,7 @@ npm run dev -- losungen schedule-story --date 2026-08-10 --at 07:00
 - Fehlender Jahrestag verhindert die automatische Veröffentlichung und erzeugt eine sichtbare Warnung.
 - Tests verwenden kleine synthetische XML-Dateien ohne reale Losungstexte.
 
-# Phase 13 – Neueste Predigt erkennen und plattformübergreifend teilen
+# Phase 14 – Neueste Predigt erkennen und plattformübergreifend teilen
 
 ## Ziel
 
@@ -1027,7 +1289,7 @@ Für jede Plattform getrennte Längen-, Link- und Medienregeln anwenden.
 
 ## Optionaler Trigger
 
-Ein Scheduler kann den Feed regelmäßig abrufen, zum Beispiel stündlich oder täglich. Er darf jedoch nur einen Entwurf erzeugen. Veröffentlichung erfordert weiterhin die in Phase 11 festgelegte Freigabe.
+Ein Scheduler kann den Feed regelmäßig abrufen, zum Beispiel stündlich oder täglich. Er darf jedoch nur einen Entwurf erzeugen. Veröffentlichung erfordert weiterhin die in Phase 12 festgelegte Freigabe.
 
 ## Akzeptanzkriterien
 
@@ -1039,7 +1301,7 @@ Ein Scheduler kann den Feed regelmäßig abrufen, zum Beispiel stündlich oder t
 - Fehlende Feedfelder werden nicht erfunden.
 - Tests verwenden lokale RSS-Fixtures und keine Live-Abhängigkeit.
 
-# Phase 14 – Morgen- und Abendgebete als tägliche Stories
+# Phase 15 – Morgen- und Abendgebete als tägliche Stories
 
 ## Ziel
 
@@ -1175,7 +1437,7 @@ Optionen:
 ## Veröffentlichung
 
 - primär Instagram Story
-- Phase 11 übernimmt Planung und Veröffentlichung
+- Phase 12 übernimmt Planung und Veröffentlichung
 - bei aktuellen Nachrichten sollte standardmäßig eine manuelle Freigabe erforderlich sein
 - vollautomatische Veröffentlichung ist nur für Gebete ohne News-Kontext als spätere, explizit aktivierte Option denkbar
 
