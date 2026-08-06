@@ -1,0 +1,251 @@
+import { z } from "zod"
+
+const workflowSchema = z.object({
+  contentGenerated: z.boolean(),
+  exportGenerated: z.boolean(),
+  imagesGenerated: z.boolean(),
+  qaReadyForApproval: z.boolean(),
+  qaRun: z.boolean(),
+  reelImagesGenerated: z.boolean(),
+  reelRendered: z.boolean(),
+  rendered: z.boolean(),
+  scaffolded: z.boolean()
+})
+
+const reviewActionSchema = z.enum([
+  "approve",
+  "edit",
+  "export",
+  "generate",
+  "images",
+  "images-reel",
+  "qa",
+  "render",
+  "render-reel",
+  "scaffold"
+])
+
+const weekActionSchema = z.enum([
+  "generate",
+  "images",
+  "images-reel",
+  "qa",
+  "render",
+  "render-reel",
+  "scaffold"
+])
+
+const assetKindSchema = z.enum([
+  "background-1.91x1",
+  "background-4x5",
+  "background-9x16",
+  "reel-audio",
+  "reel-shot"
+])
+
+const reviewActionButtonSchema = z.object({
+  action: reviewActionSchema,
+  disabled: z.boolean(),
+  label: z.string(),
+  method: z.enum(["GET", "POST"]),
+  primary: z.boolean()
+})
+
+const weekActionButtonSchema = z.object({
+  action: weekActionSchema,
+  disabled: z.boolean(),
+  label: z.string(),
+  method: z.enum(["POST"]),
+  primary: z.boolean()
+})
+
+const postCardSchema = z.object({
+  actionHref: z.string(),
+  badges: z.array(z.string()),
+  date: z.string(),
+  postId: z.string(),
+  rubric: z.string(),
+  status: z.string(),
+  theme: z.string(),
+  weekday: z.string(),
+  workflow: workflowSchema
+})
+
+const weekSummarySchema = z.object({
+  endDate: z.string(),
+  focus: z.string(),
+  id: z.string(),
+  postCount: z.number(),
+  posts: z.array(postCardSchema),
+  startDate: z.string()
+})
+
+const noticeSchema = z.object({
+  kind: z.enum(["error", "notice"]),
+  text: z.string()
+})
+
+const weekOverviewResponseSchema = z.object({
+  defaultWeekDate: z.string(),
+  notices: z.array(noticeSchema),
+  selectedWeek: weekSummarySchema,
+  weekActions: z.array(weekActionButtonSchema),
+  weekOptions: z.array(
+    z.object({
+      endDate: z.string(),
+      id: z.string(),
+      label: z.string(),
+      startDate: z.string()
+    })
+  )
+})
+
+const previewItemSchema = z.object({
+  href: z.string(),
+  label: z.string()
+})
+
+const assetItemSchema = z.object({
+  href: z.string(),
+  kind: assetKindSchema,
+  label: z.string()
+})
+
+const postDetailResponseSchema = z.object({
+  assets: z.array(assetItemSchema),
+  chatContext: z.object({
+    contextType: z.literal("post"),
+    postId: z.string()
+  }),
+  content: z.object({
+    altText: z.string(),
+    audience: z.string(),
+    concept: z.string(),
+    facebookHeadline: z.string(),
+    facebookText: z.string(),
+    fluxPrompt: z.string(),
+    instagramCaption: z.string(),
+    mainMessage: z.string(),
+    mastodonText: z.string(),
+    reelHook: z.string(),
+    reelScript: z.string(),
+    storySlides: z.array(z.string()),
+    title: z.string()
+  }),
+  exportDownloadHref: z.string(),
+  notices: z.array(noticeSchema),
+  post: z.object({
+    date: z.string(),
+    postId: z.string(),
+    rubric: z.string(),
+    status: z.string(),
+    theme: z.string(),
+    weekday: z.string()
+  }),
+  previewGroups: z.array(
+    z.object({
+      items: z.array(previewItemSchema),
+      title: z.string()
+    })
+  ),
+  qaSummary: z.object({
+    errors: z.array(z.string()),
+    readyForApproval: z.boolean(),
+    warnings: z.array(z.string())
+  }),
+  reel: z.object({
+    audioAssetHref: z.string().nullable(),
+    audioLabel: z.string(),
+    previewHref: z.string().nullable(),
+    subtitleFontName: z.string(),
+    subtitleFontsDir: z.string()
+  }),
+  viewBackHref: z.string(),
+  workflow: workflowSchema,
+  workflowActions: z.array(reviewActionButtonSchema)
+})
+
+const chatMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["assistant", "system", "user"]),
+  text: z.string()
+})
+
+const chatRevisionSchema = z.object({
+  instructions: z.string(),
+  summary: z.string()
+})
+
+const chatSessionResponseSchema = z.object({
+  contextLabel: z.string(),
+  id: z.string(),
+  messages: z.array(chatMessageSchema),
+  revision: chatRevisionSchema.nullable(),
+  status: z.string()
+})
+
+export const postEditRequestSchema = z.object({
+  altText: z.string(),
+  audience: z.string(),
+  concept: z.string(),
+  facebookHeadline: z.string(),
+  facebookText: z.string(),
+  fluxPrompt: z.string(),
+  instagramCaption: z.string(),
+  mainMessage: z.string(),
+  mastodonText: z.string(),
+  reelHook: z.string(),
+  reelScript: z.string(),
+  storySlides: z.array(z.string()),
+  title: z.string()
+})
+
+export const chatSessionCreateRequestSchema = z.object({
+  contextType: z.enum(["plan", "post", "week"]),
+  model: z.string().optional(),
+  planPath: z.string().optional(),
+  postId: z.string().optional(),
+  prompt: z.string().optional(),
+  weekDate: z.string().optional()
+})
+
+export const chatMessageRequestSchema = z.object({
+  model: z.string().optional(),
+  text: z.string().min(1)
+})
+
+export const chatRevisionRequestSchema = z.object({
+  model: z.string().optional()
+})
+
+export const voiceoverUploadResponseSchema = z.object({
+  notice: z.string(),
+  storedPath: z.string()
+})
+
+export const assetUploadResponseSchema = z.object({
+  notice: z.string(),
+  storedPath: z.string()
+})
+
+export const noticeResponseSchema = z.object({
+  notice: z.string()
+})
+
+export const reviewActionSchemaPublic = reviewActionSchema
+export const weekActionSchemaPublic = weekActionSchema
+export const assetKindSchemaPublic = assetKindSchema
+export const workflowSchemaPublic = workflowSchema
+export const weekOverviewResponseSchemaPublic = weekOverviewResponseSchema
+export const postDetailResponseSchemaPublic = postDetailResponseSchema
+export const chatSessionResponseSchemaPublic = chatSessionResponseSchema
+
+export type AssetKindApi = z.infer<typeof assetKindSchema>
+export type ChatSessionCreateRequest = z.infer<typeof chatSessionCreateRequestSchema>
+export type ChatSessionResponse = z.infer<typeof chatSessionResponseSchema>
+export type PostDetailResponse = z.infer<typeof postDetailResponseSchema>
+export type PostEditRequest = z.infer<typeof postEditRequestSchema>
+export type ReviewActionApi = z.infer<typeof reviewActionSchema>
+export type ReviewActionButton = z.infer<typeof reviewActionButtonSchema>
+export type WeekActionApi = z.infer<typeof weekActionSchema>
+export type WeekOverviewResponse = z.infer<typeof weekOverviewResponseSchema>

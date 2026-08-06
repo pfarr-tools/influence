@@ -1,0 +1,18 @@
+@import "bootstrap/scss/bootstrap";
+@import "./bootstrap-overrides.scss";
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(31, 122, 104, 0.14), transparent 35%),
+    linear-gradient(180deg, #fffdf8 0%, var(--pm-paper) 100%);
+  color: var(--pm-ink);
+  min-height: 100vh;
+}
+
+.review-app {
+  min-height: 100vh;
+}
+
+.card {
+  border: 0;
+}

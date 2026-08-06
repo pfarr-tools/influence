@@ -1,0 +1,12 @@
+:root {
+  --pm-accent: #1f7a68;
+  --pm-ink: #17333d;
+  --pm-paper: #f7f3ea;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--pm-accent);
+  --bs-btn-border-color: var(--pm-accent);
+  --bs-btn-hover-bg: #15594c;
+  --bs-btn-hover-border-color: #15594c;
+}

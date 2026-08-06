@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest"
+
+import { buildWeekOverviewResponse } from "../src/services/review/server/view-models/review-view-models.js"
+
+describe("review view models", () => {
+  it("maps week overview data and keeps the configured action order", () => {
+    const response = buildWeekOverviewResponse({
+      selectedWeek: {
+        endDate: "2026-08-16",
+        focus: "Sommerreihe",
+        id: "week-01",
+        postCount: 1,
+        posts: [
+          {
+            contentExists: false,
+            date: "2026-08-10",
+            hasAssets: false,
+            hasRenderedPreviews: false,
+            isApproved: false,
+            postId: "post-0001",
+            qaReadyForApproval: false,
+            rubric: "Impuls",
+            status: "in Arbeit",
+            theme: "Ankommen",
+            weekday: "Montag",
+            workflow: {
+              contentGenerated: false,
+              exportGenerated: false,
+              imagesGenerated: false,
+              qaReadyForApproval: false,
+              qaRun: false,
+              reelImagesGenerated: false,
+              reelRendered: false,
+              rendered: false,
+              scaffolded: true
+            }
+          }
+        ],
+        startDate: "2026-08-10"
+      },
+      weekOptions: [
+        {
+          endDate: "2026-08-16",
+          focus: "Sommerreihe",
+          id: "week-01",
+          postCount: 1,
+          posts: [],
+          startDate: "2026-08-10"
+        }
+      ]
+    })
+
+    expect(response.weekActions.map((action) => action.action)).toEqual([
+      "scaffold",
+      "generate",
+      "qa",
+      "images",
+      "images-reel",
+      "render",
+      "render-reel"
+    ])
+    expect(response.selectedWeek.posts[0]?.badges).toContain("QA offen")
+    expect(response.weekOptions[0]?.label).toBe("2026-08-10 bis 2026-08-16")
+  })
+})
