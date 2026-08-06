@@ -549,7 +549,7 @@ function renderWeekPage(
   error: string | null
 ): string {
   return renderDocument(
-    `${overview.selectedWeek.id} · pfarr.media director`,
+    `${overview.selectedWeek.id} · Influence`,
     `
       ${renderLayoutHeader("Wochenansicht", "Lokale Workflow-Oberfläche für Planung, Generierung, Prüfung und Export")}
       <div class="container py-4">
@@ -625,7 +625,7 @@ function renderPostPage(
   )
 
   return renderDocument(
-    `${detail.post.id} · pfarr.media director`,
+    `${detail.post.id} · Influence`,
     `
       ${renderLayoutHeader("Beitragsreview", `${escapeHtml(detail.post.id)} · ${escapeHtml(detail.post.rubrik)}`)}
       <div class="container py-4">
@@ -833,8 +833,7 @@ function renderLayoutHeader(title: string, subtitle: string): string {
   return `
     <div class="app-hero py-4 mb-4">
       <div class="container">
-        <p class="text-uppercase small mb-1">Pfarr.Media</p>
-        <h1 class="display-6 mb-1">pfarr.media director</h1>
+        <h1 class="display-6 mb-1">Influence</h1>
         <p class="fw-semibold mb-1">${escapeHtml(title)}</p>
         <p class="mb-0 text-body-secondary">${escapeHtml(subtitle)}</p>
       </div>

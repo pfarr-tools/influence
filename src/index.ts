@@ -46,7 +46,7 @@ const defaultOutputRoot = runtimeConfig.outputDir
 const liturgicalSourceClient = createLiturgicalSourceClient()
 
 program
-  .name("director")
+  .name("influence")
   .description("CLI for calendar validation and lookup")
   .showHelpAfterError()
 

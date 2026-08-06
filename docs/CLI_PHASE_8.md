@@ -1,6 +1,6 @@
 # CLI-Nutzung Phase 8
 
-Diese Dokumentation beschreibt den in Phase 8 ergänzten Stand des Projekts. Das System stellt jetzt eine kleine lokale Review-Oberfläche mit dem Titel `pfarr.media director` bereit, die auf vorhandenen `content.json`-, QA-, Bild- und Render-Dateien arbeitet.
+Diese Dokumentation beschreibt den in Phase 8 ergänzten Stand des Projekts. Das System stellt jetzt eine kleine lokale Review-Oberfläche mit dem Titel `influence` bereit, die auf vorhandenen `content.json`-, QA-, Bild- und Render-Dateien arbeitet.
 
 ## Voraussetzungen
 
