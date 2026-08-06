@@ -119,6 +119,16 @@ async function routeReviewRequest(
     return
   }
 
+  if (method === "POST" && requestUrl.pathname.match(/^\/api\/weeks\/[^/]+\/posts$/)) {
+    const weekDate = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/weeks\/([^/]+)\/posts$/, "$1"))
+    const { parseJsonBody } = await import("../request/parse-json-body.js")
+    const { postIdeaRequestSchema } = await import("../contracts/review-contracts.js")
+    const body = postIdeaRequestSchema.parse(await parseJsonBody(request))
+    const { createReviewPostIdea } = await import("../controllers/workflow-controller.js")
+    respondJson(response, 200, await createReviewPostIdea(weekDate, body, dependencies), weekOverviewResponseSchemaPublic)
+    return
+  }
+
   if (method === "GET" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+$/)) {
     const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\//, ""))
     respondJson(
@@ -153,6 +163,21 @@ async function routeReviewRequest(
       await uploadPostAsset(postId, request, dependencies),
       assetUploadResponseSchema
     )
+    return
+  }
+
+  if (method === "DELETE" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/assets$/)) {
+    const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/assets$/, "$1"))
+    const assetPath = requestUrl.searchParams.get("path") ?? ""
+    const { deleteReviewAsset } = await import("../controllers/asset-controller.js")
+    respondJson(response, 200, await deleteReviewAsset(postId, assetPath, dependencies), noticeResponseSchema)
+    return
+  }
+
+  if (method === "DELETE" && requestUrl.pathname.match(/^\/api\/posts\/[^/]+$/)) {
+    const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\//, ""))
+    const { deleteReviewPost } = await import("../controllers/workflow-controller.js")
+    respondJson(response, 200, await deleteReviewPost(postId, dependencies), noticeResponseSchema)
     return
   }
 

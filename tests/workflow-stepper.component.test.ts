@@ -3,11 +3,11 @@
 import { mount } from "@vue/test-utils"
 import { describe, expect, it } from "vitest"
 
-import WorkflowStepper from "../src/services/review/frontend/src/components/WorkflowStepper.vue"
+import WorkflowBadges from "../src/services/review/frontend/src/components/WorkflowBadges.vue"
 
-describe("WorkflowStepper", () => {
+describe("WorkflowBadges", () => {
   it("renders German step labels and completion states", () => {
-    const wrapper = mount(WorkflowStepper, {
+    const wrapper = mount(WorkflowBadges, {
       props: {
         workflow: {
           contentGenerated: true,
@@ -24,8 +24,7 @@ describe("WorkflowStepper", () => {
     })
 
     expect(wrapper.text()).toContain("Gerüst")
-    expect(wrapper.text()).toContain("Freigabereif")
-    expect(wrapper.text()).toContain("erledigt")
-    expect(wrapper.text()).toContain("offen")
+    expect(wrapper.text()).toContain("QA bereit")
+    expect(wrapper.findAll(".badge").length).toBeGreaterThan(3)
   })
 })

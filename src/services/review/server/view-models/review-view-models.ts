@@ -95,7 +95,8 @@ export function buildWeekOverviewResponse(
 export function buildPostDetailResponse(
   detail: ReviewPostDetail,
   weekDate: string,
-  notices: Array<{ kind: "error" | "notice"; text: string }> = []
+  notices: Array<{ kind: "error" | "notice"; text: string }> = [],
+  navigation: { previousPostId?: string; nextPostId?: string } = {}
 ): PostDetailResponse {
   return {
     assets: detail.content.metadata.assets.map((assetPath) => ({
@@ -132,6 +133,12 @@ export function buildPostDetailResponse(
       theme: detail.post.thema,
       weekday: detail.post.wochentag
     },
+    previousPostHref: navigation.previousPostId
+      ? `/posts/${encodeURIComponent(navigation.previousPostId)}`
+      : null,
+    nextPostHref: navigation.nextPostId
+      ? `/posts/${encodeURIComponent(navigation.nextPostId)}`
+      : null,
     previewGroups: [
       {
         items: detail.renderPreviewPaths.map((path, index) => ({

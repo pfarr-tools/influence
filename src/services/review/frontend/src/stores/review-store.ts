@@ -12,6 +12,7 @@ import {
   runPostAction,
   runWeekAction
 } from "../api/review-api.js"
+import { createPostIdea, deletePost } from "../api/review-api.js"
 
 export const reviewStore = reactive({
   error: "",
@@ -46,6 +47,22 @@ export async function triggerWeekAction(weekDate: string, action: WeekActionApi)
   } finally {
     reviewStore.loading = false
   }
+}
+
+export async function addPostIdea(weekDate: string, body: { date: string; rubric: string; title: string }) {
+  reviewStore.loading = true
+  reviewStore.error = ""
+  try { reviewStore.week = await createPostIdea(weekDate, body) }
+  catch (error) { reviewStore.error = error instanceof Error ? error.message : "Idee konnte nicht angelegt werden." }
+  finally { reviewStore.loading = false }
+}
+
+export async function removePost(postId: string) {
+  reviewStore.loading = true
+  reviewStore.error = ""
+  try { await deletePost(postId) }
+  catch (error) { reviewStore.error = error instanceof Error ? error.message : "Beitrag konnte nicht gelöscht werden." }
+  finally { reviewStore.loading = false }
 }
 
 export async function loadPost(postId: string) {

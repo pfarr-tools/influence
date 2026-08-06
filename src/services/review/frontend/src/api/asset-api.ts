@@ -25,3 +25,9 @@ export async function uploadVoiceover(postId: string, formData: FormData) {
 
   return response.json() as Promise<{ notice: string; storedPath: string }>
 }
+
+export async function deleteAsset(postId: string, path: string): Promise<{ notice: string }> {
+  const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/assets?path=${encodeURIComponent(path)}`, { method: "DELETE" })
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? "Löschen fehlgeschlagen.")
+  return response.json() as Promise<{ notice: string }>
+}

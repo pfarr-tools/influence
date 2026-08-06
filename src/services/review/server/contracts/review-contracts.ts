@@ -142,6 +142,8 @@ const postDetailResponseSchema = z.object({
     theme: z.string(),
     weekday: z.string()
   }),
+  previousPostHref: z.string().nullable(),
+  nextPostHref: z.string().nullable(),
   previewGroups: z.array(
     z.object({
       items: z.array(previewItemSchema),
@@ -200,6 +202,12 @@ export const postEditRequestSchema = z.object({
   title: z.string()
 })
 
+export const postIdeaRequestSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  rubric: z.string().min(1),
+  title: z.string().min(1)
+})
+
 export const chatSessionCreateRequestSchema = z.object({
   contextType: z.enum(["plan", "post", "week"]),
   model: z.string().optional(),
@@ -245,6 +253,7 @@ export type ChatSessionCreateRequest = z.infer<typeof chatSessionCreateRequestSc
 export type ChatSessionResponse = z.infer<typeof chatSessionResponseSchema>
 export type PostDetailResponse = z.infer<typeof postDetailResponseSchema>
 export type PostEditRequest = z.infer<typeof postEditRequestSchema>
+export type PostIdeaRequest = z.infer<typeof postIdeaRequestSchema>
 export type ReviewActionApi = z.infer<typeof reviewActionSchema>
 export type ReviewActionButton = z.infer<typeof reviewActionButtonSchema>
 export type WeekActionApi = z.infer<typeof weekActionSchema>

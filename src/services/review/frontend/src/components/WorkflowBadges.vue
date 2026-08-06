@@ -1,16 +1,13 @@
 <template>
-  <ol class="list-group list-group-numbered">
-    <li
+  <div class="d-flex flex-wrap gap-2">
+    <span
       v-for="step in steps"
       :key="step.label"
-      class="list-group-item d-flex justify-content-between align-items-start"
+      :class="step.done ? 'badge rounded-pill text-bg-success' : 'badge rounded-pill text-bg-secondary'"
     >
-      <div class="me-3">{{ step.label }}</div>
-      <span :class="step.done ? 'badge text-bg-success' : 'badge text-bg-secondary'">
-        {{ step.done ? "erledigt" : "offen" }}
-      </span>
-    </li>
-  </ol>
+      {{ step.label }}
+    </span>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -34,10 +31,10 @@ const steps = computed(() => [
   { done: props.workflow.scaffolded, label: "Gerüst" },
   { done: props.workflow.contentGenerated, label: "Inhalt" },
   { done: props.workflow.qaRun, label: "QA" },
-  { done: props.workflow.qaReadyForApproval, label: "Freigabereif" },
+  { done: props.workflow.qaReadyForApproval, label: "QA bereit" },
   { done: props.workflow.imagesGenerated, label: "Bilder" },
   { done: props.workflow.reelImagesGenerated, label: "Reelbilder" },
-  { done: props.workflow.rendered, label: "Vorschauen" },
+  { done: props.workflow.rendered, label: "Render" },
   { done: props.workflow.reelRendered, label: "Reel" },
   { done: props.workflow.exportGenerated, label: "Export" }
 ])

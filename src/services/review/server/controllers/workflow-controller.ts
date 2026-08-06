@@ -1,6 +1,8 @@
 import type { IncomingMessage } from "node:http"
+import { rm, writeFile } from "node:fs/promises"
+import { join } from "node:path"
 
-import { getWeekForDate } from "../../../calendar/calendar-service.js"
+import { getPostById, getWeekForDate } from "../../../calendar/calendar-service.js"
 import { scaffoldPostById, scaffoldWeekByDate } from "../../../content/content-scaffolder.js"
 import { generateContentForWeek } from "../../../content/content-generator.js"
 import { runQaForPost, runQaForWeek } from "../../../content/content-qa.js"
@@ -25,6 +27,7 @@ import {
   updateReviewPost
 } from "../../review-service.js"
 import { postEditRequestSchema } from "../contracts/review-contracts.js"
+import type { PostIdeaRequest } from "../contracts/review-contracts.js"
 import { parseJsonBody } from "../request/parse-json-body.js"
 import {
   buildPostDetailResponse,
@@ -140,6 +143,24 @@ export async function runWeekAction(
   }
 }
 
+export async function createReviewPostIdea(weekDate: string, input: PostIdeaRequest, dependencies: ReviewServerDependencies) {
+  const week = getWeekForDate(dependencies.calendar, weekDate)
+  if (input.date < week.zeitraum.von || input.date > week.zeitraum.bis) throw new Error("Das Datum liegt nicht in der ausgewählten Woche.")
+  const sequence = dependencies.calendar.wochen.flatMap((entry) => entry.beitraege).length + 1
+  const id = `post-${String(sequence).padStart(4, "0")}`
+  const post = {
+    id, datum: input.date, wochentag: new Intl.DateTimeFormat("de-DE", { weekday: "long", timeZone: "UTC" }).format(new Date(`${input.date}T00:00:00Z`)),
+    rubrik: input.rubric, saeule: "", ziel: "", vorproduktion: "", plattformen_und_formate: { facebook: ["feed"], instagram: ["feed"], mastodon: ["post"] },
+    struktur: ["Grundidee"], ki_hilfe: ["Keine"], status: "Idee", thema: input.title, konkrete_idee: "", redaktionsfelder: {
+      arbeitstitel: input.title, facebook_text: "", instagram_caption: "", mastodon_text: "", story_ablauf: [""], reel_skript: "", bildidee: "", ki_bildprompt: "", alt_text: "", hashtags: [], veroeffentlichungszeit: "", asset_pfade: [], notizen: ""
+    }
+  }
+  week.beitraege.push(post as never)
+  await writeFile(dependencies.runtimeConfig.calendarPath, `${JSON.stringify(dependencies.calendar, null, 2)}\n`, "utf8")
+  await scaffoldPostById(dependencies.calendar, id, dependencies.runtimeConfig.outputDir)
+  return getWeekOverview(weekDate, dependencies, [{ kind: "notice", text: "Neue Beitragsidee angelegt." }])
+}
+
 export async function getPostDetail(
   postId: string,
   dependencies: ReviewServerDependencies,
@@ -152,7 +173,11 @@ export async function getPostDetail(
   )
   const week = getWeekForDate(dependencies.calendar, detail.post.datum)
 
-  return buildPostDetailResponse(detail, week.zeitraum.von, notices)
+  const postIndex = week.beitraege.findIndex((entry) => entry.id === postId)
+  return buildPostDetailResponse(detail, week.zeitraum.von, notices, {
+    nextPostId: week.beitraege[postIndex + 1]?.id,
+    previousPostId: week.beitraege[postIndex - 1]?.id
+  })
 }
 
 export async function runPostAction(
@@ -280,4 +305,14 @@ export async function downloadPostExport(
     postId,
     dependencies.runtimeConfig.outputDir
   )
+}
+
+export async function deleteReviewPost(postId: string, dependencies: ReviewServerDependencies) {
+  const post = getPostById(dependencies.calendar, postId)
+  const week = getWeekForDate(dependencies.calendar, post.datum)
+  if (week.beitraege.length <= 1) throw new Error("Der letzte Beitrag einer Woche kann nicht gelöscht werden.")
+  week.beitraege = week.beitraege.filter((entry) => entry.id !== postId)
+  await writeFile(dependencies.runtimeConfig.calendarPath, `${JSON.stringify(dependencies.calendar, null, 2)}\n`, "utf8")
+  await rm(join(dependencies.runtimeConfig.outputDir, post.datum, post.id), { force: true, recursive: true })
+  return { notice: "Beitrag gelöscht." }
 }

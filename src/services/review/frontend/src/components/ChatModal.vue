@@ -1,6 +1,6 @@
 <template>
-  <section class="card shadow-sm">
-    <div class="card-body">
+  <BaseModal :open="open" dialog-class="chat-modal-dialog" title="JSON mit ChatGPT" @close="$emit('close')">
+    <div>
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="h5 mb-0">Diskussion</h2>
         <div class="d-flex gap-2">
@@ -31,23 +31,26 @@
         </button>
       </form>
     </div>
-  </section>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue"
 import type { ChatSessionResponse } from "../../../server/contracts/review-contracts.js"
+import BaseModal from "./BaseModal.vue"
 
 const draft = ref("")
 
 defineProps<{
   busy: boolean
   error: string
+  open: boolean
   session: ChatSessionResponse | null
 }>()
 
 const emit = defineEmits<{
   apply: []
+  close: []
   revise: []
   send: [text: string]
 }>()
@@ -66,5 +69,9 @@ function submitMessage() {
 
 .whitespace-pre-wrap {
   white-space: pre-wrap;
+}
+
+:deep(.chat-modal-dialog) {
+  max-width: min(96vw, 78rem);
 }
 </style>

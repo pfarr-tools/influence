@@ -828,6 +828,8 @@ Dabei gilt:
 - Keine Plattform darf ohne explizite menschliche Freigabe beliefert werden.
 - Browser-Automatisierung zur Umgehung fehlender Publishing APIs ist ausgeschlossen.
 
+Die Queue/Schedule für die automatische Veröffentlichung muss einsehbar und bearbeitbar sein!
+
 ## Architektur
 
 ```text

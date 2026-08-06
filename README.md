@@ -1,4 +1,4 @@
-# Pfarr.Media – Codex-Startpaket
+# Influence – Codex-Startpaket
 
 Dieses Paket enthält einen umsetzbaren Plan für ein lokales Node.js-Projekt, das aus einem kirchenjahresbasierten Redaktionskalender vollständige Social-Media-Contentpakete erzeugt.
 

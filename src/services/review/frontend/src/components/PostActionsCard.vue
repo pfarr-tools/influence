@@ -2,7 +2,7 @@
   <section class="card shadow-sm">
     <div class="card-body">
       <h2 class="h5">Workflow</h2>
-      <WorkflowStepper :workflow="workflow" />
+      <WorkflowBadges :workflow="workflow" />
       <div class="mt-3">
         <ActionButtonGroup
           :actions="orderedActions"
@@ -19,7 +19,7 @@
 import { computed } from "vue"
 import type { ReviewActionButton } from "../../../server/contracts/review-contracts.js"
 import ActionButtonGroup from "./ActionButtonGroup.vue"
-import WorkflowStepper from "./WorkflowStepper.vue"
+import WorkflowBadges from "./WorkflowBadges.vue"
 import { useWorkflowActions } from "../composables/useWorkflowActions.js"
 
 const props = defineProps<{

@@ -1,9 +1,13 @@
 import { relative } from "node:path"
+import { join, relative as relativePath, resolve } from "node:path"
+import { unlink } from "node:fs/promises"
 
 import {
   storeReviewAsset,
   storeReviewReelAudioAsset
 } from "../../review-service.js"
+import { getPostById } from "../../../calendar/calendar-service.js"
+import { getContentOutputPaths, readContentPackage, writeJsonFile } from "../../../content/content-storage.js"
 import { assetKindSchemaPublic } from "../contracts/review-contracts.js"
 import { parseFormBody } from "../request/parse-form-body.js"
 import type { ReviewServerDependencies } from "../routes/review-routes.js"
@@ -64,4 +68,23 @@ export async function uploadVoiceoverAsset(
     notice: "Voiceover gespeichert.",
     storedPath: relative(dependencies.runtimeConfig.outputDir, storedPath)
   }
+}
+
+export async function deleteReviewAsset(postId: string, assetPath: string, dependencies: ReviewServerDependencies) {
+  const post = getPostById(dependencies.calendar, postId)
+  const paths = getContentOutputPaths(dependencies.runtimeConfig.outputDir, post)
+  const normalized = assetPath.replace(/^\/+/, "")
+  if (!normalized.startsWith("assets/") || normalized.includes("..")) {
+    throw new Error("Ungültiger Asset-Pfad.")
+  }
+  const content = await readContentPackage(paths.contentPath)
+  if (!content.metadata.assets.includes(normalized)) {
+    throw new Error("Asset nicht gefunden.")
+  }
+  await unlink(resolve(paths.baseDir, normalized))
+  await writeJsonFile(paths.contentPath, {
+    ...content,
+    metadata: { ...content.metadata, assets: content.metadata.assets.filter((value) => value !== normalized) }
+  })
+  return { notice: "Asset gelöscht." }
 }
