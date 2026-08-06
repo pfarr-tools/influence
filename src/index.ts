@@ -62,6 +62,7 @@ import {
   PublishingService,
   type PublicationPlatform
 } from "./services/publishing/index.js"
+import { createMastodonOAuthService } from "./services/publishing/mastodon-adapter.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -931,6 +932,7 @@ reviewCommand
             ? undefined
             : createOpenAIContentClient(runtimeConfig.openAiApiKey),
         pageRenderClient: createPlaywrightHtmlRenderClient(),
+        mastodonOAuth: createMastodonOAuthService(),
         runtimeConfig
       })
 

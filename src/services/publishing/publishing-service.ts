@@ -1,4 +1,5 @@
 import type { Calendar, CalendarPost } from "../../domain/calendar.js"
+import { resolve } from "node:path"
 import { getPostById } from "../calendar/calendar-service.js"
 import { assertContentApproved, getContentOutputPaths, isPublicationApproved, readContentPackage } from "../content/content-storage.js"
 import { PublicationJobStore } from "./job-store.js"
@@ -68,7 +69,7 @@ export class PublishingService {
     if (!adapter) return this.store.save({ ...job, status: "failed", lastError: `${job.platform}: kein konfigurierter Adapter.`, updatedAt: new Date().toISOString() })
     const processing = await this.store.save({ ...job, status: "processing", attemptCount: job.attemptCount + 1, updatedAt: new Date().toISOString() })
     try {
-      const result = await adapter.publish({ job: processing, content: await this.loadContent(processing), assetPaths: processing.assets })
+      const result = await adapter.publish({ job: processing, content: await this.loadContent(processing), assetPaths: processing.assets.map((assetPath) => resolve(this.outputRoot, processing.contentDate, processing.postId, assetPath)) })
       return this.store.save({ ...processing, status: "published", remoteId: result.remoteId, remoteUrl: result.remoteUrl ?? null, responseMetadata: sanitizeMetadata(result.metadata), lastError: null, updatedAt: new Date().toISOString() })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unbekannter Veröffentlichungsfehler."

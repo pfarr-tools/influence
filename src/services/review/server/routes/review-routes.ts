@@ -44,6 +44,7 @@ import {
   runWeekAction
 } from "../controllers/workflow-controller.js"
 import { isValidationError, respondJson } from "../responses/json-response.js"
+import { mastodonOAuthCallbackPath, type MastodonOAuthService } from "../../../publishing/mastodon-adapter.js"
 
 export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   calendar: Calendar
@@ -51,6 +52,7 @@ export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   imageClient?: ImageModelClient
   pageRenderClient: HtmlRenderClient
   runtimeConfig: RuntimeConfig
+  mastodonOAuth?: MastodonOAuthService
 }
 
 const frontendRoot = resolve(
@@ -99,6 +101,37 @@ async function routeReviewRequest(
   const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1")
   const method = request.method ?? "GET"
   const defaultDate = dependencies.calendar.wochen[0]?.zeitraum.von
+
+  if (requestUrl.pathname === "/admin/mastodon/oauth/start" && method === "GET") {
+    if (!dependencies.mastodonOAuth) {
+      respondJson(response, 503, { error: "Mastodon-OAuth ist nicht konfiguriert." })
+      return
+    }
+    response.writeHead(302, { location: await dependencies.mastodonOAuth.begin() })
+    response.end()
+    return
+  }
+
+  if (requestUrl.pathname === mastodonOAuthCallbackPath && method === "GET") {
+    if (!dependencies.mastodonOAuth) {
+      respondHtml(response, 503, "Mastodon-OAuth ist nicht konfiguriert.")
+      return
+    }
+    const oauthError = requestUrl.searchParams.get("error")
+    if (oauthError) {
+      respondHtml(response, 400, `Mastodon-OAuth abgebrochen: ${escapeHtml(oauthError)}`)
+      return
+    }
+    const code = requestUrl.searchParams.get("code")
+    const state = requestUrl.searchParams.get("state")
+    if (!code || !state) {
+      respondHtml(response, 400, "Mastodon-OAuth: Code oder Status fehlt.")
+      return
+    }
+    const token = await dependencies.mastodonOAuth.complete(code, state)
+    respondHtml(response, 200, `Mastodon-OAuth erfolgreich. Trage diesen Token als <code>MASTODON_ACCESS_TOKEN</code> in <code>config/.env</code> ein und starte Influence neu:<pre>${escapeHtml(token.accessToken)}</pre>${token.scope ? `<p>Scopes: ${escapeHtml(token.scope)}</p>` : ""}`)
+    return
+  }
 
   if (!defaultDate) {
     throw new CalendarValidationError("Der Kalender enthält keine Wochen.")
@@ -501,6 +534,15 @@ async function serveFrontend(
   if (!response.writableEnded) {
     respondJson(response, 404, { error: "Nicht gefunden." })
   }
+}
+
+function respondHtml(response: ServerResponse, statusCode: number, body: string): void {
+  response.writeHead(statusCode, { "content-type": "text/html; charset=utf-8" })
+  response.end(`<!doctype html><meta charset="utf-8"><title>Influence Publishing</title><main style="font-family:sans-serif;max-width:50rem;margin:3rem auto"><h1>Influence Publishing</h1><p>${body}</p></main>`)
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character)
 }
 
 function parseForceSearchParam(requestUrl: URL): boolean {

@@ -94,8 +94,10 @@ Influence liest Umgebungswerte aus:
 ### Veröffentlichung und Service-Adapter
 
 `PUBLICATION_PLATFORMS` bestimmt, für welche Plattformen Influence Jobs anlegt.
-Eine Plattform wird automatisch veröffentlicht, wenn für sie sowohl die
-`*_API_URL` als auch der zugehörige `*_ACCESS_TOKEN` gesetzt sind. Nicht
+Eine Plattform wird automatisch veröffentlicht, wenn ihre Zugangsdaten
+vollständig konfiguriert sind. Für Instagram, Threads, Bluesky und LinkedIn
+sind das `*_API_URL` und `*_ACCESS_TOKEN`; Mastodon verwendet den nativen
+Adapter mit `MASTODON_SERVER_URL` und `MASTODON_ACCESS_TOKEN`. Nicht
 konfigurierte Plattformen bleiben in der Oberfläche und in der Queue sichtbar,
 können aber nicht automatisch veröffentlicht werden.
 
@@ -105,10 +107,14 @@ keine `FACEBOOK_*`-Variablen.
 
 #### Gemeinsamer Adapter-Vertrag
 
-Alle fünf automatischen Adapter verwenden denselben HTTP-Vertrag. Die URL in
+Die vier generischen HTTP-Adapter verwenden denselben HTTP-Vertrag. Die URL in
 `*_API_URL` muss deshalb auf einen eigenen kleinen Bridge-Service oder auf einen
 bereits vorhandenen kompatiblen Publishing-Endpunkt zeigen; die nativen
-Provider-Endpunkte sind nicht automatisch kompatibel.
+Provider-Endpunkte sind für diese vier Adapter nicht automatisch kompatibel.
+
+Mastodon ist die erste vollständig native Integration und benötigt keinen
+Bridge-Service. Sie lädt Medien direkt beim Mastodon-Server hoch und legt den
+Status anschließend über `/api/v1/statuses` an.
 
 Bei jeder Veröffentlichung sendet Influence eine `POST`-Anfrage mit:
 
@@ -161,22 +167,43 @@ gelieferten IDs in `id`/`url` übersetzen.
 Weiterführend: [Instagram Graph API – Content Publishing](https://developers.facebook.com/docs/instagram-api/guides/content-publishing/),
 [Meta App Dashboard](https://developers.facebook.com/apps/).
 
-#### Mastodon
+#### Mastodon (native Integration)
 
 Variablen:
 
 ```dotenv
-MASTODON_API_URL=https://bridge.example.org/mastodon/publish
+MASTODON_SERVER_URL=https://mastodon.example
 MASTODON_ACCESS_TOKEN=...
+MASTODON_CLIENT_NAME=Influence
+MASTODON_CLIENT_ID=
+MASTODON_CLIENT_SECRET=
+MASTODON_VISIBILITY=public
+MASTODON_LANGUAGE=de
 ```
 
-Mastodon ist instanzbezogen. Im gewünschten Mastodon-Server unter
-`https://<instanz>/settings/applications` eine Anwendung registrieren oder
-über die OAuth-Dokumentation anlegen. Der Token sollte mindestens die für das
-Veröffentlichen benötigten `write:statuses`- und für Medien `write:media`-
-Berechtigungen besitzen. Die Bridge verwendet die Instanz-API (zuerst
-`POST /api/v2/media` oder die von der Instanz unterstützte Medienroute, danach
-`POST /api/v1/statuses`) und gibt die Status-ID zurück.
+Mastodon ist instanzbezogen. `MASTODON_SERVER_URL` ist die Basis-URL der
+Instanz, nicht die URL eines einzelnen API-Endpunkts. Der Token benötigt
+mindestens `write:statuses` und `write:media`. Der native Adapter lädt jedes
+Bild oder unterstützte Medium über `POST /api/v2/media` hoch, übergibt den
+Alternativtext und erstellt danach den Status über `POST /api/v1/statuses`.
+
+Für die Einrichtung kann entweder im gewünschten Mastodon-Server unter
+`https://<instanz>/settings/applications` eine Anwendung registriert und ein
+Token erzeugt werden, oder der integrierte OAuth-Flow verwendet werden. Für
+den OAuth-Flow müssen `PUBLIC_BASE_URL`, `MASTODON_SERVER_URL` und optional
+`MASTODON_CLIENT_NAME` gesetzt sein. Danach im Browser
+`https://<deine-domain>/admin/mastodon/oauth/start` öffnen. Influence
+registriert die Anwendung bei Mastodon, führt den PKCE-Flow durch und zeigt nach
+dem Rückruf den Token einmalig an. Diesen in `MASTODON_ACCESS_TOKEN` eintragen
+und den Prozess neu starten.
+
+Der OAuth-Rückruf lautet:
+`https://<deine-domain>/publish/mastodon/oauth/callback`.
+Der gesamte Namespace `/publish/` sollte im Reverse Proxy für externe
+Rückrufe erreichbar sein. Der OAuth-Start unter
+`/admin/mastodon/oauth/start` bleibt durch HTTP Basic Auth geschützt oder wird
+nur intern erreichbar gemacht. Der Status wird mit der Job-ID als Idempotency-Key
+gesendet, damit ein Wiederholen desselben Jobs keine Duplikate erzeugt.
 
 Weiterführend: [Mastodon: Anwendung und Token anlegen](https://docs.joinmastodon.org/client/token/),
 [Mastodon OAuth und Scopes](https://docs.joinmastodon.org/client/authorized/),
@@ -249,7 +276,7 @@ Weiterführend: [LinkedIn Developer Portal](https://www.linkedin.com/developers/
 PUBLICATION_PLATFORMS=facebook,instagram,mastodon,threads,bluesky,linkedin
 INSTAGRAM_API_URL=https://bridge.example.org/instagram/publish
 INSTAGRAM_ACCESS_TOKEN=...
-MASTODON_API_URL=https://bridge.example.org/mastodon/publish
+MASTODON_SERVER_URL=https://mastodon.example
 MASTODON_ACCESS_TOKEN=...
 THREADS_API_URL=https://bridge.example.org/threads/publish
 THREADS_ACCESS_TOKEN=...

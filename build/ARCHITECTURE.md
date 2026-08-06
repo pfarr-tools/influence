@@ -81,3 +81,18 @@ verworfen
 ```
 
 Nur `freigegeben` darf exportiert oder später veröffentlicht werden.
+
+## Veröffentlichung und externe Rückrufe
+
+Automatische Veröffentlichungen laufen über plattformspezifische Adapter. Der
+Mastodon-Adapter lädt lokale Medien direkt beim Mastodon-Server hoch und legt
+anschließend den Status über die Mastodon API an. Zugangstoken werden nicht in
+Publikationsjobs gespeichert.
+
+OAuth-Rückrufe und künftig weitere externe Veröffentlichungs-Endpunkte liegen
+unter dem gemeinsamen Präfix `/publish/`. Für Mastodon ist der öffentliche
+Rückruf `/publish/mastodon/oauth/callback`; der administrative Start-Endpunkt
+liegt bewusst außerhalb dieses Präfixes unter `/admin/mastodon/oauth/start`.
+Reverse-Proxy- und HTTP-Basic-Auth-Regeln können daher `/publish/*` vom Schutz
+ausnehmen, während der OAuth-Start und alle zukünftigen Verwaltungs-Endpunkte
+geschützt bleiben.
