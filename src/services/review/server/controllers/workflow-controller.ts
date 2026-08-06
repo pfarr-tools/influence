@@ -52,8 +52,11 @@ export async function getWeekOverview(
 export async function runWeekAction(
   weekDate: string,
   action: string,
-  dependencies: ReviewServerDependencies
+  dependencies: ReviewServerDependencies,
+  options: { force?: boolean } = {}
 ) {
+  const force = options.force ?? false
+
   switch (action) {
     case "scaffold":
       await scaffoldWeekByDate(
@@ -68,7 +71,7 @@ export async function runWeekAction(
         weekDate,
         {
           dryRun: false,
-          force: true,
+          force,
           language: "de",
           model: dependencies.runtimeConfig.openAiModel,
           outputRoot: dependencies.runtimeConfig.outputDir
@@ -89,7 +92,7 @@ export async function runWeekAction(
         weekDate,
         {
           dryRun: false,
-          force: true,
+          force,
           model: dependencies.runtimeConfig.fluxModel,
           outputRoot: dependencies.runtimeConfig.outputDir
         },
@@ -104,7 +107,7 @@ export async function runWeekAction(
         weekDate,
         {
           dryRun: false,
-          force: true,
+          force,
           model: dependencies.runtimeConfig.fluxModel,
           outputRoot: dependencies.runtimeConfig.outputDir
         },
@@ -118,7 +121,7 @@ export async function runWeekAction(
         dependencies.calendar,
         weekDate,
         {
-          force: true,
+          force,
           outputRoot: dependencies.runtimeConfig.outputDir
         },
         {
@@ -131,7 +134,7 @@ export async function runWeekAction(
         dependencies.calendar,
         weekDate,
         {
-          force: true,
+          force,
           outputRoot: dependencies.runtimeConfig.outputDir,
           subtitleFontName: dependencies.runtimeConfig.reelSubtitleFontName,
           subtitleFontsDir: dependencies.runtimeConfig.reelSubtitleFontsDir || undefined
@@ -184,8 +187,11 @@ export async function runPostAction(
   postId: string,
   action: string,
   request: IncomingMessage,
-  dependencies: ReviewServerDependencies
+  dependencies: ReviewServerDependencies,
+  options: { force?: boolean } = {}
 ) {
+  const force = options.force ?? false
+
   switch (action) {
     case "scaffold":
       await scaffoldPostById(
@@ -200,7 +206,7 @@ export async function runPostAction(
         postId,
         {
           dryRun: false,
-          force: true,
+          force,
           language: "de",
           model: dependencies.runtimeConfig.openAiModel,
           outputRoot: dependencies.runtimeConfig.outputDir
@@ -234,7 +240,7 @@ export async function runPostAction(
         postId,
         {
           dryRun: false,
-          force: true,
+          force,
           model: dependencies.runtimeConfig.fluxModel,
           outputRoot: dependencies.runtimeConfig.outputDir
         },
@@ -249,7 +255,7 @@ export async function runPostAction(
         postId,
         {
           dryRun: false,
-          force: true,
+          force,
           model: dependencies.runtimeConfig.fluxModel,
           outputRoot: dependencies.runtimeConfig.outputDir
         },
@@ -263,7 +269,7 @@ export async function runPostAction(
         dependencies.calendar,
         postId,
         {
-          force: true,
+          force,
           outputRoot: dependencies.runtimeConfig.outputDir
         },
         {
@@ -277,7 +283,7 @@ export async function runPostAction(
         postId,
         {
           ffmpegBinary: dependencies.runtimeConfig.ffmpegBinary,
-          force: true,
+          force,
           outputRoot: dependencies.runtimeConfig.outputDir,
           subtitleFontName: dependencies.runtimeConfig.reelSubtitleFontName,
           subtitleFontsDir: dependencies.runtimeConfig.reelSubtitleFontsDir || undefined

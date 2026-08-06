@@ -110,10 +110,11 @@ async function routeReviewRequest(
     const match = requestUrl.pathname.match(/^\/api\/weeks\/([^/]+)\/actions\/([^/]+)$/)
     const weekDate = decodeURIComponent(match?.[1] ?? "")
     const action = weekActionSchemaPublic.parse(match?.[2] ?? "")
+    const force = parseForceSearchParam(requestUrl)
     respondJson(
       response,
       200,
-      await runWeekAction(weekDate, action, dependencies),
+      await runWeekAction(weekDate, action, dependencies, { force }),
       weekOverviewResponseSchemaPublic
     )
     return
@@ -144,10 +145,11 @@ async function routeReviewRequest(
     const match = requestUrl.pathname.match(/^\/api\/posts\/([^/]+)\/actions\/([^/]+)$/)
     const postId = decodeURIComponent(match?.[1] ?? "")
     const action = reviewActionSchemaPublic.parse(match?.[2] ?? "")
+    const force = parseForceSearchParam(requestUrl)
     respondJson(
       response,
       200,
-      await runPostAction(postId, action, request, dependencies),
+      await runPostAction(postId, action, request, dependencies, { force }),
       postDetailResponseSchemaPublic
     )
     return
@@ -337,6 +339,10 @@ async function serveFrontend(
   if (!response.writableEnded) {
     respondJson(response, 404, { error: "Nicht gefunden." })
   }
+}
+
+function parseForceSearchParam(requestUrl: URL): boolean {
+  return requestUrl.searchParams.get("force") === "1"
 }
 
 async function serveOutputFile(

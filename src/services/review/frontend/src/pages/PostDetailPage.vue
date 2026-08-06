@@ -38,6 +38,7 @@
         <PostActionsCard
           :actions="post.workflowActions"
           :busy="reviewStore.loading"
+          :busy-action="reviewStore.activeAction"
           :download-href="post.exportDownloadHref"
           :workflow="post.workflow"
           @trigger="handleAction"
@@ -285,12 +286,18 @@ async function refreshPost() {
   await loadPost(postId.value)
 }
 
-async function handleAction(action: string) {
+async function handleAction(payload: { action: string; force: boolean }) {
+  const { action, force } = payload
   if (action === "edit" || action === "export") {
     return
   }
 
-  await triggerPostAction(postId.value, action as Exclude<ReviewActionApi, "export">)
+  await triggerPostAction(
+    postId.value,
+    action as Exclude<ReviewActionApi, "export">,
+    undefined,
+    { force }
+  )
 }
 
 async function savePost() {

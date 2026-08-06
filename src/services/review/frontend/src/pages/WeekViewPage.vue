@@ -32,7 +32,12 @@
           </div>
           <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-outline-primary" type="button" @click="ideaOpen = true">Neue Idee</button>
-            <ActionButtonGroup :actions="week.weekActions" :busy="reviewStore.loading" @trigger="triggerWeek" />
+            <ActionButtonGroup
+              :actions="week.weekActions"
+              :busy="reviewStore.loading"
+              :busy-action="reviewStore.activeAction"
+              @trigger="triggerWeek"
+            />
           </div>
         </div>
       </div>
@@ -127,12 +132,14 @@ async function loadCurrentWeek() {
   if (!routeWeekDate && selectedWeekDate.value) window.localStorage.setItem(lastWeekStorageKey, selectedWeekDate.value)
 }
 
-async function triggerWeek(action: string) {
+async function triggerWeek(payload: { action: string; force: boolean }) {
   if (!selectedWeekDate.value) {
     return
   }
 
-  await triggerWeekAction(selectedWeekDate.value, action as WeekActionApi)
+  await triggerWeekAction(selectedWeekDate.value, payload.action as WeekActionApi, {
+    force: payload.force
+  })
 }
 
 async function navigateToWeek() {

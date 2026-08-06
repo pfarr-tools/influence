@@ -25,10 +25,12 @@ export async function fetchWeek(weekDate: string): Promise<WeekOverviewResponse>
 
 export async function runWeekAction(
   weekDate: string,
-  action: WeekActionApi
+  action: WeekActionApi,
+  options: { force?: boolean } = {}
 ): Promise<WeekOverviewResponse> {
+  const search = options.force ? "?force=1" : ""
   return readJson<WeekOverviewResponse>(
-    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}/actions/${action}`, {
+    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}/actions/${action}${search}`, {
       method: "POST"
     })
   )
@@ -47,10 +49,12 @@ export async function fetchPost(postId: string): Promise<PostDetailResponse> {
 export async function runPostAction(
   postId: string,
   action: Exclude<ReviewActionApi, "export">,
-  body?: unknown
+  body?: unknown,
+  options: { force?: boolean } = {}
 ): Promise<PostDetailResponse> {
+  const search = options.force ? "?force=1" : ""
   return readJson<PostDetailResponse>(
-    await fetch(`/api/posts/${encodeURIComponent(postId)}/actions/${action}`, {
+    await fetch(`/api/posts/${encodeURIComponent(postId)}/actions/${action}${search}`, {
       body: body ? JSON.stringify(body) : undefined,
       headers: body ? { "content-type": "application/json" } : undefined,
       method: "POST"

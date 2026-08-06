@@ -45,18 +45,22 @@ const assetKindSchema = z.enum([
 
 const reviewActionButtonSchema = z.object({
   action: reviewActionSchema,
+  completed: z.boolean(),
   disabled: z.boolean(),
   label: z.string(),
   method: z.enum(["GET", "POST"]),
-  primary: z.boolean()
+  primary: z.boolean(),
+  supportsForce: z.boolean()
 })
 
 const weekActionButtonSchema = z.object({
   action: weekActionSchema,
+  completed: z.boolean(),
   disabled: z.boolean(),
   label: z.string(),
   method: z.enum(["POST"]),
-  primary: z.boolean()
+  primary: z.boolean(),
+  supportsForce: z.boolean()
 })
 
 const postCardSchema = z.object({

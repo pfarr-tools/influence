@@ -59,6 +59,10 @@ describe("review view models", () => {
       "render",
       "render-reel"
     ])
+    expect(response.weekActions.find((action) => action.action === "generate")).toMatchObject({
+      completed: false,
+      supportsForce: true
+    })
     expect(response.selectedWeek.posts[0]?.badges).toContain("QA offen")
     expect(response.weekOptions[0]?.label).toBe("2026-08-10 bis 2026-08-16")
   })

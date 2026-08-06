@@ -78,10 +78,12 @@ export function buildWeekOverviewResponse(
     },
     weekActions: weekActionOrder.map((action, index) => ({
       action,
+      completed: isWeekActionCompleted(action, overview.selectedWeek.posts),
       disabled: false,
       label: weekActionLabels[action],
       method: "POST",
-      primary: index === 0
+      primary: index === 0,
+      supportsForce: supportsForceAction(action)
     })),
     weekOptions: overview.weekOptions.map((week) => ({
       endDate: week.endDate,
@@ -207,11 +209,67 @@ function buildReviewActionButtons(
 ): ReviewActionButton[] {
   return reviewActionOrder.map((action, index) => ({
     action,
+    completed: isReviewActionCompleted(action, workflow),
     disabled: isReviewActionDisabled(action, workflow),
     label: reviewActionLabels[action],
     method: action === "export" ? "GET" : "POST",
-    primary: index === 0
+    primary: index === 0,
+    supportsForce: supportsForceAction(action)
   }))
+}
+
+function isReviewActionCompleted(
+  action: ReviewActionApi,
+  workflow: ReviewWorkflowState
+): boolean {
+  switch (action) {
+    case "generate":
+      return workflow.contentGenerated
+    case "images":
+      return workflow.imagesGenerated
+    case "images-reel":
+      return workflow.reelImagesGenerated
+    case "render":
+      return workflow.rendered
+    case "render-reel":
+      return workflow.reelRendered
+    default:
+      return false
+  }
+}
+
+function isWeekActionCompleted(
+  action: WeekActionApi,
+  posts: ReviewWeekOverview["selectedWeek"]["posts"]
+): boolean {
+  if (posts.length === 0) {
+    return false
+  }
+
+  switch (action) {
+    case "generate":
+      return posts.every((post) => post.workflow.contentGenerated)
+    case "images":
+      return posts.every((post) => post.workflow.imagesGenerated)
+    case "images-reel":
+      return posts.every((post) => post.workflow.reelImagesGenerated)
+    case "render":
+      return posts.every((post) => post.workflow.rendered)
+    case "render-reel":
+      return posts.every((post) => post.workflow.reelRendered)
+    default:
+      return false
+  }
+}
+
+function supportsForceAction(action: ReviewActionApi | WeekActionApi): boolean {
+  return [
+    "generate",
+    "images",
+    "images-reel",
+    "render",
+    "render-reel"
+  ].includes(action)
 }
 
 function isReviewActionDisabled(

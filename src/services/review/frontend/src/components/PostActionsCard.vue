@@ -7,6 +7,7 @@
         <ActionButtonGroup
           :actions="orderedActions"
           :busy="busy"
+          :busy-action="busyAction"
           :download-href="downloadHref"
           @trigger="$emit('trigger', $event)"
         />
@@ -25,6 +26,7 @@ import { useWorkflowActions } from "../composables/useWorkflowActions.js"
 const props = defineProps<{
   actions: ReviewActionButton[]
   busy?: boolean
+  busyAction?: string
   downloadHref: string
   workflow: {
     scaffolded: boolean
@@ -42,6 +44,6 @@ const props = defineProps<{
 const orderedActions = computed(() => useWorkflowActions(props.actions).value)
 
 defineEmits<{
-  trigger: [action: string]
+  trigger: [payload: { action: string; force: boolean }]
 }>()
 </script>
