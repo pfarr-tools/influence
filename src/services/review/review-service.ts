@@ -148,6 +148,19 @@ export interface ReviewUploadedFile {
   mimeType: string
 }
 
+export type ReviewAssetKind =
+  | "background-1.91x1"
+  | "background-4x5"
+  | "background-9x16"
+  | "reel-audio"
+  | "reel-shot"
+
+export interface StoreReviewAssetInput {
+  assetKind: ReviewAssetKind
+  file: ReviewUploadedFile
+  reelShotIndex?: number
+}
+
 export interface ReviewRegenerateDependencies
   extends ContentGeneratorDependencies {
   generateContent?: (
@@ -228,16 +241,27 @@ export async function storeReviewReelAudioAsset(
   outputRoot: string,
   file: ReviewUploadedFile
 ): Promise<string> {
+  return storeReviewAsset(calendar, postId, outputRoot, {
+    assetKind: "reel-audio",
+    file
+  })
+}
+
+export async function storeReviewAsset(
+  calendar: Calendar,
+  postId: string,
+  outputRoot: string,
+  input: StoreReviewAssetInput
+): Promise<string> {
   const post = getPostById(calendar, postId)
   const contentPaths = getContentOutputPaths(outputRoot, post)
   const content = await readContentPackage(contentPaths.contentPath)
-  const extension = normalizeAudioExtension(file.fileName, file.mimeType)
-  const assetRelativePath = `assets/reel-audio${extension}`
+  const assetRelativePath = resolveAssetRelativePath(input)
   const assetAbsolutePath = join(contentPaths.baseDir, assetRelativePath)
-  const assets = Array.from(new Set([...content.metadata.assets, assetRelativePath]))
+  const assets = updateAssetList(content.metadata.assets, assetRelativePath, input.assetKind)
 
   await mkdir(join(contentPaths.baseDir, "assets"), { recursive: true })
-  await writeFile(assetAbsolutePath, file.buffer)
+  await writeFile(assetAbsolutePath, input.file.buffer)
   await writeJsonFile(contentPaths.contentPath, {
     ...content,
     metadata: {
@@ -627,6 +651,47 @@ function findReelAudioAssetRelativePath(content: ContentPackage): string | undef
     .find((assetPath) => assetPath.startsWith("assets/reel-audio."))
 
   return audioAsset
+}
+
+function resolveAssetRelativePath(input: StoreReviewAssetInput): string {
+  if (input.assetKind === "background-1.91x1") {
+    return "assets/background-1.91x1.webp"
+  }
+
+  if (input.assetKind === "background-4x5") {
+    return "assets/background-4x5.webp"
+  }
+
+  if (input.assetKind === "background-9x16") {
+    return "assets/background-9x16.webp"
+  }
+
+  if (input.assetKind === "reel-shot") {
+    if (!Number.isInteger(input.reelShotIndex) || (input.reelShotIndex ?? 0) < 1) {
+      throw new CalendarValidationError("Reel-Shot-Uploads require a valid 1-based shot index.")
+    }
+
+    return `assets/reel-shot-${String(input.reelShotIndex).padStart(2, "0")}.webp`
+  }
+
+  return `assets/reel-audio${normalizeAudioExtension(input.file.fileName, input.file.mimeType)}`
+}
+
+function updateAssetList(
+  existingAssets: string[],
+  assetRelativePath: string,
+  assetKind: ReviewAssetKind
+): string[] {
+  if (assetKind === "reel-audio") {
+    return Array.from(
+      new Set([
+        ...existingAssets.filter((assetPath) => !assetPath.startsWith("assets/reel-audio.")),
+        assetRelativePath
+      ])
+    )
+  }
+
+  return Array.from(new Set([...existingAssets, assetRelativePath]))
 }
 
 function normalizeAudioExtension(fileName: string, mimeType: string): string {

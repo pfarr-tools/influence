@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
 import { readFile } from "node:fs/promises"
-import { extname, relative, resolve } from "node:path"
+import { dirname, extname, join, relative, resolve } from "node:path"
 import { Readable } from "node:stream"
 import { URL } from "node:url"
 
@@ -41,6 +41,7 @@ import {
   loadReviewPost,
   loadReviewWeek,
   regenerateReviewPost,
+  storeReviewAsset,
   storeReviewReelAudioAsset,
   updateReviewPost
 } from "./review-service.js"
@@ -77,6 +78,50 @@ interface VoiceoverCueSegment {
   startSeconds: number
   text: string
 }
+
+type UploadAssetDescriptor = {
+  accept: string
+  height?: number
+  kind: "background-1.91x1" | "background-4x5" | "background-9x16" | "reel-audio" | "reel-shot"
+  label: string
+  width?: number
+}
+
+const uploadAssetDescriptors: UploadAssetDescriptor[] = [
+  {
+    accept: "image/*",
+    height: 630,
+    kind: "background-1.91x1",
+    label: "Hintergrund 1.91:1 (1200 × 630)",
+    width: 1200
+  },
+  {
+    accept: "image/*",
+    height: 1350,
+    kind: "background-4x5",
+    label: "Hintergrund 4:5 (1080 × 1350)",
+    width: 1080
+  },
+  {
+    accept: "image/*",
+    height: 1920,
+    kind: "background-9x16",
+    label: "Hintergrund 9:16 (1080 × 1920)",
+    width: 1080
+  },
+  {
+    accept: "audio/*",
+    kind: "reel-audio",
+    label: "Reel-Audio / Voiceover"
+  },
+  {
+    accept: "image/*",
+    height: 1920,
+    kind: "reel-shot",
+    label: "Reel-Shot (1080 × 1920)",
+    width: 1080
+  }
+]
 
 export function createReviewServer(dependencies: ReviewServerDependencies) {
   return createServer(async (request, response) => {
@@ -442,6 +487,59 @@ async function routeRequest(
   }
 
   if (method === "POST" && requestUrl.pathname.startsWith("/posts/")) {
+    if (requestUrl.pathname.match(/^\/posts\/[^/]+\/assets$/)) {
+      try {
+        const postId = decodeURIComponent(
+          requestUrl.pathname.replace(/^\/posts\/([^/]+)\/assets$/, "$1")
+        )
+        const form = await parseFormBody(request)
+        const uploadedAsset = form.getFile("asset_upload")
+        const assetKind = form.get("asset_kind")
+        const reelShotIndexRaw = form.get("reel_shot_index")
+        const reelShotIndex =
+          reelShotIndexRaw.length > 0 ? Number.parseInt(reelShotIndexRaw, 10) : undefined
+
+        if (!uploadedAsset) {
+          respondJson(response, 400, { error: "Keine Asset-Datei empfangen." })
+          return
+        }
+
+        if (!isSupportedAssetKind(assetKind)) {
+          respondJson(response, 400, { error: "Unbekannter Asset-Typ." })
+          return
+        }
+
+        if (!matchesAssetKindFileType(assetKind, uploadedAsset)) {
+          respondJson(response, 400, { error: "Dateityp passt nicht zum gewählten Asset-Ziel." })
+          return
+        }
+
+        const storedPath = await storeReviewAsset(
+          dependencies.calendar,
+          postId,
+          dependencies.runtimeConfig.outputDir,
+          {
+            assetKind,
+            file: uploadedAsset,
+            reelShotIndex
+          }
+        )
+        const relativeAssetPath = relative(
+          dependencies.runtimeConfig.outputDir,
+          storedPath
+        )
+
+        respondJson(response, 200, {
+          notice: "Asset gespeichert.",
+          storedPath: relativeAssetPath
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Asset konnte nicht gespeichert werden."
+        respondJson(response, 500, { error: message })
+      }
+      return
+    }
+
     if (requestUrl.pathname.match(/^\/posts\/[^/]+\/reel-audio$/)) {
       try {
         const postId = decodeURIComponent(
@@ -1108,6 +1206,31 @@ function renderPostPage(
             </div>
             <div class="card shadow-sm mb-4">
               <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div>
+                    <h2 class="h4 mb-1">Assets</h2>
+                    <p class="text-body-secondary mb-0">Manuelle Uploads werden unter den bekannten Asset-Slots gespeichert.</p>
+                  </div>
+                  ${renderModalActionButton("assetUploadModal", "Asset hochladen", "outline-secondary")}
+                </div>
+                ${renderAssetList(detail.content.metadata.assets, detail.contentPath)}
+              </div>
+            </div>
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
+                <h2 class="h4 mb-3">Vorschau</h2>
+                <div class="mb-4">
+                  <h3 class="h6 text-body-secondary text-uppercase mb-2">Bilder</h3>
+                  ${renderImageGallery(detail.imagePreviewPaths, allPreviewPaths, { compact: true })}
+                </div>
+                <div>
+                  <h3 class="h6 text-body-secondary text-uppercase mb-2">Render</h3>
+                  ${renderImageGallery(detail.renderPreviewPaths, allPreviewPaths, { compact: true })}
+                </div>
+              </div>
+            </div>
+            <div class="card shadow-sm">
+              <div class="card-body">
                 <h2 class="h4 mb-3">Reel</h2>
                 <p class="mb-2">Audio: <code>${escapeHtml(detail.reelAudioPath || "keine")}</code></p>
                 <p class="mb-2">Untertitel-Schrift: <code>${escapeHtml(
@@ -1142,18 +1265,6 @@ function renderPostPage(
                 }
               </div>
             </div>
-            <div class="card shadow-sm mb-4">
-              <div class="card-body">
-                <h2 class="h4 mb-3">Bildvorschau</h2>
-                ${renderImageGallery(detail.imagePreviewPaths, allPreviewPaths)}
-              </div>
-            </div>
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h2 class="h4 mb-3">Render-Vorschau</h2>
-                ${renderImageGallery(detail.renderPreviewPaths, allPreviewPaths)}
-              </div>
-            </div>
           </div>
         </div>
         ${renderReelActionModal(
@@ -1171,15 +1282,751 @@ function renderPostPage(
           detail.content.platforms.reel.shots,
           detail.reelAudioAssetPath
         )}
+        ${renderAssetUploadModal(detail.post.id, detail.content.platforms.reel.shots.length)}
         ${renderPreviewModal(allPreviewPaths)}
       </div>
     `
   )
 }
 
-function renderDocument(title: string, body: string): string {
-  const documentAssetVersion = Date.now()
+function renderAssetList(assetPaths: string[], contentPath: string): string {
+  if (assetPaths.length === 0) {
+    return `<p class="text-body-secondary mb-0">Noch keine Assets gespeichert.</p>`
+  }
 
+  const baseDir = dirname(contentPath)
+  const outputRoot = resolve(baseDir, "..", "..")
+
+  return `
+    <div class="list-group list-group-flush">
+      ${assetPaths
+        .map((assetPath) => {
+          const downloadPath = relative(outputRoot, join(baseDir, assetPath))
+
+          return `
+            <div class="list-group-item px-0 py-2 bg-transparent d-flex justify-content-between align-items-center gap-3">
+              <code>${escapeHtml(assetPath)}</code>
+              <a class="btn btn-sm btn-outline-secondary" href="/files/${escapeHtml(downloadPath)}" download>Download</a>
+            </div>
+          `
+        })
+        .join("")}
+    </div>
+  `
+}
+
+function renderAssetUploadModal(postId: string, reelShotCount: number): string {
+  const descriptorsJson = JSON.stringify(uploadAssetDescriptors)
+
+  return `
+    <div class="modal fade" id="assetUploadModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title fs-5">Asset hochladen</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-4">
+              <div class="col-lg-4">
+                <div class="mb-3">
+                  <label class="form-label" for="assetUploadInput">Datei</label>
+                  <input class="form-control" id="assetUploadInput" type="file">
+                </div>
+                <div class="alert alert-secondary mb-3" id="assetUploadHint" role="alert">
+                  Bilddateien können nach dem Upload in mehrere feste Zielgrößen zugeschnitten werden.
+                </div>
+                <div class="alert alert-danger d-none mb-3" id="assetUploadError" role="alert"></div>
+                <div class="alert alert-success d-none mb-3" id="assetUploadSuccess" role="alert"></div>
+                <div class="mb-3">
+                  <div class="fw-semibold mb-2">Erkannte Zuordnung</div>
+                  <div class="small text-body-secondary" id="assetUploadDetection">Noch keine Datei gewählt.</div>
+                </div>
+                <div class="mb-3">
+                  <div class="fw-semibold mb-2">Bild-Assets</div>
+                  <div class="d-grid gap-2" id="assetImageTargets"></div>
+                </div>
+                <div class="mb-3">
+                  <div class="fw-semibold mb-2">Audio-Asset</div>
+                  <div class="form-check">
+                    <input class="form-check-input" id="assetTargetAudio" type="radio" name="assetTargetAudio">
+                    <label class="form-check-label" for="assetTargetAudio">Reel-Audio / Voiceover</label>
+                  </div>
+                </div>
+                <div class="mb-3 d-none" id="assetReelShotIndexGroup">
+                  <label class="form-label" for="assetReelShotIndex">Reel-Shot</label>
+                  <select class="form-select" id="assetReelShotIndex">
+                    ${Array.from({ length: Math.max(reelShotCount, 1) }, (_, index) => {
+                      const number = index + 1
+                      return `<option value="${number}">Shot ${number}</option>`
+                    }).join("")}
+                  </select>
+                </div>
+              </div>
+              <div class="col-lg-8">
+                <div class="asset-crop-shell">
+                  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                      <div class="fw-semibold" id="assetCropTitle">Kein Bild geladen</div>
+                      <div class="small text-body-secondary" id="assetCropMeta">Wähle ein Bild und mindestens ein Ziel.</div>
+                    </div>
+                    <div class="small text-body-secondary" id="assetCropCounter"></div>
+                  </div>
+                  <div class="asset-crop-stage-wrap">
+                    <div class="asset-crop-stage" id="assetCropStage">
+                      <img alt="" class="d-none" id="assetCropImage">
+                    </div>
+                  </div>
+                  <div class="small text-body-secondary mt-2">Im Bild ziehen zum Positionieren, Zoom-Regler für den Ausschnitt.</div>
+                  <div class="mt-3">
+                    <label class="form-label" for="assetCropZoom">Zoom</label>
+                    <input class="form-range" id="assetCropZoom" max="3" min="1" step="0.01" type="range" value="1">
+                  </div>
+                  <div class="d-flex flex-wrap gap-2" id="assetCropTargetButtons"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
+            <button type="button" class="btn btn-primary" id="assetUploadSubmitButton" disabled>Asset speichern</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const modalElement = document.getElementById("assetUploadModal");
+        if (!modalElement) {
+          return;
+        }
+
+        const descriptors = ${descriptorsJson};
+        const postPath = "/posts/${escapeHtml(postId)}";
+        const uploadPath = postPath + "/assets";
+        const fileInput = document.getElementById("assetUploadInput");
+        const detectionElement = document.getElementById("assetUploadDetection");
+        const hintElement = document.getElementById("assetUploadHint");
+        const errorElement = document.getElementById("assetUploadError");
+        const successElement = document.getElementById("assetUploadSuccess");
+        const imageTargetsElement = document.getElementById("assetImageTargets");
+        const audioTargetElement = document.getElementById("assetTargetAudio");
+        const reelShotIndexGroup = document.getElementById("assetReelShotIndexGroup");
+        const reelShotIndexElement = document.getElementById("assetReelShotIndex");
+        const cropStageElement = document.getElementById("assetCropStage");
+        const cropImageElement = document.getElementById("assetCropImage");
+        const cropTitleElement = document.getElementById("assetCropTitle");
+        const cropMetaElement = document.getElementById("assetCropMeta");
+        const cropCounterElement = document.getElementById("assetCropCounter");
+        const cropZoomElement = document.getElementById("assetCropZoom");
+        const targetButtonsElement = document.getElementById("assetCropTargetButtons");
+        const submitButton = document.getElementById("assetUploadSubmitButton");
+
+        const imageTargetDescriptors = descriptors.filter((descriptor) => descriptor.accept === "image/*");
+        const imageTargetKinds = new Set(imageTargetDescriptors.map((descriptor) => descriptor.kind));
+
+        let currentFile = null;
+        let currentImage = null;
+        let currentImageUrl = "";
+        let currentTargetIndex = 0;
+        let isUploading = false;
+        let dragState = null;
+        const cropStates = new Map();
+
+        for (const descriptor of imageTargetDescriptors) {
+          const wrapper = document.createElement("label");
+          wrapper.className = "asset-target-option";
+          wrapper.innerHTML = '<input class="form-check-input mt-0" type="checkbox" value="' + descriptor.kind + '"><span>' + descriptor.label + '</span>';
+          imageTargetsElement.appendChild(wrapper);
+        }
+
+        function setError(message) {
+          if (!errorElement) {
+            return;
+          }
+
+          if (message) {
+            errorElement.textContent = message;
+            errorElement.classList.remove("d-none");
+          } else {
+            errorElement.textContent = "";
+            errorElement.classList.add("d-none");
+          }
+        }
+
+        function setSuccess(message) {
+          if (!successElement) {
+            return;
+          }
+
+          if (message) {
+            successElement.textContent = message;
+            successElement.classList.remove("d-none");
+          } else {
+            successElement.textContent = "";
+            successElement.classList.add("d-none");
+          }
+        }
+
+        function revokeImageUrl() {
+          if (!currentImageUrl) {
+            return;
+          }
+
+          URL.revokeObjectURL(currentImageUrl);
+          currentImageUrl = "";
+        }
+
+        function descriptorForKind(kind) {
+          return descriptors.find((descriptor) => descriptor.kind === kind) || null;
+        }
+
+        function getSelectedKinds() {
+          const selected = [];
+
+          for (const input of imageTargetsElement.querySelectorAll("input[type='checkbox']")) {
+            if (input.checked) {
+              selected.push(input.value);
+            }
+          }
+
+          if (audioTargetElement && audioTargetElement.checked) {
+            selected.push("reel-audio");
+          }
+
+          return selected;
+        }
+
+        function getSelectedImageKinds() {
+          return getSelectedKinds().filter((kind) => imageTargetKinds.has(kind));
+        }
+
+        function isImageFile(file) {
+          return typeof file.type === "string" && file.type.startsWith("image/");
+        }
+
+        function isAudioFile(file) {
+          return typeof file.type === "string" && file.type.startsWith("audio/");
+        }
+
+        function inferTargets(file) {
+          const lowerName = (file.name || "").toLowerCase();
+          const inferred = [];
+
+          if (isAudioFile(file) || lowerName.includes("voiceover") || lowerName.includes("reel-audio")) {
+            inferred.push("reel-audio");
+          }
+
+          const reelShotMatch = lowerName.match(/reel[-_ ]shot[-_ ]?(\\d{1,2})/);
+          if (reelShotMatch) {
+            inferred.push("reel-shot");
+            if (reelShotIndexElement) {
+              reelShotIndexElement.value = String(Number.parseInt(reelShotMatch[1], 10));
+            }
+          }
+
+          if (lowerName.includes("1.91x1") || lowerName.includes("landscape")) {
+            inferred.push("background-1.91x1");
+          }
+
+          if (lowerName.includes("4x5") || lowerName.includes("feed")) {
+            inferred.push("background-4x5");
+          }
+
+          if (lowerName.includes("9x16") || lowerName.includes("story") || lowerName.includes("cover")) {
+            inferred.push("background-9x16");
+          }
+
+          return Array.from(new Set(inferred));
+        }
+
+        function syncSelectionVisibility() {
+          const selectedKinds = getSelectedKinds();
+          const wantsReelShot = selectedKinds.includes("reel-shot");
+
+          if (reelShotIndexGroup) {
+            reelShotIndexGroup.classList.toggle("d-none", !wantsReelShot);
+          }
+
+          if (currentFile && !isImageFile(currentFile)) {
+            cropMetaElement.textContent = "Für Nicht-Bilddateien ist kein Zuschnitt erforderlich.";
+            cropStageElement.style.aspectRatio = "16 / 9";
+          }
+        }
+
+        function syncTargetAvailability() {
+          const hasImage = currentFile ? isImageFile(currentFile) : false;
+          const hasAudio = currentFile ? isAudioFile(currentFile) : false;
+
+          for (const input of imageTargetsElement.querySelectorAll("input[type='checkbox']")) {
+            input.disabled = !!currentFile && !hasImage;
+            if (input.disabled) {
+              input.checked = false;
+            }
+          }
+
+          if (audioTargetElement) {
+            audioTargetElement.disabled = !!currentFile && !hasAudio;
+            if (audioTargetElement.disabled) {
+              audioTargetElement.checked = false;
+            }
+          }
+        }
+
+        function resetCropUi() {
+          cropTitleElement.textContent = currentImage ? "Bildzuschnitt" : "Kein Bild geladen";
+          cropMetaElement.textContent = currentImage
+            ? "Wähle ein Ziel und positioniere den Ausschnitt."
+            : "Wähle ein Bild und mindestens ein Ziel.";
+          cropCounterElement.textContent = "";
+          cropZoomElement.value = "1";
+          targetButtonsElement.innerHTML = "";
+          cropStageElement.style.aspectRatio = "16 / 9";
+          if (cropImageElement) {
+            cropImageElement.classList.add("d-none");
+            cropImageElement.removeAttribute("src");
+            cropImageElement.style.transform = "";
+          }
+        }
+
+        function ensureCropState(kind) {
+          const key = kind + ":" + (kind === "reel-shot" ? reelShotIndexElement.value : "0");
+          let state = cropStates.get(key);
+          if (!state) {
+            state = { key, kind, offsetX: 0, offsetY: 0, zoom: 1 };
+            cropStates.set(key, state);
+          }
+
+          return state;
+        }
+
+        function clampCropState(state, frameWidth, frameHeight, descriptor) {
+          if (!currentImage || !descriptor || !descriptor.width || !descriptor.height) {
+            return;
+          }
+
+          const baseScale = Math.max(frameWidth / currentImage.naturalWidth, frameHeight / currentImage.naturalHeight);
+          const scaledWidth = currentImage.naturalWidth * baseScale * state.zoom;
+          const scaledHeight = currentImage.naturalHeight * baseScale * state.zoom;
+          const maxOffsetX = Math.max(0, (scaledWidth - frameWidth) / 2);
+          const maxOffsetY = Math.max(0, (scaledHeight - frameHeight) / 2);
+
+          state.offsetX = Math.min(maxOffsetX, Math.max(-maxOffsetX, state.offsetX));
+          state.offsetY = Math.min(maxOffsetY, Math.max(-maxOffsetY, state.offsetY));
+        }
+
+        function updateCropPreview() {
+          const selectedImageKinds = getSelectedImageKinds();
+          targetButtonsElement.innerHTML = "";
+
+          for (const [index, kind] of selectedImageKinds.entries()) {
+            const descriptor = descriptorForKind(kind);
+            const button = document.createElement("button");
+            button.className = "btn btn-sm " + (index === currentTargetIndex ? "btn-primary" : "btn-outline-secondary");
+            button.textContent = descriptor ? descriptor.label : kind;
+            button.type = "button";
+            button.addEventListener("click", () => {
+              currentTargetIndex = index;
+              updateCropPreview();
+            });
+            targetButtonsElement.appendChild(button);
+          }
+
+          if (!currentImage || selectedImageKinds.length === 0) {
+            resetCropUi();
+            updateSubmitState();
+            return;
+          }
+
+          const kind = selectedImageKinds[Math.min(currentTargetIndex, selectedImageKinds.length - 1)];
+          const descriptor = descriptorForKind(kind);
+          const state = ensureCropState(kind);
+          const frameWidth = cropStageElement.clientWidth || 640;
+          const frameHeight = descriptor && descriptor.width && descriptor.height
+            ? Math.max(1, Math.round(frameWidth * (descriptor.height / descriptor.width)))
+            : Math.round(frameWidth * 9 / 16);
+
+          cropStageElement.style.aspectRatio = descriptor && descriptor.width && descriptor.height
+            ? descriptor.width + " / " + descriptor.height
+            : "16 / 9";
+          clampCropState(state, frameWidth, frameHeight, descriptor);
+
+          cropTitleElement.textContent = descriptor ? descriptor.label : "Bildzuschnitt";
+          cropMetaElement.textContent = "Zielgröße " + descriptor.width + " × " + descriptor.height + " Pixel";
+          cropCounterElement.textContent = (currentTargetIndex + 1) + " / " + selectedImageKinds.length;
+          cropZoomElement.value = String(state.zoom);
+          cropImageElement.classList.remove("d-none");
+          cropImageElement.src = currentImageUrl;
+
+          const baseScale = Math.max(frameWidth / currentImage.naturalWidth, frameHeight / currentImage.naturalHeight);
+          const displayWidth = currentImage.naturalWidth * baseScale * state.zoom;
+          const displayHeight = currentImage.naturalHeight * baseScale * state.zoom;
+          cropImageElement.style.width = displayWidth + "px";
+          cropImageElement.style.height = displayHeight + "px";
+          cropImageElement.style.left = "50%";
+          cropImageElement.style.top = "50%";
+          cropImageElement.style.transform = "translate(calc(-50% + " + state.offsetX + "px), calc(-50% + " + state.offsetY + "px))";
+
+          updateSubmitState();
+        }
+
+        function updateDetection(file, inferredKinds) {
+          if (!detectionElement) {
+            return;
+          }
+
+          if (!file) {
+            detectionElement.textContent = "Noch keine Datei gewählt.";
+            return;
+          }
+
+          if (inferredKinds.length === 0) {
+            detectionElement.textContent = "Keine eindeutige Zuordnung aus Dateiname oder Typ. Bitte Ziel manuell wählen.";
+            return;
+          }
+
+          detectionElement.textContent = "Vorschlag: " + inferredKinds
+            .map((kind) => {
+              const descriptor = descriptorForKind(kind);
+              return descriptor ? descriptor.label : kind;
+            })
+            .join(", ");
+        }
+
+        function applyInferredSelection(file) {
+          const inferredKinds = inferTargets(file);
+          updateDetection(file, inferredKinds);
+
+          for (const input of imageTargetsElement.querySelectorAll("input[type='checkbox']")) {
+            input.checked = inferredKinds.includes(input.value);
+          }
+
+          if (audioTargetElement) {
+            audioTargetElement.checked = inferredKinds.includes("reel-audio");
+          }
+
+          if (isImageFile(file) && inferredKinds.length === 0) {
+            const defaultImageKinds = ["background-4x5", "background-9x16"];
+            for (const input of imageTargetsElement.querySelectorAll("input[type='checkbox']")) {
+              input.checked = defaultImageKinds.includes(input.value);
+            }
+          }
+
+          if (isAudioFile(file) && audioTargetElement) {
+            audioTargetElement.checked = true;
+          }
+
+          syncSelectionVisibility();
+        }
+
+        function updateSubmitState() {
+          const selectedKinds = getSelectedKinds();
+          submitButton.disabled = isUploading || !currentFile || selectedKinds.length === 0;
+        }
+
+        async function loadImageFile(file) {
+          revokeImageUrl();
+          currentImageUrl = URL.createObjectURL(file);
+          const image = new Image();
+          image.decoding = "async";
+          image.src = currentImageUrl;
+          await image.decode();
+          currentImage = image;
+        }
+
+        function resetState() {
+          currentFile = null;
+          currentImage = null;
+          currentTargetIndex = 0;
+          dragState = null;
+          cropStates.clear();
+          revokeImageUrl();
+          if (fileInput) {
+            fileInput.value = "";
+          }
+          for (const input of imageTargetsElement.querySelectorAll("input[type='checkbox']")) {
+            input.checked = false;
+          }
+          if (audioTargetElement) {
+            audioTargetElement.checked = false;
+          }
+          if (reelShotIndexElement) {
+            reelShotIndexElement.value = "1";
+          }
+          setError("");
+          setSuccess("");
+          updateDetection(null, []);
+          syncTargetAvailability();
+          syncSelectionVisibility();
+          resetCropUi();
+          updateSubmitState();
+        }
+
+        async function buildImageBlob(kind) {
+          const descriptor = descriptorForKind(kind);
+          const state = ensureCropState(kind);
+          const frameWidth = cropStageElement.clientWidth || 640;
+          const frameHeight = descriptor && descriptor.width && descriptor.height
+            ? Math.max(1, Math.round(frameWidth * (descriptor.height / descriptor.width)))
+            : Math.round(frameWidth * 9 / 16);
+          const baseScale = Math.max(frameWidth / currentImage.naturalWidth, frameHeight / currentImage.naturalHeight);
+          const scale = baseScale * state.zoom;
+          const sourceWidth = frameWidth / scale;
+          const sourceHeight = frameHeight / scale;
+          const sourceX = (currentImage.naturalWidth - sourceWidth) / 2 - state.offsetX / scale;
+          const sourceY = (currentImage.naturalHeight - sourceHeight) / 2 - state.offsetY / scale;
+          const canvas = document.createElement("canvas");
+          canvas.width = descriptor.width;
+          canvas.height = descriptor.height;
+          const context = canvas.getContext("2d");
+
+          context.drawImage(
+            currentImage,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            0,
+            0,
+            descriptor.width,
+            descriptor.height
+          );
+
+          return await new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(blob);
+                return;
+              }
+
+              reject(new Error("Bild konnte nicht verarbeitet werden."));
+            }, "image/webp", 0.95);
+          });
+        }
+
+        async function uploadOne(kind, blobOrFile) {
+          const formData = new FormData();
+          const descriptor = descriptorForKind(kind);
+          const baseName = kind === "reel-shot"
+            ? "reel-shot-" + String(reelShotIndexElement.value).padStart(2, "0") + ".webp"
+            : kind + (kind === "reel-audio" ? (currentFile.name.match(/\\.[^.]+$/)?.[0] || ".bin") : ".webp");
+
+          formData.append("asset_kind", kind);
+          if (kind === "reel-shot") {
+            formData.append("reel_shot_index", reelShotIndexElement.value);
+          }
+          formData.append(
+            "asset_upload",
+            blobOrFile,
+            kind === "reel-audio" ? currentFile.name : baseName
+          );
+
+          const response = await fetch(uploadPath, {
+            body: formData,
+            method: "POST"
+          });
+          const responseText = await response.text();
+          let payload = {};
+
+          try {
+            payload = responseText.length > 0 ? JSON.parse(responseText) : {};
+          } catch {
+            payload = {};
+          }
+
+          if (!response.ok) {
+            throw new Error(
+              payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
+                ? payload.error
+                : "Upload fehlgeschlagen."
+            );
+          }
+
+          return payload && typeof payload === "object" && "storedPath" in payload
+            ? payload.storedPath
+            : descriptor.label;
+        }
+
+        async function handleSubmit() {
+          if (!currentFile) {
+            return;
+          }
+
+          const selectedKinds = getSelectedKinds();
+          if (selectedKinds.length === 0) {
+            setError("Bitte mindestens ein Ziel wählen.");
+            return;
+          }
+
+          try {
+            isUploading = true;
+            setError("");
+            setSuccess("");
+            updateSubmitState();
+
+            const storedPaths = [];
+
+            for (const kind of selectedKinds) {
+              if (kind === "reel-audio") {
+                storedPaths.push(await uploadOne(kind, currentFile));
+                continue;
+              }
+
+              if (!currentImage) {
+                throw new Error("Für Bild-Assets wurde kein Bild geladen.");
+              }
+
+              storedPaths.push(await uploadOne(kind, await buildImageBlob(kind)));
+            }
+
+            setSuccess("Gespeichert: " + storedPaths.join(", "));
+            window.setTimeout(() => {
+              window.location.reload();
+            }, 600);
+          } catch (error) {
+            setError(error instanceof Error ? error.message : "Upload fehlgeschlagen.");
+          } finally {
+            isUploading = false;
+            updateSubmitState();
+          }
+        }
+
+        imageTargetsElement.addEventListener("change", () => {
+          syncSelectionVisibility();
+          updateCropPreview();
+        });
+
+        if (audioTargetElement) {
+          audioTargetElement.addEventListener("change", () => {
+            syncSelectionVisibility();
+            updateSubmitState();
+          });
+        }
+
+        if (reelShotIndexElement) {
+          reelShotIndexElement.addEventListener("change", () => {
+            updateCropPreview();
+          });
+        }
+
+        if (cropZoomElement) {
+          cropZoomElement.addEventListener("input", () => {
+            const selectedImageKinds = getSelectedImageKinds();
+            if (selectedImageKinds.length === 0) {
+              return;
+            }
+
+            const kind = selectedImageKinds[Math.min(currentTargetIndex, selectedImageKinds.length - 1)];
+            const state = ensureCropState(kind);
+            state.zoom = Number.parseFloat(cropZoomElement.value) || 1;
+            updateCropPreview();
+          });
+        }
+
+        if (cropStageElement) {
+          cropStageElement.addEventListener("pointerdown", (event) => {
+            const selectedImageKinds = getSelectedImageKinds();
+            if (!currentImage || selectedImageKinds.length === 0) {
+              return;
+            }
+
+            dragState = {
+              pointerId: event.pointerId,
+              startX: event.clientX,
+              startY: event.clientY
+            };
+            cropStageElement.setPointerCapture(event.pointerId);
+          });
+
+          cropStageElement.addEventListener("pointermove", (event) => {
+            if (!dragState || dragState.pointerId !== event.pointerId) {
+              return;
+            }
+
+            const selectedImageKinds = getSelectedImageKinds();
+            const kind = selectedImageKinds[Math.min(currentTargetIndex, selectedImageKinds.length - 1)];
+            const descriptor = descriptorForKind(kind);
+            const state = ensureCropState(kind);
+            state.offsetX += event.clientX - dragState.startX;
+            state.offsetY += event.clientY - dragState.startY;
+            dragState.startX = event.clientX;
+            dragState.startY = event.clientY;
+            clampCropState(state, cropStageElement.clientWidth || 640, cropStageElement.clientHeight || 360, descriptor);
+            updateCropPreview();
+          });
+
+          const stopDrag = (event) => {
+            if (!dragState || dragState.pointerId !== event.pointerId) {
+              return;
+            }
+
+            cropStageElement.releasePointerCapture(event.pointerId);
+            dragState = null;
+          };
+
+          cropStageElement.addEventListener("pointerup", stopDrag);
+          cropStageElement.addEventListener("pointercancel", stopDrag);
+        }
+
+        if (fileInput) {
+          fileInput.addEventListener("change", async () => {
+            const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+            currentFile = file;
+            currentImage = null;
+            currentTargetIndex = 0;
+            cropStates.clear();
+            setError("");
+            setSuccess("");
+
+            if (!file) {
+              updateDetection(null, []);
+              syncTargetAvailability();
+              resetCropUi();
+              updateSubmitState();
+              return;
+            }
+
+            applyInferredSelection(file);
+            syncTargetAvailability();
+
+            if (isImageFile(file)) {
+              try {
+                await loadImageFile(file);
+                hintElement.textContent = "Für jedes ausgewählte Bildziel kannst du hier einen eigenen festen Zuschnitt setzen.";
+                updateCropPreview();
+              } catch (error) {
+                currentImage = null;
+                setError(error instanceof Error ? error.message : "Bild konnte nicht geladen werden.");
+              }
+            } else {
+              revokeImageUrl();
+              currentImage = null;
+              hintElement.textContent = "Nicht-Bilddateien werden ohne Zuschnitt direkt gespeichert.";
+              resetCropUi();
+            }
+
+            updateSubmitState();
+          });
+        }
+
+        if (submitButton) {
+          submitButton.addEventListener("click", handleSubmit);
+        }
+
+        modalElement.addEventListener("hidden.bs.modal", resetState);
+        window.addEventListener("resize", () => {
+          if (currentImage) {
+            updateCropPreview();
+          }
+        });
+
+        resetState();
+      })();
+    </script>
+  `
+}
+
+function renderDocument(title: string, body: string): string {
   return `<!doctype html>
 <html lang="de">
   <head>
@@ -1191,6 +2038,10 @@ function renderDocument(title: string, body: string): string {
       body { background: #f4f1ea; }
       .preview-image { background: #fff; border: 1px solid #d6d0c4; border-radius: 0.75rem; overflow: hidden; }
       .preview-image img { display: block; width: 100%; height: auto; }
+      .preview-grid-compact { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
+      .preview-grid-compact .preview-image { aspect-ratio: 4 / 5; }
+      .preview-grid-compact .preview-image img { height: 100%; object-fit: cover; width: 100%; }
+      .preview-grid-compact .preview-label { font-size: 0.75rem; line-height: 1.2; word-break: break-word; }
       .preview-modal-dialog { margin: 1rem auto; max-width: min(95vw, 1400px); }
       .preview-modal-body { max-height: calc(100vh - 8rem); overflow: hidden; }
       .preview-modal-stage { align-items: center; display: flex; height: calc(100vh - 18rem); justify-content: center; overflow: hidden; }
@@ -1202,6 +2053,13 @@ function renderDocument(title: string, body: string): string {
       .voiceover-segment.active { background: #fff1cc; border-color: #c89d2a; box-shadow: 0 0 0 0.2rem rgba(200, 157, 42, 0.18); }
       .voiceover-segment.done { background: #eef7ef; border-color: #7cab83; }
       .voiceover-segment-time { font-variant-numeric: tabular-nums; }
+      .asset-crop-shell { background: #fffdfa; border: 1px solid #d6d0c4; border-radius: 0.85rem; padding: 1rem; }
+      .asset-crop-stage-wrap { background: linear-gradient(135deg, #f8f1df, #eef4ee); border: 1px dashed #cdbf9c; border-radius: 0.85rem; padding: 1rem; }
+      .asset-crop-stage { aspect-ratio: 16 / 9; background: rgba(255, 255, 255, 0.8); border: 2px solid #6e7f63; border-radius: 0.75rem; cursor: grab; margin: 0 auto; max-height: 60vh; overflow: hidden; position: relative; width: min(100%, 38rem); }
+      .asset-crop-stage:active { cursor: grabbing; }
+      .asset-crop-stage img { left: 50%; max-width: none; pointer-events: none; position: absolute; top: 50%; user-select: none; }
+      .asset-target-option { align-items: center; background: #fff; border: 1px solid #ded7ca; border-radius: 0.75rem; cursor: pointer; display: flex; gap: 0.75rem; padding: 0.75rem 0.9rem; }
+      .asset-target-option input { flex: 0 0 auto; }
       .week-post-link { color: inherit; display: block; height: 100%; text-decoration: none; }
       .week-post-link:hover .week-post-card,
       .week-post-link:focus-visible .week-post-card { box-shadow: 0 0.75rem 1.5rem rgba(75, 62, 40, 0.12) !important; transform: translateY(-1px); }
@@ -1835,6 +2693,36 @@ function respondJson(
 ): void {
   response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" })
   response.end(JSON.stringify(payload))
+}
+
+function isSupportedAssetKind(value: string): value is UploadAssetDescriptor["kind"] {
+  return uploadAssetDescriptors.some((descriptor) => descriptor.kind === value)
+}
+
+function matchesAssetKindFileType(
+  assetKind: UploadAssetDescriptor["kind"],
+  file: ParsedUploadedFile
+): boolean {
+  const lowerName = file.fileName.toLowerCase()
+  const isImage =
+    file.mimeType.startsWith("image/") ||
+    lowerName.endsWith(".png") ||
+    lowerName.endsWith(".jpg") ||
+    lowerName.endsWith(".jpeg") ||
+    lowerName.endsWith(".webp")
+  const isAudio =
+    file.mimeType.startsWith("audio/") ||
+    lowerName.endsWith(".mp3") ||
+    lowerName.endsWith(".m4a") ||
+    lowerName.endsWith(".wav") ||
+    lowerName.endsWith(".ogg") ||
+    lowerName.endsWith(".webm")
+
+  if (assetKind === "reel-audio") {
+    return isAudio
+  }
+
+  return isImage
 }
 
 function serializeChatSession(
@@ -2659,19 +3547,26 @@ function renderWorkflowBadge(label: string, active: boolean): string {
   return `<span class="badge rounded-pill text-bg-${active ? "success" : "secondary"}">${escapeHtml(label)}</span>`
 }
 
-function renderImageGallery(paths: string[], allPreviewPaths: string[]): string {
+function renderImageGallery(
+  paths: string[],
+  allPreviewPaths: string[],
+  options: {
+    compact?: boolean
+  } = {}
+): string {
   if (paths.length === 0) {
     return `<p class="text-body-secondary mb-0">Noch keine Dateien vorhanden.</p>`
   }
 
   const assetVersion = Date.now()
+  const compact = options.compact === true
 
   return `
-    <div class="row g-3">
+    <div class="${compact ? "preview-grid-compact" : "row g-3"}">
       ${paths
         .map(
           (path) => `
-            <div class="col-sm-6">
+            <div class="${compact ? "" : "col-sm-6"}">
               <div class="preview-image">
                 <button
                   class="btn p-0 border-0 w-100 text-start"
@@ -2681,7 +3576,7 @@ function renderImageGallery(paths: string[], allPreviewPaths: string[]): string 
                   <img alt="${escapeHtml(path)}" src="/files/${escapeHtml(withCacheBuster(path, assetVersion))}">
                 </button>
               </div>
-              <div class="small mt-2 text-body-secondary">${escapeHtml(path)}</div>
+              <div class="${compact ? "preview-label" : "small mt-2"} text-body-secondary">${escapeHtml(path)}</div>
             </div>
           `
         )

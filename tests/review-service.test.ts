@@ -17,6 +17,7 @@ import {
   approveReviewPost,
   exportReviewPost,
   regenerateReviewPost,
+  storeReviewAsset,
   storeReviewReelAudioAsset,
   updateReviewPost
 } from "../src/services/review/index.js"
@@ -188,6 +189,77 @@ describe("review service", () => {
     )
     expect(audioBuffer).toBe("webm-audio")
     expect(written.metadata.assets).toContain("assets/reel-audio.webm")
+  })
+
+  it("stores uploaded background assets under canonical filenames", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+
+    const storedPath = await storeReviewAsset(calendar, "post-0001", tempDir, {
+      assetKind: "background-4x5",
+      file: {
+        buffer: Buffer.from("image-bytes"),
+        fileName: "manual-upload.webp",
+        mimeType: "image/webp"
+      }
+    })
+
+    const written = await readJsonFile<ContentPackage>(contentPath)
+    const imageBuffer = await readFile(storedPath, "utf8")
+
+    expect(storedPath).toBe(
+      join(tempDir, "2026-08-10", "post-0001", "assets", "background-4x5.webp")
+    )
+    expect(imageBuffer).toBe("image-bytes")
+    expect(written.metadata.assets).toContain("assets/background-4x5.webp")
+  })
+
+  it("stores reel shots at the selected 1-based index", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+
+    const storedPath = await storeReviewAsset(calendar, "post-0001", tempDir, {
+      assetKind: "reel-shot",
+      file: {
+        buffer: Buffer.from("shot-image"),
+        fileName: "shot.webp",
+        mimeType: "image/webp"
+      },
+      reelShotIndex: 2
+    })
+
+    const written = await readJsonFile<ContentPackage>(contentPath)
+    const imageBuffer = await readFile(storedPath, "utf8")
+
+    expect(storedPath).toBe(
+      join(tempDir, "2026-08-10", "post-0001", "assets", "reel-shot-02.webp")
+    )
+    expect(imageBuffer).toBe("shot-image")
+    expect(written.metadata.assets).toContain("assets/reel-shot-02.webp")
+  })
+
+  it("replaces older reel audio metadata entries when the extension changes", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001", {
+      metadataAssets: ["assets/reel-audio.mp3"]
+    })
+
+    const storedPath = await storeReviewAsset(calendar, "post-0001", tempDir, {
+      assetKind: "reel-audio",
+      file: {
+        buffer: Buffer.from("new-audio"),
+        fileName: "voiceover-recording.webm",
+        mimeType: "audio/webm"
+      }
+    })
+
+    const written = await readJsonFile<ContentPackage>(contentPath)
+
+    expect(storedPath).toBe(
+      join(tempDir, "2026-08-10", "post-0001", "assets", "reel-audio.webm")
+    )
+    expect(written.metadata.assets).toContain("assets/reel-audio.webm")
+    expect(written.metadata.assets).not.toContain("assets/reel-audio.mp3")
   })
 })
 

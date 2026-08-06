@@ -13,14 +13,17 @@ export {
   loadReviewPost,
   loadReviewWeek,
   regenerateReviewPost,
+  storeReviewAsset,
   storeReviewReelAudioAsset,
   updateReviewPost
 } from "./review-service.js"
 export type {
+  ReviewAssetKind,
   ReviewExportResult,
   ReviewPostDetail,
   ReviewUploadedFile,
   ReviewWeekOverview,
+  StoreReviewAssetInput,
   UpdateReviewPostInput
 } from "./review-service.js"
 export type {
