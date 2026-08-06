@@ -601,57 +601,7 @@ function renderWeekPage(
               </div>
             </div>
             <div class="row g-3">
-              ${overview.selectedWeek.posts
-                .map(
-                  (post) => `
-                    <div class="col-md-6">
-                      <div class="card h-100 shadow-sm border-${resolveStatusTone(post.status)}">
-                        <div class="card-body">
-                          <div class="d-flex justify-content-between gap-3 mb-2">
-                            <div>
-                              <div class="text-body-secondary small">${escapeHtml(formatGermanDate(post.date))} · ${escapeHtml(
-                                post.weekday
-                              )}</div>
-                              <h2 class="h5 mb-1">${escapeHtml(post.theme)}</h2>
-                            </div>
-                            <span class="badge text-bg-${resolveStatusTone(post.status)} align-self-start">${escapeHtml(
-                              post.status
-                            )}</span>
-                          </div>
-                          <p class="mb-2"><strong>${escapeHtml(post.postId)}</strong> · ${escapeHtml(
-                            post.rubric
-                          )}</p>
-                          <div class="d-flex flex-wrap gap-2 mb-3">
-                            ${renderWorkflowBadge("Gerüst", post.workflow.scaffolded)}
-                            ${renderWorkflowBadge("Inhalt", post.workflow.contentGenerated)}
-                            ${renderWorkflowBadge("QA", post.workflow.qaRun)}
-                            ${renderWorkflowBadge("Bilder", post.workflow.imagesGenerated)}
-                            ${renderWorkflowBadge("Reelbilder", post.workflow.reelImagesGenerated)}
-                            ${renderWorkflowBadge("Render", post.workflow.rendered)}
-                            ${renderWorkflowBadge("Reel", post.workflow.reelRendered)}
-                            ${renderWorkflowBadge("Freigabe", post.isApproved)}
-                            ${renderWorkflowBadge("Export", post.workflow.exportGenerated)}
-                          </div>
-                          <div class="d-flex flex-wrap gap-2">
-                            ${renderPostActionForm(post.postId, "scaffold", "Gerüst", "outline-secondary")}
-                            ${renderPostActionForm(post.postId, "generate", "Inhalt", "outline-secondary")}
-                            ${renderPostActionForm(post.postId, "qa", "QA", "outline-secondary", !post.contentExists)}
-                            ${renderPostActionForm(post.postId, "images", "Bilder", "outline-secondary", !post.contentExists)}
-                            ${renderPostActionForm(post.postId, "images-reel", "Reelbilder", "outline-secondary", !post.contentExists)}
-                            ${renderPostActionForm(post.postId, "render", "Render", "outline-secondary", !post.contentExists)}
-                            ${renderPostActionForm(post.postId, "render-reel", "Reel", "outline-secondary", !post.contentExists)}
-                            ${
-                              post.contentExists
-                                ? `<a class="btn btn-outline-primary btn-sm" href="/posts/${escapeHtml(post.postId)}">Öffnen</a>`
-                                : ""
-                            }
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  `
-                )
-                .join("")}
+              ${overview.selectedWeek.posts.map((post) => renderWeekPostCard(post)).join("")}
             </div>
           </div>
         </div>
@@ -706,7 +656,7 @@ function renderPostPage(
               !detail.qaSummary?.ready_for_approval
             )}
             <form method="post" action="/posts/${escapeHtml(detail.post.id)}/export">
-              <button class="btn btn-primary" type="submit">Exportieren</button>
+              <button class="btn btn-primary btn-sm" type="submit">Exportieren</button>
             </form>
           </div>
         </div>
@@ -865,6 +815,11 @@ function renderDocument(title: string, body: string): string {
       .preview-modal-stage img { display: block; height: auto; margin: 0 auto; max-height: calc(100vh - 18rem); max-width: 100%; object-fit: contain; width: auto; }
       .platform-preview { border: 1px solid #d6d0c4; border-radius: 0.75rem; padding: 1rem; background: #fffdfa; }
       .app-hero { background: linear-gradient(135deg, #fff4df, #e6f1ea); border-bottom: 1px solid #dccfb6; }
+      .week-post-link { color: inherit; display: block; height: 100%; text-decoration: none; }
+      .week-post-link:hover .week-post-card,
+      .week-post-link:focus-visible .week-post-card { box-shadow: 0 0.75rem 1.5rem rgba(75, 62, 40, 0.12) !important; transform: translateY(-1px); }
+      .week-post-link:focus-visible { outline: none; }
+      .week-post-card { transition: box-shadow 0.15s ease, transform 0.15s ease; }
     </style>
   </head>
   <body>
@@ -883,6 +838,52 @@ function renderLayoutHeader(title: string, subtitle: string): string {
         <p class="fw-semibold mb-1">${escapeHtml(title)}</p>
         <p class="mb-0 text-body-secondary">${escapeHtml(subtitle)}</p>
       </div>
+    </div>
+  `
+}
+
+function renderWeekPostCard(
+  post: Awaited<ReturnType<typeof loadReviewWeek>>["selectedWeek"]["posts"][number]
+): string {
+  const card = `
+    <div class="card week-post-card h-100 shadow-sm border-${resolveStatusTone(post.status)}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between gap-3 mb-2">
+          <div>
+            <div class="text-body-secondary small">${escapeHtml(formatGermanDate(post.date))} · ${escapeHtml(
+              post.weekday
+            )}</div>
+            <h2 class="h5 mb-1">${escapeHtml(post.theme)}</h2>
+          </div>
+          <span class="badge text-bg-${resolveStatusTone(post.status)} align-self-start">${escapeHtml(
+            post.status
+          )}</span>
+        </div>
+        <p class="mb-2"><strong>${escapeHtml(post.postId)}</strong> · ${escapeHtml(post.rubric)}</p>
+        <div class="d-flex flex-wrap gap-2">
+          ${renderWorkflowBadge("Gerüst", post.workflow.scaffolded)}
+          ${renderWorkflowBadge("Inhalt", post.workflow.contentGenerated)}
+          ${renderWorkflowBadge("QA", post.workflow.qaRun)}
+          ${renderWorkflowBadge("Bilder", post.workflow.imagesGenerated)}
+          ${renderWorkflowBadge("Reelbilder", post.workflow.reelImagesGenerated)}
+          ${renderWorkflowBadge("Render", post.workflow.rendered)}
+          ${renderWorkflowBadge("Reel", post.workflow.reelRendered)}
+          ${renderWorkflowBadge("Freigabe", post.isApproved)}
+          ${renderWorkflowBadge("Export", post.workflow.exportGenerated)}
+        </div>
+      </div>
+    </div>
+  `
+
+  return `
+    <div class="col-md-6">
+      ${
+        post.contentExists
+          ? `<a class="week-post-link" href="/posts/${escapeHtml(post.postId)}" aria-label="${escapeHtml(
+              `${post.postId} öffnen`
+            )}">${card}</a>`
+          : card
+      }
     </div>
   `
 }
@@ -935,7 +936,7 @@ function renderModalActionButton(
   tone: string
 ): string {
   return `
-    <button class="btn btn-${tone}" type="button" data-bs-toggle="modal" data-bs-target="#${escapeHtml(targetId)}">
+    <button class="btn btn-${tone} btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#${escapeHtml(targetId)}">
       ${escapeHtml(label)}
     </button>
   `
