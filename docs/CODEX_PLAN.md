@@ -302,7 +302,174 @@ Nutze FFmpeg für einfache Reels:
 
 Kein generatives Video in der ersten Version.
 
-# Phase 10 – Publishing, Scheduling und manueller Facebook-Assistent
+# Phase 10 – Chat-Modal für Inhaltsdiskussion und strukturierte Überarbeitung
+
+## Ziel
+
+Pfarr.Media soll bestehende Inhalts-JSONs nicht nur bearbeitbar anzeigen, sondern in eine geführte Chat-Diskussion mit ChatGPT überführen können.
+
+Der Benutzer kann dabei:
+
+- ein bestehendes Content-JSON für einen einzelnen Post, eine Woche oder einen anderen unterstützten Ausschnitt öffnen
+- einen initialen Prompt eingeben, zum Beispiel zur inhaltlichen Kritik, theologischen Zuspitzung, Zielgruppenanpassung oder Stilverbesserung
+- anschließend in einem Chat über denselben Inhalt weiterdiskutieren
+- jederzeit per Button eine überarbeitete JSON-Antwort im exakt gleichen Schema anfordern
+- die überarbeitete JSON prüfen, vergleichen und gezielt übernehmen
+
+## UX und Modal-Verhalten
+
+Ergänze in der lokalen Review-Oberfläche ein Chat-Modal für Contentpakete.
+
+Das Modal soll mindestens enthalten:
+
+- Titel mit Bezug auf den aktuell geöffneten Inhalt
+- Eingabefeld für den initialen Prompt
+- sichtbare Kennzeichnung, welche JSON-Grundlage besprochen wird
+- Chat-Verlauf mit Rollenkennzeichnung für Benutzer und Assistent
+- Button zum Senden einer normalen Chat-Nachricht
+- separaten Button zum Anfordern einer strukturgleichen JSON-Revision
+- Bereich für die letzte strukturierte JSON-Antwort
+- Aktionen zum Übernehmen, Verwerfen oder erneuten Anfordern der Revision
+
+Der Unterschied zwischen Diskussion und Revision muss in der Oberfläche klar erkennbar sein:
+
+- normale Chat-Nachrichten dienen nur der Diskussion und Analyse
+- der Revisions-Button fordert explizit ein neues JSON im vorhandenen Schema an
+
+## Unterstützte Kontexte
+
+Das Modal muss mindestens mit diesen JSON-Typen funktionieren:
+
+- einzelnes `content.json`
+- gesamter `Redaktionsplan`
+- Wochenplan oder Wochenpaket, sofern als JSON verfügbar
+- andere zukünftige, klar schema-definierte Inhaltsobjekte
+
+Die Implementierung muss deshalb einen generischen Ansatz für "JSON plus Schema-Hinweise plus Chat-Kontext" verwenden und nicht nur auf einen einzelnen Dateityp fest verdrahtet sein.
+
+## Prompting und Request-Aufbau
+
+Beim Start einer Session sendet das System an ChatGPT:
+
+- den initialen Benutzer-Prompt
+- das aktuelle JSON in serialisierter Form
+- klare Anweisungen zum erwarteten Schema
+- Hinweise, dass bei Diskussionsnachrichten zunächst natürlichsprachig geantwortet werden soll
+- Hinweise, dass bei einer Revisionsanforderung ausschließlich ein valides JSON im selben Strukturformat zurückgegeben werden soll
+
+Die Schema-Anweisungen sollen mindestens enthalten:
+
+- Feldstruktur
+- Pflichtfelder
+- verbotene Freiform-Erweiterungen außerhalb des Schemas
+- Erhalt stabiler Identifikatoren, sofern vorhanden
+- keine Erfindung nicht belegter Fakten bei Reli-, Gemeinde- oder Predigtkontexten
+
+Nutze für die strukturierte Revision die aktuelle OpenAI Responses API mit strukturierter Validierung gegen das passende Schema.
+
+## Session-Modell
+
+Implementiere ein lokales Sitzungsmodell, mindestens mit:
+
+```ts
+interface ContentChatSession {
+  id: string;
+  contextType: "post" | "week" | "plan" | "other";
+  contextRef: string;
+  schemaName: string;
+  sourceJsonPath: string | null;
+  sourceJson: unknown;
+  messages: Array<{
+    id: string;
+    role: "user" | "assistant" | "system";
+    kind: "discussion" | "revision_request" | "revision_result";
+    content: string;
+    createdAt: string;
+  }>;
+  lastRevisionJson: unknown | null;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+Anforderungen:
+
+- Sessions lokal persistieren
+- Chat-Verlauf pro Inhalt wieder öffnen können
+- ursprüngliches JSON unverändert referenzieren
+- Revisionsstände getrennt vom Original speichern
+- keine stillschweigende Überschreibung ohne explizite Benutzeraktion
+
+## Übernahme-Workflow
+
+Wenn ChatGPT eine revidierte JSON liefert, muss die Oberfläche mindestens diese Schritte anbieten:
+
+1. validieren gegen das ursprüngliche Schema
+2. Unterschiede zum Ausgangs-JSON sichtbar machen
+3. Revision wahlweise als Entwurf speichern oder in die aktive JSON übernehmen
+
+Der Benutzer darf niemals gezwungen werden, die letzte Modellantwort direkt zu übernehmen.
+
+## Vergleich und Nachvollziehbarkeit
+
+Für jede strukturierte Revision anzeigen:
+
+- Zeitpunkt
+- verwendetes Modell
+- Validierungsstatus
+- kurze Diff-Ansicht oder Feldänderungen
+- Hinweis auf entfernte, hinzugefügte oder geleerte Inhalte
+
+Speichere zusätzlich:
+
+- Rohantwort des Modells
+- validierte JSON
+- Validierungsfehler, falls vorhanden
+
+## CLI und Backend-Endpunkte
+
+Die UI kann serverseitige Endpunkte oder eine kleine lokale API verwenden.
+
+Mindestens erforderlich:
+
+```bash
+npm run dev -- chat start --post-id post-0001
+npm run dev -- chat start --plan data/redaktionskalender-2026-2027.json
+npm run dev -- chat message --session-id <id> --text "Der Ton ist noch zu sachlich."
+npm run dev -- chat revise --session-id <id>
+npm run dev -- chat apply --session-id <id>
+```
+
+Mögliche HTTP-Endpunkte:
+
+```text
+POST /chat/sessions
+POST /chat/sessions/:id/messages
+POST /chat/sessions/:id/revise
+POST /chat/sessions/:id/apply
+GET /chat/sessions/:id
+```
+
+## Sicherheits- und Qualitätsregeln
+
+- Strukturierte Revisionen müssen immer lokal gegen das passende Schema validiert werden.
+- Eine Diskussionsantwort darf niemals automatisch als JSON übernommen werden.
+- Das Modell darf keine unbekannten Zusatzfelder einschmuggeln.
+- Bestehende IDs, Datumsbezüge und Statusfelder dürfen nur geändert werden, wenn das Schema und der Anwendungsfall das erlauben.
+- Sensible Quellenfelder wie Bibelzitate, Liedtexte oder manuelle Redaktionshinweise dürfen nicht stillschweigend verfälscht werden.
+- Bei Validierungsfehlern muss die Antwort als fehlgeschlagene Revision sichtbar bleiben und darf nicht übernommen werden.
+
+## Akzeptanzkriterien
+
+- Ein Benutzer kann aus der Review-Oberfläche ein Chat-Modal für ein bestehendes JSON öffnen.
+- Der erste Request enthält Initialprompt, JSON-Kontext und Schema-Hinweise.
+- Normale Chat-Nachrichten erzeugen Diskussionsantworten in natürlicher Sprache.
+- Der Revisions-Button liefert ein valides JSON im selben Schema oder einen sichtbaren Validierungsfehler.
+- Übernommene Revisionen überschreiben das Original nicht stillschweigend, sondern nur nach expliziter Aktion.
+- Verlauf, Revisionen und Diff sind nach einem Neuladen der lokalen UI weiter verfügbar.
+- Tests decken mindestens Session-Persistenz, Schema-Validierung, Revisionsfehler und den Übernahme-Workflow ab.
+
+# Phase 11 – Publishing, Scheduling und manueller Facebook-Assistent
 
 ## Ziel
 
@@ -631,7 +798,7 @@ npm run dev -- publish mark-published --post-id post-0007 --platform facebook
 - Umgehung von Plattformrichtlinien oder Berechtigungsprüfungen
 - interaktive Instagram-Story-Sticker
 
-# Phase 11 – Tageslosungen importieren und als Story veröffentlichen
+# Phase 12 – Tageslosungen importieren und als Story veröffentlichen
 
 ## Ziel
 
@@ -737,7 +904,7 @@ npm run dev -- losungen schedule-story --date 2026-08-10 --at 07:00
 - Zielplattform zunächst Instagram Story.
 - Optional später Facebook-Seiten-Story, falls ein entsprechender Kanal verwendet wird.
 - Das persönliche Facebook-Profil wird nicht automatisiert beliefert.
-- Veröffentlichung läuft über Phase 10.
+- Veröffentlichung läuft über Phase 11.
 
 ## Akzeptanzkriterien
 
@@ -747,7 +914,7 @@ npm run dev -- losungen schedule-story --date 2026-08-10 --at 07:00
 - Fehlender Jahrestag verhindert die automatische Veröffentlichung und erzeugt eine sichtbare Warnung.
 - Tests verwenden kleine synthetische XML-Dateien ohne reale Losungstexte.
 
-# Phase 12 – Neueste Predigt erkennen und plattformübergreifend teilen
+# Phase 13 – Neueste Predigt erkennen und plattformübergreifend teilen
 
 ## Ziel
 
@@ -860,7 +1027,7 @@ Für jede Plattform getrennte Längen-, Link- und Medienregeln anwenden.
 
 ## Optionaler Trigger
 
-Ein Scheduler kann den Feed regelmäßig abrufen, zum Beispiel stündlich oder täglich. Er darf jedoch nur einen Entwurf erzeugen. Veröffentlichung erfordert weiterhin die in Phase 10 festgelegte Freigabe.
+Ein Scheduler kann den Feed regelmäßig abrufen, zum Beispiel stündlich oder täglich. Er darf jedoch nur einen Entwurf erzeugen. Veröffentlichung erfordert weiterhin die in Phase 11 festgelegte Freigabe.
 
 ## Akzeptanzkriterien
 
@@ -872,7 +1039,7 @@ Ein Scheduler kann den Feed regelmäßig abrufen, zum Beispiel stündlich oder t
 - Fehlende Feedfelder werden nicht erfunden.
 - Tests verwenden lokale RSS-Fixtures und keine Live-Abhängigkeit.
 
-# Phase 13 – Morgen- und Abendgebete als tägliche Stories
+# Phase 14 – Morgen- und Abendgebete als tägliche Stories
 
 ## Ziel
 
@@ -1008,7 +1175,7 @@ Optionen:
 ## Veröffentlichung
 
 - primär Instagram Story
-- Phase 10 übernimmt Planung und Veröffentlichung
+- Phase 11 übernimmt Planung und Veröffentlichung
 - bei aktuellen Nachrichten sollte standardmäßig eine manuelle Freigabe erforderlich sein
 - vollautomatische Veröffentlichung ist nur für Gebete ohne News-Kontext als spätere, explizit aktivierte Option denkbar
 
