@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { loadCalendarFromFile } from "../src/services/calendar/calendar-service.js"
 import {
-  generateImagesForPost
+  generateImagesForPost,
+  generateReelImagesForPost
 } from "../src/services/image/image-generator.js"
 import { scaffoldPostById } from "../src/services/content/content-scaffolder.js"
 import {
@@ -167,6 +168,38 @@ describe("image generator", () => {
       status: "failed"
     })
   })
+
+  it("generates one vertical Flux request per reel shot", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    await writeImageReadyContent(calendar, tempDir, {
+      reelShots: ["Kerze am Fenster", "Bibel auf Holz", "Hände im Gebet"]
+    })
+
+    const result = await generateReelImagesForPost(
+      calendar,
+      "post-0001",
+      {
+        dryRun: true,
+        force: false,
+        model: "flux-dev",
+        outputRoot: tempDir,
+        seed: 100
+      },
+      {}
+    )
+
+    expect(result.dryRunRequests).toHaveLength(3)
+    expect(result.jobs.map((job) => job.assetPath)).toEqual([
+      join(tempDir, "2026-08-10", "post-0001", "assets", "reel-shot-01.webp"),
+      join(tempDir, "2026-08-10", "post-0001", "assets", "reel-shot-02.webp"),
+      join(tempDir, "2026-08-10", "post-0001", "assets", "reel-shot-03.webp")
+    ])
+    expect(result.dryRunRequests?.map((request) => request.seed)).toEqual([100, 101, 102])
+    expect(result.dryRunRequests?.every((request) => request.aspectRatio === "9:16")).toBe(
+      true
+    )
+    expect(result.dryRunRequests?.[1]?.prompt).toContain("scene focus: Bibel auf Holz")
+  })
 })
 
 function createMockImageClient(options?: {
@@ -200,15 +233,26 @@ function createMockImageClient(options?: {
 
 async function writeImageReadyContent(
   calendar: Awaited<ReturnType<typeof loadCalendarFromFile>>,
-  outputRoot: string
+  outputRoot: string,
+  overrides?: {
+    reelShots?: string[]
+  }
 ): Promise<void> {
   const scaffold = await scaffoldPostById(calendar, "post-0001", outputRoot)
   const content = await readJsonFile<{
+    platforms: { reel: { shots: string[] } }
     visual: { flux_prompt: string; negative_prompt: string }
   }>(scaffold.outputPath)
 
   await writeJsonFile(scaffold.outputPath, {
     ...content,
+    platforms: {
+      ...content.platforms,
+      reel: {
+        ...content.platforms.reel,
+        shots: overrides?.reelShots ?? content.platforms.reel.shots
+      }
+    },
     status: "freigegeben",
     visual: {
       ...content.visual,

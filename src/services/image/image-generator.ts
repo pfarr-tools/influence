@@ -50,6 +50,14 @@ export interface GenerateImagesResult {
   summaryPath: string
 }
 
+export interface GenerateReelImagesResult {
+  contentPath: string
+  dryRunRequests?: ImageGenerationRequestPreview[]
+  jobs: StoredImageJobResult[]
+  postId: string
+  summaryPath: string
+}
+
 /**
  * Request preview used by dry-run mode.
  */
@@ -129,6 +137,32 @@ export async function generateImagesForWeek(
   return results
 }
 
+export async function generateReelImagesForPost(
+  calendar: Calendar,
+  postId: string,
+  options: GenerateImagesOptions,
+  dependencies: ImageGeneratorDependencies
+): Promise<GenerateReelImagesResult> {
+  const post = getPostById(calendar, postId)
+  return generateReelImagesForCalendarPost(post, options, dependencies)
+}
+
+export async function generateReelImagesForWeek(
+  calendar: Calendar,
+  date: string,
+  options: GenerateImagesOptions,
+  dependencies: ImageGeneratorDependencies
+): Promise<GenerateReelImagesResult[]> {
+  const week = getWeekForDate(calendar, date)
+  const results: GenerateReelImagesResult[] = []
+
+  for (const post of week.beitraege) {
+    results.push(await generateReelImagesForCalendarPost(post, options, dependencies))
+  }
+
+  return results
+}
+
 async function generateImagesForCalendarPost(
   post: CalendarPost,
   options: GenerateImagesOptions,
@@ -187,6 +221,139 @@ async function generateImagesForCalendarPost(
   for (const request of requests) {
     const assetPath = buildAssetPath(contentPaths.baseDir, request.aspectRatio)
     const rawResponsePath = buildRawResponsePath(contentPaths.baseDir, request.aspectRatio)
+
+    try {
+      const response = await imageClient.generateImage(requestToStoredRequest(request))
+      await mkdir(dirname(assetPath), { recursive: true })
+      await writeFile(assetPath, Buffer.from(response.imageBase64, "base64"))
+      await writeJsonFile(rawResponsePath, response.rawResponse)
+
+      jobs.push({
+        assetPath,
+        aspectRatio: request.aspectRatio,
+        height: request.height,
+        mimeType: response.mimeType,
+        rawResponsePath,
+        request: requestToStoredRequest(request),
+        seed: response.seed ?? request.seed,
+        status: "succeeded",
+        width: request.width
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+
+      await writeJsonFile(rawResponsePath, {
+        error: message,
+        status: "failed"
+      })
+
+      jobs.push({
+        assetPath,
+        aspectRatio: request.aspectRatio,
+        error: message,
+        height: request.height,
+        mimeType: "image/webp",
+        rawResponsePath,
+        request: requestToStoredRequest(request),
+        seed: request.seed,
+        status: "failed",
+        width: request.width
+      })
+    }
+  }
+
+  await writeJsonFile(summaryPath, {
+    generated_at: now().toISOString(),
+    jobs,
+    model: options.model,
+    post_id: post.id
+  })
+
+  await updateContentAssets(contentPaths.contentPath, contentPaths.baseDir, content, jobs)
+
+  return {
+    contentPath: contentPaths.contentPath,
+    jobs,
+    postId: post.id,
+    summaryPath
+  }
+}
+
+async function generateReelImagesForCalendarPost(
+  post: CalendarPost,
+  options: GenerateImagesOptions,
+  dependencies: ImageGeneratorDependencies
+): Promise<GenerateReelImagesResult> {
+  const contentPaths = getContentOutputPaths(options.outputRoot, post)
+  const content = await readContentPackage(contentPaths.contentPath)
+  assertContentApproved(content, contentPaths.contentPath)
+  const safePrompt = sanitizeFluxPrompt(content.visual.flux_prompt)
+
+  if (safePrompt.length === 0) {
+    throw new CalendarValidationError(
+      `Content package "${contentPaths.contentPath}" does not contain a safe Flux prompt.`
+    )
+  }
+
+  const shots = content.platforms.reel.shots
+    .map((shot) => shot.trim())
+    .filter((shot) => shot.length > 0)
+
+  if (shots.length === 0) {
+    throw new CalendarValidationError(
+      `Content package "${contentPaths.contentPath}" does not contain any reel shots.`
+    )
+  }
+
+  const summaryPath = `${contentPaths.baseDir}/reel-image-generation-results.json`
+  const requests = shots.map((shot, index) =>
+    buildRequestPreview(
+      post.id,
+      content,
+      options.model,
+      "9:16",
+      `${safePrompt}, scene focus: ${shot}`,
+      options.seed === undefined ? undefined : options.seed + index
+    )
+  )
+
+  if (options.dryRun) {
+    return {
+      contentPath: contentPaths.contentPath,
+      dryRunRequests: requests,
+      jobs: requests.map((request, index) => ({
+        assetPath: buildReelAssetPath(contentPaths.baseDir, index + 1),
+        aspectRatio: request.aspectRatio,
+        height: request.height,
+        mimeType: "image/webp",
+        rawResponsePath: buildReelRawResponsePath(contentPaths.baseDir, index + 1),
+        request: requestToStoredRequest(request),
+        seed: request.seed,
+        status: "succeeded",
+        width: request.width
+      })),
+      postId: post.id,
+      summaryPath
+    }
+  }
+
+  await assertWritableReelImageTargets(contentPaths.baseDir, shots.length, summaryPath, options.force)
+
+  const imageClient = dependencies.imageClient
+
+  if (!imageClient) {
+    throw new CalendarValidationError(
+      "FLUX_API_BASE_URL is required for reel image generation unless --dry-run is used."
+    )
+  }
+
+  const now = dependencies.now ?? (() => new Date())
+  const jobs: StoredImageJobResult[] = []
+
+  for (const [index, request] of requests.entries()) {
+    const sequence = index + 1
+    const assetPath = buildReelAssetPath(contentPaths.baseDir, sequence)
+    const rawResponsePath = buildReelRawResponsePath(contentPaths.baseDir, sequence)
 
     try {
       const response = await imageClient.generateImage(requestToStoredRequest(request))
@@ -364,6 +531,14 @@ function buildRawResponsePath(baseDir: string, format: SupportedFormat): string 
   return `${baseDir}/raw-flux-response-${supportedFormats[format].slug}.json`
 }
 
+function buildReelAssetPath(baseDir: string, sequence: number): string {
+  return `${baseDir}/assets/reel-shot-${formatSequence(sequence)}.webp`
+}
+
+function buildReelRawResponsePath(baseDir: string, sequence: number): string {
+  return `${baseDir}/raw-flux-reel-shot-${formatSequence(sequence)}.json`
+}
+
 async function assertWritableImageTargets(
   baseDir: string,
   formats: SupportedFormat[],
@@ -376,6 +551,29 @@ async function assertWritableImageTargets(
       buildAssetPath(baseDir, format),
       buildRawResponsePath(baseDir, format)
     ])
+  ]
+
+  for (const path of paths) {
+    if ((await pathExists(path)) && !force) {
+      throw new CalendarValidationError(
+        `Image output already exists at "${path}". Use --force to overwrite it.`
+      )
+    }
+  }
+}
+
+async function assertWritableReelImageTargets(
+  baseDir: string,
+  shotCount: number,
+  summaryPath: string,
+  force: boolean
+): Promise<void> {
+  const paths = [
+    summaryPath,
+    ...Array.from({ length: shotCount }, (_, index) => [
+      buildReelAssetPath(baseDir, index + 1),
+      buildReelRawResponsePath(baseDir, index + 1)
+    ]).flat()
   ]
 
   for (const path of paths) {
@@ -420,4 +618,8 @@ function requestToStoredRequest(
     prompt: request.prompt,
     ...(request.seed === undefined ? {} : { seed: request.seed })
   }
+}
+
+function formatSequence(value: number): string {
+  return value.toString().padStart(2, "0")
 }

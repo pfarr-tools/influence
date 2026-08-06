@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
 import { readFile } from "node:fs/promises"
 import { extname, resolve } from "node:path"
+import { Readable } from "node:stream"
 import { URL } from "node:url"
 
 import type { Calendar } from "../../domain/calendar.js"
@@ -12,15 +13,26 @@ import type { ContentGeneratorDependencies } from "../content/content-generator.
 import { generateContentForWeek } from "../content/content-generator.js"
 import { runQaForPost, runQaForWeek } from "../content/content-qa.js"
 import type { ImageModelClient } from "../image/flux-client.js"
-import { generateImagesForPost, generateImagesForWeek } from "../image/image-generator.js"
+import {
+  generateImagesForPost,
+  generateImagesForWeek,
+  generateReelImagesForPost,
+  generateReelImagesForWeek
+} from "../image/image-generator.js"
 import type { HtmlRenderClient } from "../render/index.js"
-import { renderPostById, renderWeekByDate } from "../render/index.js"
+import {
+  renderPostById,
+  renderReelById,
+  renderReelsForWeek,
+  renderWeekByDate
+} from "../render/index.js"
 import {
   approveReviewPost,
   exportReviewPost,
   loadReviewPost,
   loadReviewWeek,
   regenerateReviewPost,
+  storeReviewReelAudioAsset,
   updateReviewPost
 } from "./review-service.js"
 
@@ -39,6 +51,13 @@ export interface ReviewServerDependencies extends ContentGeneratorDependencies {
 interface ParsedFormBody {
   get(name: string): string
   getAll(name: string): string[]
+  getFile(name: string): ParsedUploadedFile | undefined
+}
+
+interface ParsedUploadedFile {
+  buffer: Buffer
+  fileName: string
+  mimeType: string
 }
 
 export function createReviewServer(dependencies: ReviewServerDependencies) {
@@ -94,7 +113,7 @@ async function routeRequest(
 
   if (method === "POST" && requestUrl.pathname.startsWith("/weeks/")) {
     const actionMatch = requestUrl.pathname.match(
-      /^\/weeks\/([^/]+)\/(scaffold|generate|qa|images|render)$/
+      /^\/weeks\/([^/]+)\/(scaffold|generate|qa|images|images-reel|render|render-reel)$/
     )
 
     if (actionMatch) {
@@ -168,6 +187,46 @@ async function routeRequest(
         return
       }
 
+      if (action === "images-reel") {
+        await generateReelImagesForWeek(
+          dependencies.calendar,
+          date,
+          {
+            dryRun: false,
+            force: true,
+            model: dependencies.runtimeConfig.fluxModel,
+            outputRoot: dependencies.runtimeConfig.outputDir
+          },
+          {
+            imageClient: dependencies.imageClient
+          }
+        )
+        redirect(
+          response,
+          `/weeks/${encodeURIComponent(date)}?notice=${encodeURIComponent("Wochen-Reelbilder generiert.")}`
+        )
+        return
+      }
+
+      if (action === "render-reel") {
+        await renderReelsForWeek(
+          dependencies.calendar,
+          date,
+          {
+            force: true,
+            outputRoot: dependencies.runtimeConfig.outputDir,
+            subtitleFontName: dependencies.runtimeConfig.reelSubtitleFontName,
+            subtitleFontsDir:
+              dependencies.runtimeConfig.reelSubtitleFontsDir || undefined
+          }
+        )
+        redirect(
+          response,
+          `/weeks/${encodeURIComponent(date)}?notice=${encodeURIComponent("Wochen-Reels gerendert.")}`
+        )
+        return
+      }
+
       await renderWeekByDate(
         dependencies.calendar,
         date,
@@ -205,7 +264,11 @@ async function routeRequest(
         detail,
         week.zeitraum.von,
         requestUrl.searchParams.get("notice"),
-        requestUrl.searchParams.get("error")
+        requestUrl.searchParams.get("error"),
+        {
+          reelSubtitleFontName: dependencies.runtimeConfig.reelSubtitleFontName,
+          reelSubtitleFontsDir: dependencies.runtimeConfig.reelSubtitleFontsDir
+        }
       )
     )
     return
@@ -213,7 +276,7 @@ async function routeRequest(
 
   if (method === "POST" && requestUrl.pathname.startsWith("/posts/")) {
     const actionMatch = requestUrl.pathname.match(
-      /^\/posts\/([^/]+)\/(scaffold|generate|edit|qa|images|render|approve)$/
+      /^\/posts\/([^/]+)\/(scaffold|generate|edit|qa|images|images-reel|render|render-reel|render-reel-rerun|approve)$/
     )
 
     if (actionMatch) {
@@ -317,6 +380,27 @@ async function routeRequest(
         return
       }
 
+      if (action === "images-reel") {
+        await generateReelImagesForPost(
+          dependencies.calendar,
+          postId,
+          {
+            dryRun: false,
+            force: true,
+            model: dependencies.runtimeConfig.fluxModel,
+            outputRoot: dependencies.runtimeConfig.outputDir
+          },
+          {
+            imageClient: dependencies.imageClient
+          }
+        )
+        redirect(
+          response,
+          `/posts/${encodeURIComponent(postId)}?notice=${encodeURIComponent("Reelbilder generiert.")}`
+        )
+        return
+      }
+
       if (action === "render") {
         await renderPostById(
           dependencies.calendar,
@@ -332,6 +416,42 @@ async function routeRequest(
         redirect(
           response,
           `/posts/${encodeURIComponent(postId)}?notice=${encodeURIComponent("Rendering ausgeführt.")}`
+        )
+        return
+      }
+
+      if (action === "render-reel" || action === "render-reel-rerun") {
+        const form = await parseFormBody(request)
+        const uploadedAudio = form.getFile("audio_upload")
+        const audioPath = uploadedAudio
+          ? await storeReviewReelAudioAsset(
+              dependencies.calendar,
+              postId,
+              dependencies.runtimeConfig.outputDir,
+              uploadedAudio
+            )
+          : undefined
+
+        await renderReelById(
+          dependencies.calendar,
+          postId,
+          {
+            audioPath,
+            ffmpegBinary: dependencies.runtimeConfig.ffmpegBinary,
+            force: true,
+            outputRoot: dependencies.runtimeConfig.outputDir,
+            subtitleFontName: dependencies.runtimeConfig.reelSubtitleFontName,
+            subtitleFontsDir:
+              dependencies.runtimeConfig.reelSubtitleFontsDir || undefined
+          }
+        )
+        redirect(
+          response,
+          `/posts/${encodeURIComponent(postId)}?notice=${encodeURIComponent(
+            action === "render-reel-rerun"
+              ? "Reel erneut gerendert."
+              : "Reel gerendert."
+          )}`
         )
         return
       }
@@ -390,17 +510,36 @@ async function routeRequest(
 async function parseFormBody(
   request: IncomingMessage
 ): Promise<ParsedFormBody> {
-  const chunks: Buffer[] = []
+  const webRequest = new Request("http://127.0.0.1/", {
+    body: Readable.toWeb(request) as BodyInit,
+    headers: request.headers as HeadersInit,
+    method: request.method
+  } as RequestInit & { duplex: "half" })
+  const formData = await webRequest.formData()
+  const values = new Map<string, string[]>()
+  const files = new Map<string, ParsedUploadedFile>()
 
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  for (const [name, value] of formData.entries()) {
+    if (typeof value === "string") {
+      values.set(name, [...(values.get(name) ?? []), value.trim()])
+      continue
+    }
+
+    if (value.size === 0) {
+      continue
+    }
+
+    files.set(name, {
+      buffer: Buffer.from(await value.arrayBuffer()),
+      fileName: value.name,
+      mimeType: value.type
+    })
   }
 
-  const params = new URLSearchParams(Buffer.concat(chunks).toString("utf8"))
-
   return {
-    get: (name: string) => params.get(name)?.trim() ?? "",
-    getAll: (name: string) => params.getAll(name).map((value) => value.trim())
+    get: (name: string) => values.get(name)?.[0] ?? "",
+    getAll: (name: string) => values.get(name) ?? [],
+    getFile: (name: string) => files.get(name)
   }
 }
 
@@ -454,7 +593,9 @@ function renderWeekPage(
                     ${renderWeekActionForm(overview.selectedWeek.startDate, "generate", "Woche Inhalt", "outline-secondary")}
                     ${renderWeekActionForm(overview.selectedWeek.startDate, "qa", "Woche QA", "outline-secondary")}
                     ${renderWeekActionForm(overview.selectedWeek.startDate, "images", "Woche Bilder", "outline-secondary")}
+                    ${renderWeekActionForm(overview.selectedWeek.startDate, "images-reel", "Woche Reelbilder", "outline-secondary")}
                     ${renderWeekActionForm(overview.selectedWeek.startDate, "render", "Woche Render", "outline-secondary")}
+                    ${renderWeekActionForm(overview.selectedWeek.startDate, "render-reel", "Woche Reels", "outline-secondary")}
                   </div>
                 </div>
               </div>
@@ -485,7 +626,9 @@ function renderWeekPage(
                             ${renderWorkflowBadge("Inhalt", post.workflow.contentGenerated)}
                             ${renderWorkflowBadge("QA", post.workflow.qaRun)}
                             ${renderWorkflowBadge("Bilder", post.workflow.imagesGenerated)}
+                            ${renderWorkflowBadge("Reelbilder", post.workflow.reelImagesGenerated)}
                             ${renderWorkflowBadge("Render", post.workflow.rendered)}
+                            ${renderWorkflowBadge("Reel", post.workflow.reelRendered)}
                             ${renderWorkflowBadge("Freigabe", post.isApproved)}
                             ${renderWorkflowBadge("Export", post.workflow.exportGenerated)}
                           </div>
@@ -494,7 +637,9 @@ function renderWeekPage(
                             ${renderPostActionForm(post.postId, "generate", "Inhalt", "outline-secondary")}
                             ${renderPostActionForm(post.postId, "qa", "QA", "outline-secondary", !post.contentExists)}
                             ${renderPostActionForm(post.postId, "images", "Bilder", "outline-secondary", !post.contentExists)}
+                            ${renderPostActionForm(post.postId, "images-reel", "Reelbilder", "outline-secondary", !post.contentExists)}
                             ${renderPostActionForm(post.postId, "render", "Render", "outline-secondary", !post.contentExists)}
+                            ${renderPostActionForm(post.postId, "render-reel", "Reel", "outline-secondary", !post.contentExists)}
                             ${
                               post.contentExists
                                 ? `<a class="btn btn-outline-primary btn-sm" href="/posts/${escapeHtml(post.postId)}">Öffnen</a>`
@@ -519,7 +664,11 @@ function renderPostPage(
   detail: Awaited<ReturnType<typeof loadReviewPost>>,
   weekDate: string,
   notice: string | null,
-  error: string | null
+  error: string | null,
+  defaults: {
+    reelSubtitleFontName: string
+    reelSubtitleFontsDir: string
+  }
 ): string {
   const allPreviewPaths = Array.from(
     new Set([...detail.imagePreviewPaths, ...detail.renderPreviewPaths])
@@ -545,7 +694,10 @@ function renderPostPage(
             ${renderPostActionForm(detail.post.id, "generate", "Inhalt generieren", "outline-secondary")}
             ${renderPostActionForm(detail.post.id, "qa", "QA ausführen", "outline-secondary")}
             ${renderPostActionForm(detail.post.id, "images", "Bilder generieren", "outline-secondary")}
+            ${renderPostActionForm(detail.post.id, "images-reel", "Reelbilder generieren", "outline-secondary")}
             ${renderPostActionForm(detail.post.id, "render", "Rendern", "outline-secondary")}
+            ${renderModalActionButton("reelRenderModal", "Reel rendern", "outline-secondary")}
+            ${renderModalActionButton("reelRerenderModal", "Reel erneut rendern", "outline-secondary")}
             ${renderPostActionForm(
               detail.post.id,
               "approve",
@@ -569,7 +721,9 @@ function renderPostPage(
                   ${renderWorkflowBadge("QA", detail.workflow.qaRun)}
                   ${renderWorkflowBadge("QA bereit", detail.workflow.qaReadyForApproval)}
                   ${renderWorkflowBadge("Bilder", detail.workflow.imagesGenerated)}
+                  ${renderWorkflowBadge("Reelbilder", detail.workflow.reelImagesGenerated)}
                   ${renderWorkflowBadge("Render", detail.workflow.rendered)}
+                  ${renderWorkflowBadge("Reel", detail.workflow.reelRendered)}
                   ${renderWorkflowBadge("Freigabe", detail.content.qa.approved)}
                   ${renderWorkflowBadge("Export", detail.workflow.exportGenerated)}
                 </div>
@@ -623,6 +777,42 @@ function renderPostPage(
             </div>
             <div class="card shadow-sm mb-4">
               <div class="card-body">
+                <h2 class="h4 mb-3">Reel</h2>
+                <p class="mb-2">Audio: <code>${escapeHtml(detail.reelAudioPath || "keine")}</code></p>
+                <p class="mb-2">Untertitel-Schrift: <code>${escapeHtml(
+                  resolveDisplayValue(
+                    detail.reelRenderSummary?.subtitle_font_name,
+                    detail.reelSubtitleFontName,
+                    defaults.reelSubtitleFontName,
+                    "FFmpeg-Standard"
+                  )
+                )}</code></p>
+                <p class="mb-2">Font-Verzeichnis: <code>${escapeHtml(
+                  resolveDisplayValue(
+                    detail.reelRenderSummary?.subtitle_fonts_dir,
+                    detail.reelSubtitleFontsDir,
+                    defaults.reelSubtitleFontsDir,
+                    "systemweit"
+                  )
+                )}</code></p>
+                <p class="mb-2">Dauer: <strong>${
+                  detail.reelRenderSummary?.duration_seconds ?? detail.content.platforms.reel.duration_seconds
+                }</strong> Sekunden</p>
+                <p class="mb-3">Shots: <strong>${detail.content.platforms.reel.shots.length}</strong></p>
+                ${
+                  detail.reelAudioAssetPath
+                    ? renderAudioPreview(detail.reelAudioAssetPath)
+                    : `<p class="text-body-secondary">Noch keine Audio-Datei als Asset gespeichert.</p>`
+                }
+                ${
+                  detail.reelPreviewPath
+                    ? renderVideoPreview(detail.reelPreviewPath)
+                    : `<p class="text-body-secondary mb-0">Noch kein Reel gerendert.</p>`
+                }
+              </div>
+            </div>
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
                 <h2 class="h4 mb-3">Bildvorschau</h2>
                 ${renderImageGallery(detail.imagePreviewPaths, allPreviewPaths)}
               </div>
@@ -635,6 +825,22 @@ function renderPostPage(
             </div>
           </div>
         </div>
+        ${renderReelActionModal(
+          "reelRenderModal",
+          detail.post.id,
+          "render-reel",
+          "Reel rendern",
+          detail.reelAudioPath,
+          detail.reelAudioAssetPath
+        )}
+        ${renderReelActionModal(
+          "reelRerenderModal",
+          detail.post.id,
+          "render-reel-rerun",
+          "Reel erneut rendern",
+          detail.reelAudioPath,
+          detail.reelAudioAssetPath
+        )}
         ${renderPreviewModal(allPreviewPaths)}
       </div>
     `
@@ -683,7 +889,15 @@ function renderLayoutHeader(title: string, subtitle: string): string {
 
 function renderPostActionForm(
   postId: string,
-  action: "approve" | "generate" | "images" | "qa" | "render" | "scaffold",
+  action:
+    | "approve"
+    | "generate"
+    | "images"
+    | "images-reel"
+    | "qa"
+    | "render"
+    | "render-reel"
+    | "scaffold",
   label: string,
   tone: string,
   disabled = false
@@ -697,7 +911,14 @@ function renderPostActionForm(
 
 function renderWeekActionForm(
   weekDate: string,
-  action: "generate" | "images" | "qa" | "render" | "scaffold",
+  action:
+    | "generate"
+    | "images"
+    | "images-reel"
+    | "qa"
+    | "render"
+    | "render-reel"
+    | "scaffold",
   label: string,
   tone: string
 ): string {
@@ -705,6 +926,68 @@ function renderWeekActionForm(
     <form method="post" action="/weeks/${escapeHtml(weekDate)}/${action}">
       <button class="btn btn-${tone} btn-sm" type="submit">${escapeHtml(label)}</button>
     </form>
+  `
+}
+
+function renderModalActionButton(
+  targetId: string,
+  label: string,
+  tone: string
+): string {
+  return `
+    <button class="btn btn-${tone}" type="button" data-bs-toggle="modal" data-bs-target="#${escapeHtml(targetId)}">
+      ${escapeHtml(label)}
+    </button>
+  `
+}
+
+function renderReelActionModal(
+  modalId: string,
+  postId: string,
+  action: "render-reel" | "render-reel-rerun",
+  title: string,
+  currentAudioPath: string,
+  currentAudioAssetPath?: string
+): string {
+  return `
+    <div class="modal fade" id="${escapeHtml(modalId)}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form method="post" action="/posts/${escapeHtml(postId)}/${action}" enctype="multipart/form-data">
+            <div class="modal-header">
+              <h2 class="modal-title fs-5">${escapeHtml(title)}</h2>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-body-secondary">
+                ${currentAudioPath
+                  ? `Vorhandenes Audio wird wiederverwendet: ${escapeHtml(currentAudioPath)}`
+                  : "Ohne Upload wird ein bereits gespeichertes Audio-Asset wiederverwendet, falls vorhanden."}
+              </p>
+              ${
+                currentAudioAssetPath
+                  ? `<p class="small text-body-secondary">Gespeichertes Audio-Asset: ${escapeHtml(currentAudioAssetPath)}</p>`
+                  : ""
+              }
+              <div class="mb-0">
+                <label class="form-label" for="${escapeHtml(modalId)}-audio">Audio hochladen</label>
+                <input
+                  class="form-control"
+                  id="${escapeHtml(modalId)}-audio"
+                  name="audio_upload"
+                  type="file"
+                  accept="audio/*"
+                >
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
+              <button type="submit" class="btn btn-primary">${escapeHtml(title)}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   `
 }
 
@@ -792,6 +1075,28 @@ function renderImageGallery(paths: string[], allPreviewPaths: string[]): string 
         )
         .join("")}
     </div>
+  `
+}
+
+function renderVideoPreview(path: string): string {
+  return `
+    <div class="preview-image">
+      <video controls preload="metadata" style="display:block; width:100%; height:auto;">
+        <source src="/files/${escapeHtml(path)}" type="video/mp4">
+      </video>
+    </div>
+    <div class="small mt-2 text-body-secondary">${escapeHtml(path)}</div>
+  `
+}
+
+function renderAudioPreview(path: string): string {
+  return `
+    <div class="preview-image mb-3 p-3">
+      <audio controls preload="metadata" style="width:100%;">
+        <source src="/files/${escapeHtml(path)}">
+      </audio>
+    </div>
+    <div class="small mt-2 text-body-secondary">${escapeHtml(path)}</div>
   `
 }
 
@@ -982,7 +1287,39 @@ function resolveMimeType(extension: string): string {
     return "application/json; charset=utf-8"
   }
 
+  if (extension === ".mp4") {
+    return "video/mp4"
+  }
+
+  if (extension === ".mp3") {
+    return "audio/mpeg"
+  }
+
+  if (extension === ".m4a") {
+    return "audio/mp4"
+  }
+
+  if (extension === ".wav") {
+    return "audio/wav"
+  }
+
+  if (extension === ".ogg") {
+    return "audio/ogg"
+  }
+
   return "application/octet-stream"
+}
+
+function resolveDisplayValue(
+  ...values: Array<string | null | undefined>
+): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value
+    }
+  }
+
+  return ""
 }
 
 function escapeHtml(value: string): string {

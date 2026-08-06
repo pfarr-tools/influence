@@ -17,6 +17,7 @@ import {
   approveReviewPost,
   exportReviewPost,
   regenerateReviewPost,
+  storeReviewReelAudioAsset,
   updateReviewPost
 } from "../src/services/review/index.js"
 
@@ -137,6 +138,31 @@ describe("review service", () => {
       expect.objectContaining({ force: true, outputRoot: tempDir }),
       expect.any(Object)
     )
+  })
+
+  it("stores uploaded reel audio as a reusable post asset", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+
+    const storedPath = await storeReviewReelAudioAsset(
+      calendar,
+      "post-0001",
+      tempDir,
+      {
+        buffer: Buffer.from("audio-bytes"),
+        fileName: "voiceover.mp3",
+        mimeType: "audio/mpeg"
+      }
+    )
+
+    const written = await readJsonFile<ContentPackage>(contentPath)
+    const audioBuffer = await readFile(storedPath, "utf8")
+
+    expect(storedPath).toBe(
+      join(tempDir, "2026-08-10", "post-0001", "assets", "reel-audio.mp3")
+    )
+    expect(audioBuffer).toBe("audio-bytes")
+    expect(written.metadata.assets).toContain("assets/reel-audio.mp3")
   })
 })
 

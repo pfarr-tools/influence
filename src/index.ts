@@ -23,6 +23,8 @@ import {
 } from "./services/content/content-qa.js"
 import {
   generateImagesForPost,
+  generateReelImagesForPost,
+  generateReelImagesForWeek,
   generateImagesForWeek
 } from "./services/image/image-generator.js"
 import { createFluxImageClient } from "./services/image/flux-client.js"
@@ -30,6 +32,8 @@ import { createLiturgicalSourceClient } from "./services/liturgy/liturgical-sour
 import { createOpenAIContentClient } from "./services/openai/openai-client.js"
 import {
   createPlaywrightHtmlRenderClient,
+  renderReelById,
+  renderReelsForWeek,
   renderPostById,
   renderWeekByDate
 } from "./services/render/index.js"
@@ -369,6 +373,104 @@ qaCommand
     }
   })
 
+imageCommand
+  .command("generate-reel")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .option("--dry-run", "Show Flux requests without calling the API", false)
+  .option("--force", "Overwrite existing generated reel image outputs", false)
+  .option("--model <name>", "Flux model to use", runtimeConfig.fluxModel)
+  .option("--seed <seed>", "Optional deterministic seed", parseIntegerOption)
+  .description("Generate 9:16 Flux stills for reel shots of one post")
+  .action(
+    async (options: {
+      dryRun: boolean
+      force: boolean
+      model: string
+      postId: string
+      seed?: number
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const result = await generateReelImagesForPost(
+          calendar,
+          options.postId,
+          {
+            dryRun: options.dryRun,
+            force: options.force,
+            model: options.model,
+            outputRoot: defaultOutputRoot,
+            seed: options.seed
+          },
+          {
+            imageClient:
+              options.dryRun || runtimeConfig.fluxApiBaseUrl === ""
+                ? undefined
+                : createFluxImageClient({
+                    apiBaseUrl: runtimeConfig.fluxApiBaseUrl,
+                    apiKey: runtimeConfig.fluxApiKey,
+                    generatePath: runtimeConfig.fluxApiGeneratePath
+                  })
+          }
+        )
+
+        printImageGenerationResult(result)
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
+imageCommand
+  .command("generate-reel-week")
+  .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
+  .option("--dry-run", "Show Flux requests without calling the API", false)
+  .option("--force", "Overwrite existing generated reel image outputs", false)
+  .option("--model <name>", "Flux model to use", runtimeConfig.fluxModel)
+  .option("--seed <seed>", "Optional deterministic seed", parseIntegerOption)
+  .description("Generate 9:16 Flux stills for reel shots of every post in a week")
+  .action(
+    async (options: {
+      date: string
+      dryRun: boolean
+      force: boolean
+      model: string
+      seed?: number
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const results = await generateReelImagesForWeek(
+          calendar,
+          options.date,
+          {
+            dryRun: options.dryRun,
+            force: options.force,
+            model: options.model,
+            outputRoot: defaultOutputRoot,
+            seed: options.seed
+          },
+          {
+            imageClient:
+              options.dryRun || runtimeConfig.fluxApiBaseUrl === ""
+                ? undefined
+                : createFluxImageClient({
+                    apiBaseUrl: runtimeConfig.fluxApiBaseUrl,
+                    apiKey: runtimeConfig.fluxApiKey,
+                    generatePath: runtimeConfig.fluxApiGeneratePath
+                  })
+          }
+        )
+
+        for (const result of results) {
+          printImageGenerationResult(result)
+        }
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
 qaCommand
   .command("week")
   .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
@@ -450,6 +552,118 @@ renderCommand
       handleCliError(error)
     }
   })
+
+renderCommand
+  .command("reel")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .option("--audio <path>", "Optional audio track to mux into the reel")
+  .option("--ffmpeg-bin <path>", "FFmpeg binary path", runtimeConfig.ffmpegBinary)
+  .option(
+    "--subtitle-font-name <name>",
+    "Subtitle font family for burned-in reel captions",
+    runtimeConfig.reelSubtitleFontName
+  )
+  .option(
+    "--subtitle-fonts-dir <path>",
+    "Optional font directory for FFmpeg subtitle rendering",
+    runtimeConfig.reelSubtitleFontsDir
+  )
+  .option("--force", "Overwrite existing rendered reel outputs", false)
+  .option(
+    "--rerun",
+    "Rerun only the final FFmpeg reel assembly using existing images and subtitles",
+    false
+  )
+  .description("Render a 1080x1920 reel video for one post")
+  .action(
+    async (options: {
+      audio?: string
+      ffmpegBin: string
+      force: boolean
+      postId: string
+      rerun: boolean
+      subtitleFontName: string
+      subtitleFontsDir: string
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const result = await renderReelById(
+          calendar,
+          options.postId,
+          {
+            audioPath: options.audio,
+            ffmpegBinary: options.ffmpegBin,
+            force: options.force || options.rerun,
+            outputRoot: defaultOutputRoot,
+            subtitleFontName: options.subtitleFontName,
+            subtitleFontsDir: options.subtitleFontsDir || undefined
+          }
+        )
+
+        printReelRenderResult(result)
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
+
+renderCommand
+  .command("reel-week")
+  .requiredOption("--date <date>", "ISO date inside the desired week, e.g. 2026-08-10")
+  .option("--audio <path>", "Optional audio track to mux into each reel")
+  .option("--ffmpeg-bin <path>", "FFmpeg binary path", runtimeConfig.ffmpegBinary)
+  .option(
+    "--subtitle-font-name <name>",
+    "Subtitle font family for burned-in reel captions",
+    runtimeConfig.reelSubtitleFontName
+  )
+  .option(
+    "--subtitle-fonts-dir <path>",
+    "Optional font directory for FFmpeg subtitle rendering",
+    runtimeConfig.reelSubtitleFontsDir
+  )
+  .option("--force", "Overwrite existing rendered reel outputs", false)
+  .option(
+    "--rerun",
+    "Rerun only the final FFmpeg reel assembly for each post using existing images",
+    false
+  )
+  .description("Render 1080x1920 reel videos for every post in a week")
+  .action(
+    async (options: {
+      audio?: string
+      date: string
+      ffmpegBin: string
+      force: boolean
+      rerun: boolean
+      subtitleFontName: string
+      subtitleFontsDir: string
+    }) => {
+      try {
+        assertOutputRoot(defaultOutputRoot)
+        const calendar = await loadCalendarFromFile(defaultCalendarPath)
+        const results = await renderReelsForWeek(
+          calendar,
+          options.date,
+          {
+            audioPath: options.audio,
+            ffmpegBinary: options.ffmpegBin,
+            force: options.force || options.rerun,
+            outputRoot: defaultOutputRoot,
+            subtitleFontName: options.subtitleFontName,
+            subtitleFontsDir: options.subtitleFontsDir || undefined
+          }
+        )
+
+        for (const result of results) {
+          printReelRenderResult(result)
+        }
+      } catch (error) {
+        handleCliError(error)
+      }
+    }
+  )
 
 reviewCommand
   .command("serve")
@@ -719,5 +933,38 @@ function printQaResult(result: {
 
   for (const warning of result.warnings) {
     console.log(`warning: ${warning}`)
+  }
+}
+
+function printReelRenderResult(result: {
+  audioPath?: string
+  contentPath: string
+  durationSeconds: number
+  postId: string
+  segments: Array<{
+    durationSeconds: number
+    imagePath: string
+    segmentIndex: number
+    subtitleText: string
+  }>
+  subtitlePath: string
+  summaryPath: string
+  videoPath: string
+}): void {
+  console.log(`Reel rendered for ${result.postId}`)
+  console.log(`Content: ${result.contentPath}`)
+  console.log(`Video: ${result.videoPath}`)
+  console.log(`Subtitles: ${result.subtitlePath}`)
+  console.log(`Summary: ${result.summaryPath}`)
+  console.log(`Duration: ${result.durationSeconds}s`)
+
+  if (result.audioPath) {
+    console.log(`Audio: ${result.audioPath}`)
+  }
+
+  for (const segment of result.segments) {
+    console.log(
+      `- segment ${segment.segmentIndex}: ${segment.imagePath} (${segment.durationSeconds}s)`
+    )
   }
 }

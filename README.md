@@ -14,6 +14,9 @@ Aus strukturierten Kalenderdaten entstehen mit OpenAI und Flux:
 - Bildkonzepte und Flux-Prompts
 - Alt-Texte
 - gerenderte Social-Media-Grafiken in mehreren Formaten
+- optionale Reel-Videos mit FFmpeg, Untertiteln und externer Audiospur
+
+Für Reels sind Bilderzeugung und Video-Rendering getrennt: `image generate-reel` erzeugt nur die Flux-Shots, `render reel` baut daraus anschließend das MP4.
 
 Canva ist nicht erforderlich. Das Layout wird reproduzierbar mit HTML/CSS und Playwright gerendert.
 
@@ -21,6 +24,7 @@ Canva ist nicht erforderlich. Das Layout wird reproduzierbar mit HTML/CSS und Pl
 
 - `docs/CODEX_PLAN.md` – vollständiger Arbeitsplan für Codex
 - `docs/CLI_PHASE_5.md` – Dokumentation der Flux-Bildgenerierung
+- `docs/CLI_PHASE_9.md` – Dokumentation der Reel-Erzeugung mit FFmpeg
 - `docs/ARCHITECTURE.md` – Zielarchitektur und Datenfluss
 - `docs/PROMPTS.md` – empfohlene Prompt-Struktur
 - `docs/CONTENT_SCHEMA.md` – Struktur der erzeugten Contentpakete

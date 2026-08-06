@@ -1,4 +1,5 @@
-import { join, relative } from "node:path"
+import { extname, join, relative } from "node:path"
+import { mkdir, writeFile } from "node:fs/promises"
 
 import type { Calendar, CalendarPost, CalendarWeek } from "../../domain/calendar.js"
 import type { ContentPackage } from "../../domain/content.js"
@@ -45,6 +46,21 @@ type PersistedImageSummary = {
   }>
 }
 
+type PersistedReelRenderSummary = {
+  audio_path?: string | null
+  duration_seconds?: number
+  segments?: Array<{
+    duration_seconds?: number
+    image_path?: string
+    segment_index?: number
+    subtitle_text?: string
+  }>
+  subtitle_font_name?: string | null
+  subtitle_fonts_dir?: string | null
+  subtitle_path?: string
+  video_path?: string
+}
+
 export interface ReviewWeekOverview {
   selectedWeek: ReviewWeekSummary
   weekOptions: ReviewWeekSummary[]
@@ -82,6 +98,12 @@ export interface ReviewPostDetail {
   imagePreviewPaths: string[]
   imageSummary?: PersistedImageSummary
   qaSummary?: PersistedQaSummary
+  reelAudioAssetPath?: string
+  reelAudioPath: string
+  reelSubtitleFontName: string
+  reelSubtitleFontsDir: string
+  reelPreviewPath?: string
+  reelRenderSummary?: PersistedReelRenderSummary
   renderPreviewPaths: string[]
   renderSummary?: PersistedRenderSummary
   workflow: ReviewWorkflowState
@@ -93,6 +115,8 @@ export interface ReviewWorkflowState {
   imagesGenerated: boolean
   qaReadyForApproval: boolean
   qaRun: boolean
+  reelImagesGenerated: boolean
+  reelRendered: boolean
   rendered: boolean
   scaffolded: boolean
 }
@@ -116,6 +140,12 @@ export interface UpdateReviewPostInput {
 export interface ReviewExportResult {
   exportPath: string
   fileName: string
+}
+
+export interface ReviewUploadedFile {
+  buffer: Buffer
+  fileName: string
+  mimeType: string
 }
 
 export interface ReviewRegenerateDependencies
@@ -154,9 +184,11 @@ export async function loadReviewPost(
   const qaPath = join(contentPaths.baseDir, "qa-results.json")
   const renderPath = join(contentPaths.baseDir, "render-results.json")
   const imagePath = join(contentPaths.baseDir, "image-generation-results.json")
+  const reelRenderPath = join(contentPaths.baseDir, "reel-render-results.json")
   const qaSummary = await readOptionalJson<PersistedQaSummary>(qaPath)
   const renderSummary = await readOptionalJson<PersistedRenderSummary>(renderPath)
   const imageSummary = await readOptionalJson<PersistedImageSummary>(imagePath)
+  const reelRenderSummary = await readOptionalJson<PersistedReelRenderSummary>(reelRenderPath)
 
   return {
     post,
@@ -166,10 +198,55 @@ export async function loadReviewPost(
     imagePreviewPaths: resolveImagePreviewPaths(contentPaths.baseDir, outputRoot, content, imageSummary),
     imageSummary,
     qaSummary,
+    reelAudioAssetPath: resolveReelAudioAssetPath(
+      contentPaths.baseDir,
+      outputRoot,
+      content,
+      reelRenderSummary
+    ),
+    reelAudioPath: resolveReelAudioDisplayPath(content, reelRenderSummary),
+    reelSubtitleFontName: reelRenderSummary?.subtitle_font_name ?? "",
+    reelSubtitleFontsDir: reelRenderSummary?.subtitle_fonts_dir ?? "",
+    reelPreviewPath: resolveReelPreviewPath(contentPaths.baseDir, outputRoot, reelRenderSummary),
+    reelRenderSummary,
     renderPreviewPaths: resolveRenderPreviewPaths(contentPaths.baseDir, outputRoot, renderSummary),
     renderSummary,
-    workflow: await buildWorkflowState(contentPaths.baseDir, content, qaSummary, imageSummary, renderSummary)
+    workflow: await buildWorkflowState(
+      contentPaths.baseDir,
+      content,
+      qaSummary,
+      imageSummary,
+      renderSummary,
+      reelRenderSummary
+    )
   }
+}
+
+export async function storeReviewReelAudioAsset(
+  calendar: Calendar,
+  postId: string,
+  outputRoot: string,
+  file: ReviewUploadedFile
+): Promise<string> {
+  const post = getPostById(calendar, postId)
+  const contentPaths = getContentOutputPaths(outputRoot, post)
+  const content = await readContentPackage(contentPaths.contentPath)
+  const extension = normalizeAudioExtension(file.fileName, file.mimeType)
+  const assetRelativePath = `assets/reel-audio${extension}`
+  const assetAbsolutePath = join(contentPaths.baseDir, assetRelativePath)
+  const assets = Array.from(new Set([...content.metadata.assets, assetRelativePath]))
+
+  await mkdir(join(contentPaths.baseDir, "assets"), { recursive: true })
+  await writeFile(assetAbsolutePath, file.buffer)
+  await writeJsonFile(contentPaths.contentPath, {
+    ...content,
+    metadata: {
+      ...content.metadata,
+      assets
+    }
+  })
+
+  return assetAbsolutePath
 }
 
 export async function updateReviewPost(
@@ -303,8 +380,14 @@ export async function exportReviewPost(
       render_results:
         (await pathExists(join(contentPaths.baseDir, "render-results.json")))
           ? "render-results.json"
+          : null,
+      reel_render_results:
+        (await pathExists(join(contentPaths.baseDir, "reel-render-results.json")))
+          ? "reel-render-results.json"
           : null
     },
+    reel: detail.reelRenderSummary ?? null,
+    reel_video: detail.reelPreviewPath ?? null,
     visual_assets: detail.imagePreviewPaths
   })
 
@@ -376,6 +459,8 @@ async function buildReviewPostCard(
         imagesGenerated: false,
         qaReadyForApproval: false,
         qaRun: false,
+        reelImagesGenerated: false,
+        reelRendered: false,
         rendered: false,
         scaffolded: false
       }
@@ -392,12 +477,16 @@ async function buildReviewPostCard(
   const renderSummary = await readOptionalJson<PersistedRenderSummary>(
     join(contentPaths.baseDir, "render-results.json")
   )
+  const reelRenderSummary = await readOptionalJson<PersistedReelRenderSummary>(
+    join(contentPaths.baseDir, "reel-render-results.json")
+  )
   const workflow = await buildWorkflowState(
     contentPaths.baseDir,
     content,
     qaSummary,
     imageSummary,
-    renderSummary
+    renderSummary,
+    reelRenderSummary
   )
 
   return {
@@ -421,8 +510,13 @@ async function buildWorkflowState(
   content: ContentPackage,
   qaSummary?: PersistedQaSummary,
   imageSummary?: PersistedImageSummary,
-  renderSummary?: PersistedRenderSummary
+  renderSummary?: PersistedRenderSummary,
+  reelRenderSummary?: PersistedReelRenderSummary
 ): Promise<ReviewWorkflowState> {
+  const reelAssetPaths = content.metadata.assets.filter((assetPath) =>
+    assetPath.startsWith("assets/reel-shot-")
+  )
+
   return {
     contentGenerated: content.metadata.generated_at.trim().length > 0,
     exportGenerated: await pathExists(join(baseDir, "review-export.json")),
@@ -431,6 +525,8 @@ async function buildWorkflowState(
       content.metadata.assets.length > 0,
     qaReadyForApproval: qaSummary?.ready_for_approval ?? false,
     qaRun: qaSummary !== undefined,
+    reelImagesGenerated: reelAssetPaths.length > 0,
+    reelRendered: typeof reelRenderSummary?.video_path === "string" && reelRenderSummary.video_path.length > 0,
     rendered: (renderSummary?.renders?.length ?? 0) > 0,
     scaffolded: true
   }
@@ -476,6 +572,87 @@ function resolveRenderPreviewPaths(
       )
       .filter((path): path is string => typeof path === "string" && path.length > 0) ?? []
   )
+}
+
+function resolveReelPreviewPath(
+  baseDir: string,
+  outputRoot: string,
+  reelRenderSummary?: PersistedReelRenderSummary
+): string | undefined {
+  if (typeof reelRenderSummary?.video_path !== "string") {
+    return undefined
+  }
+
+  return toOutputRelativePath(outputRoot, join(baseDir, reelRenderSummary.video_path))
+}
+
+function resolveReelAudioDisplayPath(
+  content: ContentPackage,
+  reelRenderSummary?: PersistedReelRenderSummary
+): string {
+  const summaryPath = reelRenderSummary?.audio_path
+
+  if (typeof summaryPath === "string" && summaryPath.length > 0) {
+    return summaryPath
+  }
+
+  return findReelAudioAssetRelativePath(content) ?? ""
+}
+
+function resolveReelAudioAssetPath(
+  baseDir: string,
+  outputRoot: string,
+  content: ContentPackage,
+  reelRenderSummary?: PersistedReelRenderSummary
+): string | undefined {
+  const candidatePaths = [
+    typeof reelRenderSummary?.audio_path === "string" ? reelRenderSummary.audio_path : undefined,
+    findReelAudioAssetRelativePath(content)
+  ].filter((value): value is string => typeof value === "string" && value.length > 0)
+
+  for (const candidate of candidatePaths) {
+    if (candidate.startsWith("..")) {
+      continue
+    }
+
+    return toOutputRelativePath(outputRoot, join(baseDir, candidate))
+  }
+
+  return undefined
+}
+
+function findReelAudioAssetRelativePath(content: ContentPackage): string | undefined {
+  const audioAsset = [...content.metadata.assets]
+    .reverse()
+    .find((assetPath) => assetPath.startsWith("assets/reel-audio."))
+
+  return audioAsset
+}
+
+function normalizeAudioExtension(fileName: string, mimeType: string): string {
+  const fromName = extname(fileName).toLowerCase()
+
+  if (fromName === ".mp3" || fromName === ".m4a" || fromName === ".wav" || fromName === ".ogg") {
+    return fromName
+  }
+
+  if (mimeType === "audio/mpeg") {
+    return ".mp3"
+  }
+
+  if (mimeType === "audio/mp4" || mimeType === "audio/x-m4a") {
+    return ".m4a"
+  }
+
+  if (mimeType === "audio/wav" || mimeType === "audio/x-wav") {
+    return ".wav"
+  }
+
+  if (mimeType === "audio/ogg") {
+    return ".ogg"
+  }
+
+  return ".bin"
 }
 
 function toOutputRelativePath(outputRoot: string, path: string): string {
