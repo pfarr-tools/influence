@@ -164,6 +164,31 @@ describe("review service", () => {
     expect(audioBuffer).toBe("audio-bytes")
     expect(written.metadata.assets).toContain("assets/reel-audio.mp3")
   })
+
+  it("stores browser-recorded reel audio with a webm extension", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001")
+
+    const storedPath = await storeReviewReelAudioAsset(
+      calendar,
+      "post-0001",
+      tempDir,
+      {
+        buffer: Buffer.from("webm-audio"),
+        fileName: "voiceover-recording.webm",
+        mimeType: "audio/webm"
+      }
+    )
+
+    const written = await readJsonFile<ContentPackage>(contentPath)
+    const audioBuffer = await readFile(storedPath, "utf8")
+
+    expect(storedPath).toBe(
+      join(tempDir, "2026-08-10", "post-0001", "assets", "reel-audio.webm")
+    )
+    expect(audioBuffer).toBe("webm-audio")
+    expect(written.metadata.assets).toContain("assets/reel-audio.webm")
+  })
 })
 
 async function writeQaReadyContent(

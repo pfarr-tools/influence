@@ -632,7 +632,13 @@ function findReelAudioAssetRelativePath(content: ContentPackage): string | undef
 function normalizeAudioExtension(fileName: string, mimeType: string): string {
   const fromName = extname(fileName).toLowerCase()
 
-  if (fromName === ".mp3" || fromName === ".m4a" || fromName === ".wav" || fromName === ".ogg") {
+  if (
+    fromName === ".mp3" ||
+    fromName === ".m4a" ||
+    fromName === ".wav" ||
+    fromName === ".ogg" ||
+    fromName === ".webm"
+  ) {
     return fromName
   }
 
@@ -650,6 +656,10 @@ function normalizeAudioExtension(fileName: string, mimeType: string): string {
 
   if (mimeType === "audio/ogg") {
     return ".ogg"
+  }
+
+  if (mimeType === "audio/webm") {
+    return ".webm"
   }
 
   return ".bin"
