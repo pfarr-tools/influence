@@ -144,7 +144,7 @@ export interface ScaffoldResult {
 }
 
 /**
- * Writes a single scaffold to `output/<date>/<post-id>/content.json`.
+ * Writes a single scaffold to `content/<date>/<post-id>/content.json`.
  *
  * @param post Calendar post used as the source of truth.
  * @param outputRoot Root folder where scaffold files should be written.

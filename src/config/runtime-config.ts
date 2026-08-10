@@ -36,7 +36,7 @@ export interface RuntimeConfig {
  */
 export function loadRuntimeConfig(): RuntimeConfig {
   return {
-    calendarPath: readEnv("CONTENT_CALENDAR_PATH", "data/redaktionskalender-2026-2027.json"),
+    calendarPath: readEnv("CONTENT_CALENDAR_PATH", "content/content-plan.json"),
     ffmpegBinary: readEnv("FFMPEG_BIN", "ffmpeg"),
     fluxApiBaseUrl: readEnv("FLUX_API_BASE_URL", ""),
     fluxApiGeneratePath: readEnv("FLUX_API_GENERATE_PATH", "/v1"),
@@ -44,7 +44,7 @@ export function loadRuntimeConfig(): RuntimeConfig {
     fluxModel: readEnv("FLUX_MODEL", "flux"),
     openAiApiKey: readEnv("OPENAI_API_KEY", ""),
     openAiModel: readEnv("OPENAI_MODEL", "gpt-5.6"),
-    outputDir: readEnv("OUTPUT_DIR", "output"),
+    outputDir: readEnv("OUTPUT_DIR", "content"),
     publicationDefaultTimeBluesky: readEnv("PUBLICATION_DEFAULT_TIME_BLUESKY", "08:30"),
     publicationDefaultTimeFacebook: readEnv("PUBLICATION_DEFAULT_TIME_FACEBOOK", "12:00"),
     publicationDefaultTimeInstagram: readEnv("PUBLICATION_DEFAULT_TIME_INSTAGRAM", "08:00"),

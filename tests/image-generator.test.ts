@@ -22,8 +22,8 @@ import type {
 
 const fixturePath = join(
   process.cwd(),
-  "data",
-  "redaktionskalender-2026-2027.json"
+  "content",
+  "content-plan.json"
 )
 
 describe("image generator", () => {

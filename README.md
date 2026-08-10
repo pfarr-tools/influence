@@ -14,7 +14,7 @@ Aus Kalenderdaten entstehen pro Beitrag unter anderem:
 - gerenderte Social-Grafiken in mehreren Formaten
 - optional Reel-Videos mit Untertiteln und Voiceover
 
-Die Datenhaltung bleibt dateibasiert. Die erzeugten Inhalte liegen standardmäßig unter `output/` und können dort nachvollzogen, geprüft und exportiert werden.
+Die Datenhaltung bleibt dateibasiert. Die erzeugten Inhalte liegen standardmäßig unter `content/` und können dort nachvollzogen, geprüft und exportiert werden.
 
 ## Voraussetzungen
 
@@ -53,7 +53,7 @@ cp config/.env.example config/.env
 Kalender prüfen:
 
 ```bash
-npm run dev -- calendar validate data/redaktionskalender-2026-2027.json
+npm run dev -- calendar validate content/content-plan.json
 ```
 
 Review-Oberfläche starten:
@@ -67,8 +67,8 @@ Danach ist die Oberfläche unter `http://127.0.0.1:3040/` erreichbar.
 ## Projektstruktur
 
 - `src/` – CLI, Services und Review-Server
-- `data/` – Redaktionskalender
-- `output/` – erzeugte Inhalte, Bilder, Renderings, QA-Ergebnisse, Chat-Sitzungen
+- `content/content-plan.json` – Redaktionsplan
+- `content/` – erzeugte Inhalte, Bilder, Renderings, QA-Ergebnisse, Chat-Sitzungen
 - `config/` – Umgebungs- und Beispielkonfiguration
 - `docs/` – Dokumentation
 
@@ -83,4 +83,5 @@ Danach ist die Oberfläche unter `http://127.0.0.1:3040/` erreichbar.
 
 - Ohne API-Schlüssel funktionieren Gerüst, Dateistruktur, Review-UI und viele lokale Arbeitsabläufe weiterhin, produktive Generierung aber nicht.
 - Für Reel-Rendering ist `ffmpeg` erforderlich.
-- Die Review-Oberfläche arbeitet lokal und schreibt direkt in die Projektdateien unter `output/`.
+- Die Review-Oberfläche arbeitet lokal und schreibt direkt in die Projektdateien unter `content/`.
+- `content/` ist ein separates Git-Repository. Nach jeder CLI-Aktion beziehungsweise Review-Aktion werden Änderungen automatisch mit einer passenden Meldung committed und gepusht. Dafür muss im Repository ein Remote und ein Upstream-Branch eingerichtet sein.

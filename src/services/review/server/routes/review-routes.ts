@@ -45,6 +45,7 @@ import {
 } from "../controllers/workflow-controller.js"
 import { isValidationError, respondJson } from "../responses/json-response.js"
 import { mastodonOAuthCallbackPath, type MastodonOAuthService } from "../../../publishing/mastodon-adapter.js"
+import { syncContentRepository } from "../../../content/content-repository.js"
 
 export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   calendar: Calendar
@@ -80,6 +81,11 @@ export async function handleReviewRequest(
       error instanceof Error ? error.message : "Unbekannter Fehler."
 
     respondJson(response, statusCode, { error: message })
+  } finally {
+    await syncContentRepository(
+      `Update content: ${request.method ?? "REQUEST"} ${new URL(request.url ?? "/", "http://127.0.0.1").pathname}`,
+      dependencies.runtimeConfig
+    )
   }
 }
 

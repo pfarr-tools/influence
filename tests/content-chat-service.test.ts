@@ -20,8 +20,8 @@ import {
 
 const sourceCalendarPath = join(
   process.cwd(),
-  "data",
-  "redaktionskalender-2026-2027.json"
+  "content",
+  "content-plan.json"
 )
 
 describe("content chat service", () => {
@@ -31,7 +31,7 @@ describe("content chat service", () => {
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), "director-chat-test-"))
-    tempCalendarPath = join(tempDir, "redaktionskalender-2026-2027.json")
+    tempCalendarPath = join(tempDir, "content-plan.json")
     await cp(sourceCalendarPath, tempCalendarPath)
     runtimeConfig = {
       calendarPath: tempCalendarPath,

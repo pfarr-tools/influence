@@ -50,7 +50,7 @@ PUBLICATION_DEFAULT_TIME_MASTODON=08:15
 ### Kalender validieren
 
 ```bash
-npm run dev -- calendar validate data/redaktionskalender-2026-2027.json
+npm run dev -- calendar validate content/content-plan.json
 ```
 
 ### Woche auflisten
@@ -188,7 +188,7 @@ npm run dev -- render reel-week --date 2026-08-10
 
 ## Chat und JSON-Revision
 
-Die Chat-Kommandos arbeiten mit persistenten Sitzungen in `output/chat-sessions/`.
+Die Chat-Kommandos arbeiten mit persistenten Sitzungen in `content/chat-sessions/`.
 
 ### Sitzung für einen Beitrag starten
 
@@ -329,7 +329,7 @@ npm run dev -- publish run
 npm run dev -- publish retry --job-id <id>
 ```
 
-Jobs werden in `output/publication-jobs.json` mit Text, Assets, Status und Retry-Historie gespeichert. Zugangsdaten werden nicht in Jobs oder API-Metadaten abgelegt.
+Jobs werden in `content/publication-jobs.json` mit Text, Assets, Status und Retry-Historie gespeichert. Zugangsdaten werden nicht in Jobs oder API-Metadaten abgelegt.
 
 Facebook-Profile bleiben manuell:
 

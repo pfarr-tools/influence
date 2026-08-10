@@ -31,7 +31,7 @@ Flux Generator   HTML/CSS Templates
 ## Speicherstruktur
 
 ```text
-output/
+content/
   2026-08-10/
     post-0001/
       content.json

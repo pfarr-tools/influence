@@ -1,6 +1,5 @@
 node_modules/
-output/*
-!output/.gitkeep
+content/
 coverage/
 .env
 .vscode/

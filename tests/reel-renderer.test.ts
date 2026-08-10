@@ -15,8 +15,8 @@ import { renderReelById } from "../src/services/render/index.js"
 
 const fixturePath = join(
   process.cwd(),
-  "data",
-  "redaktionskalender-2026-2027.json"
+  "content",
+  "content-plan.json"
 )
 
 describe("reel renderer", () => {

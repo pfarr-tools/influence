@@ -8,7 +8,7 @@ import { loadRuntimeConfig } from "../src/config/runtime-config.js"
 import { loadCalendarFromFile } from "../src/services/calendar/calendar-service.js"
 import { handleReviewRequest } from "../src/services/review/server/routes/review-routes.js"
 
-const fixturePath = join(process.cwd(), "data", "redaktionskalender-2026-2027.json")
+const fixturePath = join(process.cwd(), "content", "content-plan.json")
 
 describe("review api routes", () => {
   let tempDir: string

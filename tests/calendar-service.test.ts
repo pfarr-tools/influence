@@ -13,8 +13,8 @@ import { CalendarValidationError } from "../src/services/calendar/errors.js"
 
 const fixturePath = join(
   process.cwd(),
-  "data",
-  "redaktionskalender-2026-2027.json"
+  "content",
+  "content-plan.json"
 )
 
 describe("calendar service", () => {

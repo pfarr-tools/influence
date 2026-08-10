@@ -77,10 +77,10 @@ Influence liest Umgebungswerte aus:
   Standardmodell für Bildgenerierung.
 
 - `CONTENT_CALENDAR_PATH`
-  Pfad zur Kalenderdatei. Standard: `./data/redaktionskalender-2026-2027.json`
+  Pfad zur Kalenderdatei. Standard: `./content/content-plan.json`
 
 - `OUTPUT_DIR`
-  Zielverzeichnis für erzeugte Daten. Standard: `./output`
+  Zielverzeichnis für erzeugte Daten. Standard: `./content`
 
 - `FFMPEG_BIN`
   Pfad zum `ffmpeg`-Binary, falls nicht global im `PATH` verfügbar.
@@ -300,8 +300,8 @@ FLUX_API_KEY=...
 FLUX_API_BASE_URL=https://api.bfl.ai
 FLUX_API_GENERATE_PATH=/v1
 FLUX_MODEL=flux-2-pro-preview
-CONTENT_CALENDAR_PATH=./data/redaktionskalender-2026-2027.json
-OUTPUT_DIR=./output
+CONTENT_CALENDAR_PATH=./content/content-plan.json
+OUTPUT_DIR=./content
 FFMPEG_BIN=ffmpeg
 TZ=Europe/Brussels
 REEL_SUBTITLE_FONT_NAME=Atkinson Hyperlegible Next
@@ -312,12 +312,12 @@ REEL_SUBTITLE_FONTS_DIR=
 
 ### Eingabedaten
 
-- `data/redaktionskalender-2026-2027.json`
+- `content/content-plan.json`
   Redaktionskalender als Primärquelle.
 
 ### Ausgabedaten
 
-Unter `output/` legt Influence pro Beitrag eine eigene Struktur an:
+Unter `content/` legt Influence pro Beitrag eine eigene Struktur an:
 
 - `content.json`
 - `raw-openai-response.json`
@@ -331,7 +331,7 @@ Unter `output/` legt Influence pro Beitrag eine eigene Struktur an:
 
 Zusätzlich:
 
-- `output/chat-sessions/`
+- `content/chat-sessions/`
   persistente JSON-Diskussionen und Revisionen
 
 ## Betriebsmodi
@@ -461,12 +461,13 @@ Die Post-Ansicht erzeugt cache-gebrochene Datei-URLs. Wenn trotzdem alte Artefak
 
 - Seite neu laden
 - prüfen, ob die Aktion wirklich erfolgreich abgeschlossen wurde
-- prüfen, ob die entsprechenden Dateien unter `output/` überschrieben wurden
+- prüfen, ob die entsprechenden Dateien unter `content/` überschrieben wurden
 
 ## Sicherheit und Betriebshinweise
 
 - API-Schlüssel nicht ins Repository einchecken.
-- `output/` enthält redaktionelle Arbeitsstände und sollte regelmäßig gesichert werden.
+- `content/` enthält redaktionelle Arbeitsstände und sollte regelmäßig gesichert werden.
+- `content/` ist als separates Git-Repository eingerichtet. Nach jeder CLI-Aktion und jeder schreibenden Review-Aktion werden Änderungen automatisch committed und gepusht. Vor dem Betrieb müssen dort ein Remote und ein Upstream-Branch konfiguriert sein, zum Beispiel mit `git -C content remote add origin <url>` und `git -C content push --set-upstream origin main`.
 - Die Review-Oberfläche ist für lokalen oder geschützten internen Betrieb gedacht.
 - Bei Betrieb außerhalb von `127.0.0.1` sollte die Erreichbarkeit zusätzlich über Netzwerk- oder Reverse-Proxy-Regeln eingeschränkt werden.
 

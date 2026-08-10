@@ -8,7 +8,7 @@ Arbeite inkrementell. Nach jeder Phase müssen Tests laufen und die CLI benutzba
 
 ## Projektziel
 
-Das System liest den Jahres-Redaktionskalender aus `data/redaktionskalender-2026-2027.json`, ergänzt kirchenjahresbezogene Daten, erzeugt mit OpenAI strukturierte Contentpakete, generiert mit Flux textfreie Bildmotive und rendert daraus mit HTML/CSS und Playwright fertige Grafiken.
+Das System liest den Jahres-Redaktionskalender aus `content/content-plan.json`, ergänzt kirchenjahresbezogene Daten, erzeugt mit OpenAI strukturierte Contentpakete, generiert mit Flux textfreie Bildmotive und rendert daraus mit HTML/CSS und Playwright fertige Grafiken.
 
 ## Leitprinzipien
 
@@ -49,8 +49,9 @@ src/
   utils/
   index.ts
 tests/
-data/
-output/
+data/                 # weitere externe Quelldaten
+content/
+  content-plan.json   # Redaktionsplan und redaktionelle Arbeitsstände
 ```
 
 Installiere:
@@ -91,7 +92,7 @@ Implementiere Zod-Schemas für die bestehende Jahres-JSON.
 CLI:
 
 ```bash
-npm run dev -- calendar validate data/redaktionskalender-2026-2027.json
+npm run dev -- calendar validate content/content-plan.json
 npm run dev -- calendar list-week 2026-08-10
 npm run dev -- calendar list-month 2026-09
 ```
@@ -126,7 +127,7 @@ Noch kein API-Aufruf. Erzeuge nur lokale Gerüste aus den Kalenderdaten.
 Ausgabe:
 
 ```text
-output/2026-08-10/post-0001/content.json
+content/2026-08-10/post-0001/content.json
 ```
 
 Akzeptanzkriterien:
@@ -195,8 +196,8 @@ Vorgaben:
 Beispiel:
 
 ```text
-output/2026-08-10/post-0001/assets/background-4x5.webp
-output/2026-08-10/post-0001/assets/background-9x16.webp
+content/2026-08-10/post-0001/assets/background-4x5.webp
+content/2026-08-10/post-0001/assets/background-9x16.webp
 ```
 
 Akzeptanzkriterien:
@@ -447,7 +448,7 @@ Mindestens erforderlich:
 
 ```bash
 npm run dev -- chat start --post-id post-0001
-npm run dev -- chat start --plan data/redaktionskalender-2026-2027.json
+npm run dev -- chat start --plan content/content-plan.json
 npm run dev -- chat message --session-id <id> --text "Der Ton ist noch zu sachlich."
 npm run dev -- chat revise --session-id <id>
 npm run dev -- chat apply --session-id <id>

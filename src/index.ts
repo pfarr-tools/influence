@@ -63,6 +63,7 @@ import {
   type PublicationPlatform
 } from "./services/publishing/index.js"
 import { createMastodonOAuthService } from "./services/publishing/mastodon-adapter.js"
+import { syncContentRepository } from "./services/content/content-repository.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -83,6 +84,13 @@ const renderCommand = program.command("render").description("Render commands")
 const chatCommand = program.command("chat").description("Discuss and revise JSON content")
 const reviewCommand = program.command("review").description("Local review UI")
 const publishCommand = program.command("publish").description("Publication and scheduling commands")
+
+program.hook("postAction", async (_thisCommand, actionCommand) => {
+  await syncContentRepository(
+    `Update content: ${actionCommand.name()}`,
+    runtimeConfig
+  )
+})
 
 publishCommand.command("preview")
   .requiredOption("--post-id <postId>", "Approved calendar post identifier")
