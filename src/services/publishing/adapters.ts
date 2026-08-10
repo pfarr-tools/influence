@@ -3,6 +3,7 @@ import { MastodonPublicationAdapter } from "./mastodon-adapter.js"
 import { InstagramPublicationAdapter } from "./instagram-adapter.js"
 import { ThreadsPublicationAdapter } from "./threads-adapter.js"
 import { createBlueskyAdapter } from "./bluesky-adapter.js"
+import { FacebookPagePublicationAdapter } from "./facebook-adapter.js"
 
 /** Adapter used by dry-runs and tests; it records no external side effects. */
 export class DryRunPublicationAdapter implements PublicationAdapter {
@@ -38,6 +39,18 @@ export class HttpPublicationAdapter implements PublicationAdapter {
 /** Returns adapters without coupling the queue to credentials or SDKs. */
 export function createConfiguredAdapters(environment: Record<string, string | undefined> = process.env): Map<PublicationPlatform, PublicationAdapter> {
   const adapters = new Map<PublicationPlatform, PublicationAdapter>()
+  const facebookPageId = environment.FACEBOOK_PAGE_ID?.trim()
+  const facebookToken = environment.FACEBOOK_ACCESS_TOKEN?.trim()
+  const facebookBaseUrl = environment.PUBLIC_BASE_URL?.trim()
+  if (facebookPageId && facebookToken && facebookBaseUrl) {
+    adapters.set("facebook", new FacebookPagePublicationAdapter({
+      pageId: facebookPageId,
+      accessToken: facebookToken,
+      publicBaseUrl: facebookBaseUrl,
+      graphApiBaseUrl: environment.FACEBOOK_GRAPH_API_URL?.trim(),
+      graphApiVersion: environment.FACEBOOK_GRAPH_API_VERSION?.trim()
+    }))
+  }
   const bluesky = createBlueskyAdapter(environment)
   if (bluesky) adapters.set("bluesky", bluesky)
   const configs: Array<[PublicationPlatform, string, string]> = [["linkedin", "LINKEDIN_API_URL", "LINKEDIN_ACCESS_TOKEN"]]

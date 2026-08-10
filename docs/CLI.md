@@ -35,12 +35,17 @@ PUBLICATION_PLATFORMS=facebook,instagram,mastodon
 PUBLICATION_DEFAULT_TIME_FACEBOOK=12:00
 PUBLICATION_DEFAULT_TIME_INSTAGRAM=08:00
 PUBLICATION_DEFAULT_TIME_MASTODON=08:15
+FACEBOOK_PAGE_ID=123456789012345
+FACEBOOK_ACCESS_TOKEN=EAAB...
 INSTAGRAM_ACCOUNT_ID=17841400000000000
 INSTAGRAM_ACCESS_TOKEN=...
 PUBLIC_BASE_URL=https://example.org
 # Optional: override the Graph API host/version when Meta changes defaults.
 # INSTAGRAM_GRAPH_API_URL=https://graph.instagram.com
 # INSTAGRAM_GRAPH_API_VERSION=v23.0
+# Optional: override the Facebook Graph API host/version.
+# FACEBOOK_GRAPH_API_URL=https://graph.facebook.com
+# FACEBOOK_GRAPH_API_VERSION=v23.0
 ```
 
 ## Allgemeine Konventionen

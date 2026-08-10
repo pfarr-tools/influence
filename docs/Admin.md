@@ -167,6 +167,59 @@ gelieferten IDs in `id`/`url` übersetzen.
 Weiterführend: [Instagram Graph API – Content Publishing](https://developers.facebook.com/docs/instagram-api/guides/content-publishing/),
 [Meta App Dashboard](https://developers.facebook.com/apps/).
 
+#### Facebook Page (native integration)
+
+The native adapter publishes the first generated `facebook-mastodon` landscape
+render as a photo post on a Facebook Page. The image must be reachable below
+`PUBLIC_BASE_URL/files/...` from Meta's servers. Add these values to
+`config/.env`:
+
+```dotenv
+PUBLIC_BASE_URL=https://influence.example
+PUBLICATION_PLATFORMS=facebook,instagram,mastodon
+PUBLICATION_DEFAULT_TIME_FACEBOOK=12:00
+FACEBOOK_PAGE_ID=123456789012345
+FACEBOOK_ACCESS_TOKEN=EAAB...
+# Optional:
+# FACEBOOK_GRAPH_API_URL=https://graph.facebook.com
+# FACEBOOK_GRAPH_API_VERSION=v23.0
+```
+
+In the Meta for Developers dashboard, open the Facebook Page publishing use
+case (the `Anwendungsfall` you already added). In its permissions/requirements,
+add `pages_show_list`, `pages_read_engagement` and `pages_manage_posts`.
+Complete App Review for the permissions if Meta marks them as requiring review;
+while the app is in Development mode, the people testing it must have a role in
+the app and have a role on the Page.
+
+Then create a User Access Token in Graph API Explorer for the same app and
+user, with those permissions. Query:
+
+```text
+GET /me/accounts?fields=id,name,access_token,tasks
+```
+
+Copy the Page's `id` to `FACEBOOK_PAGE_ID` and that entry's `access_token` to
+`FACEBOOK_ACCESS_TOKEN`. This must be a Page Access Token, not the User Access
+Token. The token must include the `CREATE_CONTENT` task for the selected Page.
+Restart Influence after changing `.env`, render the post, approve it, and
+schedule it as usual:
+
+```bash
+influence render post --post-id post-0007
+influence publish schedule --post-id post-0007 --platform facebook --at 2026-08-16T12:00:00+02:00
+influence publish run
+```
+
+The Graph API endpoint used is `POST /{page-id}/photos` with the public image
+URL, the Facebook text as `caption`, and `published=true`. The old
+`influence publish facebook --post-id ...` command remains available for a
+manual hand-off when the native adapter is not configured.
+
+Further reading: [Facebook Pages API](https://developers.facebook.com/docs/pages-api),
+[Page photos](https://developers.facebook.com/docs/graph-api/reference/page/photos),
+[Meta App Dashboard](https://developers.facebook.com/apps/).
+
 #### Threads (native Integration)
 
 Threads verwendet die native Threads API. Benötigt werden `threads_basic` und

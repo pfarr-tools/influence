@@ -77,9 +77,6 @@ export class PublishingService {
       (item) => item.postId === postId && item.platform === platform
     )
     if (!job) throw new Error(`Kein Publication Job für ${platform} gefunden.`)
-    if (platform === "facebook") {
-      throw new Error("Facebook-Profil-Veröffentlichungen bleiben manuell.")
-    }
     if (!["approved", "scheduled", "failed"].includes(job.status)) {
       throw new Error(`Job kann im Status „${job.status}“ nicht sofort ausgeführt werden.`)
     }
@@ -126,8 +123,8 @@ async function resolvePublicationAssets(
   format: string,
   content: Awaited<ReturnType<typeof readContentPackage>>
 ): Promise<string[]> {
-  if (platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky") return content.metadata.assets
-  const renderFormat = platform === "mastodon" || platform === "threads" || platform === "bluesky" || format !== "story" ? "instagram-feed" : "instagram-story"
+  if (platform !== "facebook" && platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky") return content.metadata.assets
+  const renderFormat = platform === "facebook" ? "facebook-mastodon" : platform === "mastodon" || platform === "threads" || platform === "bluesky" || format !== "story" ? "instagram-feed" : "instagram-story"
   const summaryPath = getContentOutputPaths(outputRoot, post).baseDir + "/render-results.json"
   const summary = await readJsonFile<{ renders?: Array<{ format?: string; image_path?: string; page_index?: number }> }>(summaryPath)
   const assets = (summary.renders ?? [])
@@ -135,7 +132,7 @@ async function resolvePublicationAssets(
     .sort((left, right) => (left.page_index ?? 0) - (right.page_index ?? 0))
     .map((render) => render.image_path as string)
   if (assets.length === 0) throw new Error(`Keine gerenderten ${renderFormat}-Bilder für ${post.id} gefunden. Erst den Render-Schritt ausführen.`)
-  return platform === "mastodon" ? assets.slice(0, 1) : platform === "bluesky" ? assets.slice(0, 4) : assets
+  return platform === "facebook" || platform === "mastodon" ? assets.slice(0, 1) : platform === "bluesky" ? assets.slice(0, 4) : assets
 }
 
 async function resolvePublicationAssetsForJob(
