@@ -97,8 +97,8 @@ async function resolvePublicationAssets(
   format: string,
   content: Awaited<ReturnType<typeof readContentPackage>>
 ): Promise<string[]> {
-  if (platform !== "instagram" && platform !== "mastodon") return content.metadata.assets
-  const renderFormat = platform === "mastodon" || format !== "story" ? "instagram-feed" : "instagram-story"
+  if (platform !== "instagram" && platform !== "mastodon" && platform !== "threads") return content.metadata.assets
+  const renderFormat = platform === "mastodon" || platform === "threads" || format !== "story" ? "instagram-feed" : "instagram-story"
   const summaryPath = getContentOutputPaths(outputRoot, post).baseDir + "/render-results.json"
   const summary = await readJsonFile<{ renders?: Array<{ format?: string; image_path?: string; page_index?: number }> }>(summaryPath)
   const assets = (summary.renders ?? [])

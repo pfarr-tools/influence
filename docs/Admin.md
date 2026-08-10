@@ -95,9 +95,9 @@ Influence liest Umgebungswerte aus:
 
 `PUBLICATION_PLATFORMS` bestimmt, für welche Plattformen Influence Jobs anlegt.
 Eine Plattform wird automatisch veröffentlicht, wenn ihre Zugangsdaten
-vollständig konfiguriert sind. Für Instagram, Threads, Bluesky und LinkedIn
-sind das `*_API_URL` und `*_ACCESS_TOKEN`; Mastodon verwendet den nativen
-Adapter mit `MASTODON_SERVER_URL` und `MASTODON_ACCESS_TOKEN`. Nicht
+vollständig konfiguriert sind. Für Bluesky und LinkedIn sind das `*_API_URL`
+und `*_ACCESS_TOKEN`; Instagram und Threads verwenden native Meta-Adapter.
+Mastodon verwendet den nativen Adapter mit `MASTODON_SERVER_URL` und `MASTODON_ACCESS_TOKEN`. Nicht
 konfigurierte Plattformen bleiben in der Oberfläche und in der Queue sichtbar,
 können aber nicht automatisch veröffentlicht werden.
 
@@ -166,6 +166,30 @@ gelieferten IDs in `id`/`url` übersetzen.
 
 Weiterführend: [Instagram Graph API – Content Publishing](https://developers.facebook.com/docs/instagram-api/guides/content-publishing/),
 [Meta App Dashboard](https://developers.facebook.com/apps/).
+
+#### Threads (native Integration)
+
+Threads verwendet die native Threads API. Benötigt werden `threads_basic` und
+`threads_content_publish` sowie eine öffentlich erreichbare Basis-URL für die
+gerenderten Bilder:
+
+```dotenv
+PUBLIC_BASE_URL=https://influence.example
+THREADS_APP_ID=...
+THREADS_APP_SECRET=...
+THREADS_ACCESS_TOKEN=...
+THREADS_USER_ID=...
+THREADS_GRAPH_API_URL=https://graph.threads.net
+THREADS_GRAPH_API_VERSION=v1.0
+```
+
+Die OAuth-Einrichtung startet unter
+`/admin/threads/oauth/start`; der in Meta eingetragene Rückruf muss
+`/publish/threads/oauth/callback` unter `PUBLIC_BASE_URL` sein. Der Rückruf
+zeigt den langlebigen Access-Token und die User-ID einmalig an. Threads-Posts
+verwenden die gerenderten Instagram-Feed-Bilder: ein Bild wird als Bildpost,
+zwei bis zwanzig Bilder als Carousel veröffentlicht. Der App Secret bleibt
+serverseitig und wird nicht in Publikationsjobs gespeichert.
 
 #### Mastodon (native Integration)
 

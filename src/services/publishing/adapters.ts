@@ -1,6 +1,7 @@
 import type { PublicationAdapter, PublicationPayload, PublicationPlatform, PublicationResult } from "./types.js"
 import { MastodonPublicationAdapter } from "./mastodon-adapter.js"
 import { InstagramPublicationAdapter } from "./instagram-adapter.js"
+import { ThreadsPublicationAdapter } from "./threads-adapter.js"
 
 /** Adapter used by dry-runs and tests; it records no external side effects. */
 export class DryRunPublicationAdapter implements PublicationAdapter {
@@ -37,7 +38,6 @@ export class HttpPublicationAdapter implements PublicationAdapter {
 export function createConfiguredAdapters(environment: Record<string, string | undefined> = process.env): Map<PublicationPlatform, PublicationAdapter> {
   const adapters = new Map<PublicationPlatform, PublicationAdapter>()
   const configs: Array<[PublicationPlatform, string, string]> = [
-    ["threads", "THREADS_API_URL", "THREADS_ACCESS_TOKEN"],
     ["bluesky", "BLUESKY_API_URL", "BLUESKY_ACCESS_TOKEN"],
     ["linkedin", "LINKEDIN_API_URL", "LINKEDIN_ACCESS_TOKEN"]
   ]
@@ -45,6 +45,18 @@ export function createConfiguredAdapters(environment: Record<string, string | un
     const endpoint = environment[endpointKey]?.trim()
     const token = environment[tokenKey]?.trim()
     if (endpoint && token) adapters.set(platform, new HttpPublicationAdapter(platform, endpoint, token))
+  }
+  const threadsToken = environment.THREADS_ACCESS_TOKEN?.trim()
+  const threadsBaseUrl = environment.PUBLIC_BASE_URL?.trim()
+  if (threadsToken && threadsBaseUrl) {
+    adapters.set("threads", new ThreadsPublicationAdapter({
+      accessToken: threadsToken,
+      userId: environment.THREADS_USER_ID?.trim(),
+      publicBaseUrl: threadsBaseUrl,
+      graphApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim(),
+      graphApiVersion: environment.THREADS_GRAPH_API_VERSION?.trim(),
+      pollIntervalMs: Number(environment.THREADS_POLL_INTERVAL_MS) || undefined
+    }))
   }
   const instagramAccountId = environment.INSTAGRAM_ACCOUNT_ID?.trim()
   const instagramToken = environment.INSTAGRAM_ACCESS_TOKEN?.trim()

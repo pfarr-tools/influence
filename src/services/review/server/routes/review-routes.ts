@@ -45,6 +45,7 @@ import {
 } from "../controllers/workflow-controller.js"
 import { isValidationError, respondJson } from "../responses/json-response.js"
 import { mastodonOAuthCallbackPath, type MastodonOAuthService } from "../../../publishing/mastodon-adapter.js"
+import { threadsOAuthCallbackPath, type ThreadsOAuthService } from "../../../publishing/threads-adapter.js"
 import { syncContentRepository } from "../../../content/content-repository.js"
 
 export interface ReviewServerDependencies extends ContentGeneratorDependencies {
@@ -54,6 +55,7 @@ export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   pageRenderClient: HtmlRenderClient
   runtimeConfig: RuntimeConfig
   mastodonOAuth?: MastodonOAuthService
+  threadsOAuth?: ThreadsOAuthService
 }
 
 const frontendRoot = resolve(
@@ -115,6 +117,23 @@ async function routeReviewRequest(
     }
     response.writeHead(302, { location: await dependencies.mastodonOAuth.begin() })
     response.end()
+    return
+  }
+
+  if (requestUrl.pathname === "/admin/threads/oauth/start" && method === "GET") {
+    if (!dependencies.threadsOAuth) { respondJson(response, 503, { error: "Threads-OAuth ist nicht konfiguriert." }); return }
+    response.writeHead(302, { location: dependencies.threadsOAuth.begin() }); response.end(); return
+  }
+
+  if (requestUrl.pathname === threadsOAuthCallbackPath && method === "GET") {
+    if (!dependencies.threadsOAuth) { respondHtml(response, 503, "Threads-OAuth ist nicht konfiguriert."); return }
+    const oauthError = requestUrl.searchParams.get("error")
+    if (oauthError) { respondHtml(response, 400, `Threads-OAuth abgebrochen: ${escapeHtml(oauthError)}`); return }
+    const code = requestUrl.searchParams.get("code")
+    const state = requestUrl.searchParams.get("state")
+    if (!code || !state) { respondHtml(response, 400, "Threads-OAuth: Code oder Status fehlt."); return }
+    const token = await dependencies.threadsOAuth.complete(code, state)
+    respondHtml(response, 200, `Threads-OAuth erfolgreich. Trage diese Werte als <code>THREADS_ACCESS_TOKEN</code> und <code>THREADS_USER_ID</code> in <code>config/.env</code> ein und starte Influence neu:<pre>${escapeHtml(token.accessToken)}</pre><pre>${escapeHtml(token.userId)}</pre>${token.expiresIn ? `<p>Gültigkeit: ${escapeHtml(String(token.expiresIn))} Sekunden</p>` : ""}`)
     return
   }
 

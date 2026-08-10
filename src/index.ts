@@ -63,6 +63,7 @@ import {
   type PublicationPlatform
 } from "./services/publishing/index.js"
 import { createMastodonOAuthService } from "./services/publishing/mastodon-adapter.js"
+import { createThreadsOAuthService } from "./services/publishing/threads-adapter.js"
 import { syncContentRepository } from "./services/content/content-repository.js"
 
 const program = new Command()
@@ -942,6 +943,7 @@ reviewCommand
             : createOpenAIContentClient(runtimeConfig.openAiApiKey),
         pageRenderClient: createPlaywrightHtmlRenderClient(),
         mastodonOAuth: createMastodonOAuthService(),
+        threadsOAuth: createThreadsOAuthService(),
         runtimeConfig
       })
 
