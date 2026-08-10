@@ -111,6 +111,43 @@
           </div>
         </section>
 
+        <BaseModal
+          :open="facebookShareModalOpen"
+          title="Auf Facebook teilen"
+          @close="facebookShareModalOpen = false"
+        >
+          <p class="mb-3">
+            Der Facebook-Share-Dialog ist geöffnet. Kopiere dort den vorbereiteten
+            Beitragstext und füge optional das Bild hinzu.
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <button
+              class="btn btn-outline-primary"
+              type="button"
+              :disabled="facebookCopyBusy"
+              @click="copyFacebookText"
+            >
+              Text kopieren
+            </button>
+            <button
+              class="btn btn-outline-primary"
+              type="button"
+              :disabled="facebookCopyBusy || !post.facebookImageHref"
+              @click="copyFacebookImage"
+            >
+              Bild kopieren
+            </button>
+          </div>
+          <p v-if="facebookCopyNotice" class="small text-secondary mt-3 mb-0" role="status">
+            {{ facebookCopyNotice }}
+          </p>
+          <template #footer>
+            <button class="btn btn-secondary" type="button" @click="facebookShareModalOpen = false">
+              Schließen
+            </button>
+          </template>
+        </BaseModal>
+
         <section class="card shadow-sm mt-4">
           <div class="card-body">
             <h2 class="h5">{{ germanCopy.edit }}</h2>
@@ -478,6 +515,7 @@ import { computed, reactive, ref, watch } from "vue"
 import { RouterLink, useRoute, useRouter } from "vue-router"
 import type { ReviewActionApi } from "../../../server/contracts/review-contracts.js"
 import AssetPanel from "../components/AssetPanel.vue"
+import BaseModal from "../components/BaseModal.vue"
 import ChatModal from "../components/ChatModal.vue"
 import PostActionsCard from "../components/PostActionsCard.vue"
 import PreviewGallery from "../components/PreviewGallery.vue"
@@ -500,6 +538,9 @@ const route = useRoute()
 const router = useRouter()
 const post = computed(() => reviewStore.post)
 const facebookNotice = ref("")
+const facebookShareModalOpen = ref(false)
+const facebookCopyNotice = ref("")
+const facebookCopyBusy = ref(false)
 const form = reactive({
   altText: "",
   audience: "",
@@ -641,31 +682,63 @@ async function updateSchedule() {
 
 async function shareFacebook() {
   if (!post.value) return
-  const text = form.facebookText
+  facebookCopyNotice.value = ""
   try {
-    if (!navigator.clipboard) throw new Error("Die Zwischenablage ist nicht verfügbar.")
-    if (typeof ClipboardItem === "undefined") {
-      throw new Error("Dieses Browserfenster unterstützt kein gemeinsames Kopieren von Bild und Text.")
-    }
-    if (!post.value.facebookImageHref) {
-      throw new Error("Kein Facebook-Bild gefunden. Rendere zuerst die Social-Bilder für diesen Beitrag.")
-    }
-    const imageBlob = await fetch(post.value.facebookImageHref).then((response) => {
-      if (!response.ok) {
-        throw new Error("Das Facebook-Bild konnte nicht geladen werden.")
-      }
-      return response.blob()
-    })
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        [imageBlob.type || "image/png"]: imageBlob,
-        "text/plain": new Blob([text], { type: "text/plain" })
-      })
-    ])
-    facebookNotice.value = "Bild und Text kopiert. Facebook wurde geöffnet; bitte dort direkt einfügen."
-    window.open("https://www.facebook.com/sharer/sharer.php", "facebook-share", "width=700,height=700,noopener,noreferrer")
+    await copyFacebookText()
   } catch (error) {
-    facebookNotice.value = error instanceof Error ? error.message : "Kopieren fehlgeschlagen."
+    const message = error instanceof Error ? error.message : "Kopieren fehlgeschlagen."
+    facebookNotice.value = message
+    facebookCopyNotice.value = message
+  }
+
+  window.open(
+    "https://www.facebook.com/sharer/sharer.php",
+    "facebook-share",
+    "width=700,height=700,noopener,noreferrer"
+  )
+  facebookShareModalOpen.value = true
+}
+
+async function copyFacebookText() {
+  if (!navigator.clipboard) {
+    throw new Error("Die Zwischenablage ist nicht verfügbar.")
+  }
+
+  facebookCopyBusy.value = true
+  try {
+    await navigator.clipboard.writeText(form.facebookText)
+    facebookCopyNotice.value = "Facebook-Text kopiert."
+    facebookNotice.value = "Text kopiert. Facebook wurde geöffnet."
+  } finally {
+    facebookCopyBusy.value = false
+  }
+}
+
+async function copyFacebookImage() {
+  if (!post.value?.facebookImageHref) {
+    facebookCopyNotice.value = "Kein Facebook-Bild gefunden. Rendere zuerst die Social-Bilder für diesen Beitrag."
+    return
+  }
+  if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
+    facebookCopyNotice.value = "Das Kopieren von Bildern wird von diesem Browser nicht unterstützt."
+    return
+  }
+
+  facebookCopyBusy.value = true
+  try {
+    const response = await fetch(post.value.facebookImageHref)
+    if (!response.ok) {
+      throw new Error("Das Facebook-Bild konnte nicht geladen werden.")
+    }
+    const imageBlob = await response.blob()
+    await navigator.clipboard.write([
+      new ClipboardItem({ [imageBlob.type || "image/png"]: imageBlob })
+    ])
+    facebookCopyNotice.value = "Facebook-Bild kopiert."
+  } catch (error) {
+    facebookCopyNotice.value = error instanceof Error ? error.message : "Bild konnte nicht kopiert werden."
+  } finally {
+    facebookCopyBusy.value = false
   }
 }
 
