@@ -84,16 +84,16 @@
               <div v-for="channel in post.publicationChannels" :key="`${channel.platform}-${channel.format}`" class="col-sm-6">
                 <div class="border rounded p-2 d-flex justify-content-between align-items-center">
                   <div>
-                    <div>{{ publicationLabel(channel.platform) }}</div>
-                    <small class="text-secondary">{{ publicationDate(channel.scheduledAt, channel.timezone) }}</small>
+                    <div>{{ publicationLabel(channel.platform, channel.format) }}</div>
+                    <small class="text-secondary">{{ publicationDate(channel.scheduledAt) }}</small>
                   </div>
                   <div class="d-flex align-items-center gap-2">
                     <span class="badge text-bg-light">{{ publicationStatusLabel(channel.status) }}</span>
                     <button
                       class="btn btn-sm btn-outline-secondary"
                       type="button"
-                      :aria-label="`Jetzt auf ${publicationLabel(channel.platform)} veröffentlichen`"
-                      :title="`Jetzt auf ${publicationLabel(channel.platform)} veröffentlichen`"
+                      :aria-label="`Jetzt auf ${publicationLabel(channel.platform, channel.format)} veröffentlichen`"
+                      :title="`Jetzt auf ${publicationLabel(channel.platform, channel.format)} veröffentlichen`"
                       :disabled="reviewStore.loading || channel.status === 'published'"
                       @click="publishChannel(channel.platform)"
                     >↗</button>
@@ -677,9 +677,11 @@ async function publishChannel(platform: string) {
   await publishPostNow(postId.value, platform)
 }
 
-function publicationLabel(platform: string): string {
+function publicationLabel(platform: string, format = ""): string {
+  if (platform === "instagram") {
+    return `Instagram (${format === "story" ? "Story" : "Post"})`
+  }
   return {
-    instagram: "Instagram",
     mastodon: "Mastodon",
     threads: "Threads",
     bluesky: "Bluesky",
@@ -688,13 +690,12 @@ function publicationLabel(platform: string): string {
   }[platform] ?? platform
 }
 
-function publicationDate(scheduledAt: string | null, timezone: string): string {
+function publicationDate(scheduledAt: string | null): string {
   if (!scheduledAt) return "sofort"
   return `${new Intl.DateTimeFormat("de-DE", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: timezone
-  }).format(new Date(scheduledAt))} (${timezone})`
+  }).format(new Date(scheduledAt))} Uhr`
 }
 
 function publicationStatusLabel(status: string): string {
