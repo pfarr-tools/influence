@@ -1,5 +1,6 @@
 import type { PublicationAdapter, PublicationPayload, PublicationPlatform, PublicationResult } from "./types.js"
 import { MastodonPublicationAdapter } from "./mastodon-adapter.js"
+import { InstagramPublicationAdapter } from "./instagram-adapter.js"
 
 /** Adapter used by dry-runs and tests; it records no external side effects. */
 export class DryRunPublicationAdapter implements PublicationAdapter {
@@ -36,7 +37,6 @@ export class HttpPublicationAdapter implements PublicationAdapter {
 export function createConfiguredAdapters(environment: Record<string, string | undefined> = process.env): Map<PublicationPlatform, PublicationAdapter> {
   const adapters = new Map<PublicationPlatform, PublicationAdapter>()
   const configs: Array<[PublicationPlatform, string, string]> = [
-    ["instagram", "INSTAGRAM_API_URL", "INSTAGRAM_ACCESS_TOKEN"],
     ["threads", "THREADS_API_URL", "THREADS_ACCESS_TOKEN"],
     ["bluesky", "BLUESKY_API_URL", "BLUESKY_ACCESS_TOKEN"],
     ["linkedin", "LINKEDIN_API_URL", "LINKEDIN_ACCESS_TOKEN"]
@@ -45,6 +45,19 @@ export function createConfiguredAdapters(environment: Record<string, string | un
     const endpoint = environment[endpointKey]?.trim()
     const token = environment[tokenKey]?.trim()
     if (endpoint && token) adapters.set(platform, new HttpPublicationAdapter(platform, endpoint, token))
+  }
+  const instagramAccountId = environment.INSTAGRAM_ACCOUNT_ID?.trim()
+  const instagramToken = environment.INSTAGRAM_ACCESS_TOKEN?.trim()
+  const instagramBaseUrl = environment.PUBLIC_BASE_URL?.trim()
+  if (instagramAccountId && instagramToken && instagramBaseUrl) {
+    adapters.set("instagram", new InstagramPublicationAdapter({
+      accountId: instagramAccountId,
+      accessToken: instagramToken,
+      publicBaseUrl: instagramBaseUrl,
+      graphApiBaseUrl: environment.INSTAGRAM_GRAPH_API_URL?.trim(),
+      graphApiVersion: environment.INSTAGRAM_GRAPH_API_VERSION?.trim(),
+      pollIntervalMs: Number(environment.INSTAGRAM_POLL_INTERVAL_MS) || undefined
+    }))
   }
   const mastodonServerUrl = environment.MASTODON_SERVER_URL?.trim()
   const mastodonToken = environment.MASTODON_ACCESS_TOKEN?.trim()

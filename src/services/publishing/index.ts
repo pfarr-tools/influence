@@ -1,5 +1,6 @@
 export * from "./adapters.js"
 export * from "./mastodon-adapter.js"
+export * from "./instagram-adapter.js"
 export * from "./facebook-assistant.js"
 export * from "./job-store.js"
 export * from "./publishing-service.js"

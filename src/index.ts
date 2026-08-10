@@ -95,13 +95,14 @@ program.hook("postAction", async (_thisCommand, actionCommand) => {
 publishCommand.command("preview")
   .requiredOption("--post-id <postId>", "Approved calendar post identifier")
   .option("--platform <platform>", "Platform to preview", "instagram")
+  .option("--format <format>", "Publication format", "default")
   .description("Show a publication payload without an external API call")
-  .action(async (options: { postId: string; platform: string }) => {
+  .action(async (options: { postId: string; platform: string; format: string }) => {
     try {
       const calendar = await loadCalendarFromFile(defaultCalendarPath)
       const platform = options.platform as PublicationPlatform
       const service = new PublishingService(defaultOutputRoot, new Map([[platform, new DryRunPublicationAdapter(platform)]]))
-      const job = await service.schedulePost(calendar, options.postId, platform, null)
+      const job = await service.schedulePost(calendar, options.postId, platform, null, options.format)
       console.log(JSON.stringify({ dryRun: true, target: platform, job }, null, 2))
     } catch (error) { handleCliError(error) }
   })

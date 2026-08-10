@@ -35,6 +35,12 @@ PUBLICATION_PLATFORMS=facebook,instagram,mastodon
 PUBLICATION_DEFAULT_TIME_FACEBOOK=12:00
 PUBLICATION_DEFAULT_TIME_INSTAGRAM=08:00
 PUBLICATION_DEFAULT_TIME_MASTODON=08:15
+INSTAGRAM_ACCOUNT_ID=17841400000000000
+INSTAGRAM_ACCESS_TOKEN=...
+PUBLIC_BASE_URL=https://example.org
+# Optional: override the Graph API host/version when Meta changes defaults.
+# INSTAGRAM_GRAPH_API_URL=https://graph.instagram.com
+# INSTAGRAM_GRAPH_API_VERSION=v23.0
 ```
 
 ## Allgemeine Konventionen
@@ -324,12 +330,16 @@ Freigegebene Inhalte können als lokale Publication Jobs geplant werden. Ohne de
 
 ```bash
 npm run dev -- publish preview --post-id post-0007 --platform instagram
+npm run dev -- publish preview --post-id post-0007 --platform instagram --format story
 npm run dev -- publish schedule --post-id post-0007 --platform mastodon --at 2026-08-16T08:05:00+02:00
+npm run dev -- publish schedule --post-id post-0007 --platform instagram --format story --at 2026-08-16T07:00:00+02:00
 npm run dev -- publish run
 npm run dev -- publish retry --job-id <id>
 ```
 
 Jobs werden in `content/publication-jobs.json` mit Text, Assets, Status und Retry-Historie gespeichert. Zugangsdaten werden nicht in Jobs oder API-Metadaten abgelegt.
+
+Instagram-Posts verwenden die gerenderten `instagram-feed`-Bilder als Carousel (2–10 Seiten). Instagram Stories verwenden mit `--format story` jeweils ein gerendertes `instagram-story`-Bild pro Job. Die Bilder müssen über `PUBLIC_BASE_URL/files/...` öffentlich erreichbar sein; Meta akzeptiert keine lokalen Dateipfade.
 
 Facebook-Profile bleiben manuell:
 
