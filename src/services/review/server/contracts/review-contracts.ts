@@ -138,6 +138,10 @@ const postDetailResponseSchema = z.object({
     ),
     mainMessage: z.string(),
     mastodonText: z.string(),
+    blueskyText: z.string().optional().default(""),
+    platforms: z.object({
+      bluesky: z.object({ text: z.string() })
+    }).optional(),
     reelHook: z.string(),
     reelScript: z.string(),
     storySlides: z.array(z.string()),
@@ -235,6 +239,7 @@ export const postEditRequestSchema = z.object({
   ),
   mainMessage: z.string(),
   mastodonText: z.string(),
+  blueskyText: z.string().optional().default(""),
   reelHook: z.string(),
   reelScript: z.string(),
   storySlides: z.array(z.string()),

@@ -108,8 +108,8 @@ async function resolvePublicationAssets(
   format: string,
   content: Awaited<ReturnType<typeof readContentPackage>>
 ): Promise<string[]> {
-  if (platform !== "instagram" && platform !== "mastodon" && platform !== "threads") return content.metadata.assets
-  const renderFormat = platform === "mastodon" || platform === "threads" || format !== "story" ? "instagram-feed" : "instagram-story"
+  if (platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky") return content.metadata.assets
+  const renderFormat = platform === "mastodon" || platform === "threads" || platform === "bluesky" || format !== "story" ? "instagram-feed" : "instagram-story"
   const summaryPath = getContentOutputPaths(outputRoot, post).baseDir + "/render-results.json"
   const summary = await readJsonFile<{ renders?: Array<{ format?: string; image_path?: string; page_index?: number }> }>(summaryPath)
   const assets = (summary.renders ?? [])
@@ -117,7 +117,7 @@ async function resolvePublicationAssets(
     .sort((left, right) => (left.page_index ?? 0) - (right.page_index ?? 0))
     .map((render) => render.image_path as string)
   if (assets.length === 0) throw new Error(`Keine gerenderten ${renderFormat}-Bilder für ${post.id} gefunden. Erst den Render-Schritt ausführen.`)
-  return platform === "mastodon" ? assets.slice(0, 1) : assets
+  return platform === "mastodon" ? assets.slice(0, 1) : platform === "bluesky" ? assets.slice(0, 4) : assets
 }
 
 async function resolvePublicationAssetsForJob(
@@ -135,7 +135,9 @@ async function resolvePublicationAssetsForJob(
 function getPlatformText(content: Awaited<ReturnType<typeof readContentPackage>>, platform: PublicationPlatform): string {
   if (platform === "facebook") return content.platforms.facebook.text
   if (platform === "instagram" || platform === "threads") return content.platforms.instagram.caption
-  if (platform === "mastodon" || platform === "bluesky" || platform === "linkedin") return content.platforms.mastodon.text
+  if (platform === "mastodon") return content.platforms.mastodon.text
+  if (platform === "bluesky") return content.platforms.bluesky?.text ?? ""
+  if (platform === "linkedin") return content.platforms.mastodon.text
   return ""
 }
 

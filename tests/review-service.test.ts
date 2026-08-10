@@ -64,6 +64,7 @@ describe("review service", () => {
       ],
       mainMessage: "Neue Kernbotschaft",
       mastodonText: "Neuer Mastodon-Text",
+      blueskyText: "Neuer Bluesky-Text",
       reelHook: "Neuer Hook",
       reelScript: "Neues Reel-Skript",
       storySlides: ["Slide eins", "Slide zwei"],
@@ -82,6 +83,7 @@ describe("review service", () => {
       { type: "content", text: "Neue Karussellkarte" }
     ])
     expect(written.editorial_core.title).toBe("Neuer Titel")
+    expect(written.platforms.bluesky.text).toBe("Neuer Bluesky-Text")
   })
 
   it("approves only QA-ready posts", async () => {

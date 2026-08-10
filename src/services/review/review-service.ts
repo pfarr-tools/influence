@@ -153,6 +153,7 @@ export interface UpdateReviewPostInput {
   }>
   mainMessage: string
   mastodonText: string
+  blueskyText?: string
   reelHook: string
   reelScript: string
   storySlides: string[]
@@ -375,6 +376,9 @@ export async function updateReviewPost(
       },
       mastodon: {
         text: input.mastodonText
+      },
+      bluesky: {
+        text: input.blueskyText ?? content.platforms.bluesky?.text ?? ""
       },
       reel: {
         ...content.platforms.reel,

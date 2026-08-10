@@ -257,17 +257,18 @@ Weiterführend: [Threads API – Getting Started](https://developers.facebook.co
 Variablen:
 
 ```dotenv
-BLUESKY_API_URL=https://bridge.example.org/bluesky/publish
-BLUESKY_ACCESS_TOKEN=...
+BLUESKY_SERVICE_URL=https://bsky.social
+BLUESKY_IDENTIFIER=dein-handle.bsky.social
+BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
 ```
 
-Für einen einzelnen Account kann die Bridge mit einem Bluesky App Password
-arbeiten. Das wird im Bluesky-Konto unter **Settings → Advanced → App
-Passwords** erstellt; das normale Kontopasswort sollte nicht in einem
-Integrationsdienst hinterlegt werden. Alternativ kann die Bridge den offiziellen
-OAuth-/Session-Flow verwenden. Sie muss den Beitrag als AT-Protocol-Record
-anlegen, Bilder als Blobs hochladen und die resultierende Record-URI oder CID
-als `id` zurückgeben.
+Der native Adapter verwendet ein Bluesky App Password. Das wird im
+Bluesky-Konto unter **Settings → Advanced → App Passwords** erstellt; das
+normale Kontopasswort sollte nicht in einem Integrationsdienst hinterlegt
+werden. Der Adapter erstellt eine AT-Protocol-Session, lädt Bilder als Blobs
+hoch und legt anschließend den `app.bsky.feed.post`-Record an. Für bereits
+vorhandene Sessions können alternativ `BLUESKY_ACCESS_TOKEN` und
+`BLUESKY_REPO` gesetzt werden.
 
 Weiterführend: [Bluesky: Get Started](https://docs.bsky.app/docs/get-started),
 [Bluesky: Posting via the API](https://docs.bsky.app/blog/create-post),
@@ -304,8 +305,9 @@ MASTODON_SERVER_URL=https://mastodon.example
 MASTODON_ACCESS_TOKEN=...
 THREADS_API_URL=https://bridge.example.org/threads/publish
 THREADS_ACCESS_TOKEN=...
-BLUESKY_API_URL=https://bridge.example.org/bluesky/publish
-BLUESKY_ACCESS_TOKEN=...
+BLUESKY_SERVICE_URL=https://bsky.social
+BLUESKY_IDENTIFIER=dein-handle.bsky.social
+BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
 LINKEDIN_API_URL=https://bridge.example.org/linkedin/publish
 LINKEDIN_ACCESS_TOKEN=...
 ```

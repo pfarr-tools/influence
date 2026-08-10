@@ -90,6 +90,7 @@ describe("review view models", () => {
               carousel: [{ type: "content", text: "Karussellkarte" }]
             },
             mastodon: { text: "Mastodon-Text" },
+            bluesky: { text: "Bluesky-Text" },
             reel: {
               duration_seconds: 0,
               hook: "Hook",
@@ -147,6 +148,8 @@ describe("review view models", () => {
     expect(response.content.instagramCarousel).toEqual([
       { type: "content", text: "Karussellkarte" }
     ])
+    expect(response.content.blueskyText).toBe("Bluesky-Text")
+    expect(response.content.platforms?.bluesky.text).toBe("Bluesky-Text")
     expect(response.facebookImageHref).toBeNull()
     expect(response.facebookShareUrl).toBeNull()
   })

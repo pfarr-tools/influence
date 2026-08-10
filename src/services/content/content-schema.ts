@@ -50,6 +50,9 @@ export const contentPackageSchema = z.object({
     mastodon: z.object({
       text: z.string()
     }),
+    bluesky: z.object({
+      text: z.string()
+    }).default({ text: "" }),
     story: z.object({
       slides: z.array(storySlideSchema)
     }),

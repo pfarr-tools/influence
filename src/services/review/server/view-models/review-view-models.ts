@@ -146,6 +146,10 @@ export function buildPostDetailResponse(
       ),
       mainMessage: detail.content.editorial_core.main_message,
       mastodonText: detail.content.platforms.mastodon.text,
+      blueskyText: detail.content.platforms.bluesky?.text ?? "",
+      platforms: {
+        bluesky: { text: detail.content.platforms.bluesky?.text ?? "" }
+      },
       reelHook: detail.content.platforms.reel.hook,
       reelScript: detail.content.platforms.reel.script,
       storySlides: detail.content.platforms.story.slides.map(

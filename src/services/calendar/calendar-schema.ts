@@ -44,6 +44,7 @@ const editorialFieldsSchema = z.object({
   facebook_text: z.string(),
   instagram_caption: z.string(),
   mastodon_text: z.string(),
+  bluesky_text: z.string().optional().default(""),
   story_ablauf: z.array(z.string()),
   reel_skript: z.string(),
   bildidee: z.string(),

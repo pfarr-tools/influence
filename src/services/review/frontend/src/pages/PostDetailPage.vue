@@ -328,6 +328,17 @@
                   rows="3"
                 />
               </div>
+              <div class="col-12 form-section-heading">Bluesky</div>
+              <div class="col-12">
+                <label class="form-label">Bluesky-Text <span class="text-secondary">(max. 300 Zeichen)</span></label>
+                <textarea
+                  v-model="form.blueskyText"
+                  class="form-control"
+                  rows="3"
+                  maxlength="300"
+                />
+                <div class="form-text text-end">{{ form.blueskyText.length }}/300</div>
+              </div>
               <div class="col-12 form-section-heading">Reel</div>
               <div class="col-12">
                 <label class="form-label">Reel-Hook</label>
@@ -551,6 +562,7 @@ const form = reactive({
   instagramCaption: "",
   mainMessage: "",
   mastodonText: "",
+  blueskyText: "",
   reelHook: "",
   reelScript: "",
   title: ""
@@ -603,6 +615,7 @@ watch(post, (value) => {
   form.instagramCaption = value.content.instagramCaption
   form.mainMessage = value.content.mainMessage
   form.mastodonText = value.content.mastodonText
+  form.blueskyText = value.content.platforms?.bluesky?.text ?? value.content.blueskyText
   form.reelHook = value.content.reelHook
   form.reelScript = value.content.reelScript
   form.title = value.content.title
@@ -651,6 +664,7 @@ async function handleAction(payload: { action: string; force: boolean }) {
 }
 
 async function savePost() {
+  const savedBlueskyText = form.blueskyText
   await triggerPostAction(postId.value, "edit", {
     altText: form.altText,
     audience: form.audience,
@@ -665,6 +679,7 @@ async function savePost() {
     })),
     mainMessage: form.mainMessage,
     mastodonText: form.mastodonText,
+    blueskyText: form.blueskyText,
     reelHook: form.reelHook,
     reelScript: form.reelScript,
     storySlides: storySlides.value.map((slide) => slide.text),
@@ -673,6 +688,7 @@ async function savePost() {
 
   if (!reviewStore.error) {
     await refreshPost()
+    form.blueskyText = savedBlueskyText
   }
 }
 

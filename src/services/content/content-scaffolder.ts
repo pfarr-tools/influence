@@ -65,6 +65,9 @@ export function createContentScaffold(
       mastodon: {
         text: post.redaktionsfelder.mastodon_text
       },
+      bluesky: {
+        text: post.redaktionsfelder.bluesky_text
+      },
       story: {
         slides: post.redaktionsfelder.story_ablauf.map((text) => ({ text }))
       },

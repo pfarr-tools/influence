@@ -21,6 +21,7 @@ const maxLengths = {
   facebookText: 1500,
   instagramCaption: 2200,
   mastodonText: 500,
+  blueskyText: 300,
   reelHook: 140,
   reelScript: 900,
   storySlide: 220
@@ -298,6 +299,14 @@ function checkPlatformLengths(content: ContentPackage): QaFinding[] {
     content.platforms.mastodon.text,
     maxLengths.mastodonText
   )
+  if (content.platforms.bluesky) {
+    pushLengthWarning(
+      findings,
+      "bluesky.text",
+      content.platforms.bluesky.text,
+      maxLengths.blueskyText
+    )
+  }
   pushLengthWarning(findings, "reel.hook", content.platforms.reel.hook, maxLengths.reelHook)
   pushLengthWarning(
     findings,
@@ -474,6 +483,7 @@ function collectPublicText(content: ContentPackage): string {
     content.platforms.instagram.caption,
     ...content.platforms.instagram.carousel.map((card) => card.text),
     content.platforms.mastodon.text,
+    content.platforms.bluesky?.text ?? "",
     ...content.platforms.story.slides.map((slide) => slide.text),
     content.platforms.reel.hook,
     content.platforms.reel.script

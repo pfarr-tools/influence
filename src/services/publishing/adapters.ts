@@ -2,6 +2,7 @@ import type { PublicationAdapter, PublicationPayload, PublicationPlatform, Publi
 import { MastodonPublicationAdapter } from "./mastodon-adapter.js"
 import { InstagramPublicationAdapter } from "./instagram-adapter.js"
 import { ThreadsPublicationAdapter } from "./threads-adapter.js"
+import { createBlueskyAdapter } from "./bluesky-adapter.js"
 
 /** Adapter used by dry-runs and tests; it records no external side effects. */
 export class DryRunPublicationAdapter implements PublicationAdapter {
@@ -37,10 +38,9 @@ export class HttpPublicationAdapter implements PublicationAdapter {
 /** Returns adapters without coupling the queue to credentials or SDKs. */
 export function createConfiguredAdapters(environment: Record<string, string | undefined> = process.env): Map<PublicationPlatform, PublicationAdapter> {
   const adapters = new Map<PublicationPlatform, PublicationAdapter>()
-  const configs: Array<[PublicationPlatform, string, string]> = [
-    ["bluesky", "BLUESKY_API_URL", "BLUESKY_ACCESS_TOKEN"],
-    ["linkedin", "LINKEDIN_API_URL", "LINKEDIN_ACCESS_TOKEN"]
-  ]
+  const bluesky = createBlueskyAdapter(environment)
+  if (bluesky) adapters.set("bluesky", bluesky)
+  const configs: Array<[PublicationPlatform, string, string]> = [["linkedin", "LINKEDIN_API_URL", "LINKEDIN_ACCESS_TOKEN"]]
   for (const [platform, endpointKey, tokenKey] of configs) {
     const endpoint = environment[endpointKey]?.trim()
     const token = environment[tokenKey]?.trim()
