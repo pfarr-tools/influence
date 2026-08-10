@@ -27,7 +27,10 @@ export class PublishingService {
     const existing = (await this.store.list()).find((job) => job.postId === postId && job.platform === platform && job.format === format && !["failed", "cancelled"].includes(job.status))
     if (existing) return existing
     const text = getPlatformText(content, platform)
-    const job = await this.store.create({ postId, contentDate: post.datum, platform, format, scheduledAt: at, timezone, status: at ? "scheduled" : "approved", text, assets: content.metadata.assets, altTexts: [content.visual.alt_text] })
+    const assets = platform === "mastodon"
+      ? ["render-instagram-feed-01.png"]
+      : content.metadata.assets
+    const job = await this.store.create({ postId, contentDate: post.datum, platform, format, scheduledAt: at, timezone, status: at ? "scheduled" : "approved", text, assets, altTexts: [content.visual.alt_text] })
     return job
   }
 
@@ -60,7 +63,13 @@ export class PublishingService {
     if (!["approved", "scheduled", "failed"].includes(job.status)) {
       throw new Error(`Job kann im Status „${job.status}“ nicht sofort ausgeführt werden.`)
     }
-    return this.runJob({ ...job, scheduledAt: new Date().toISOString() })
+    return this.runJob({
+      ...job,
+      scheduledAt: new Date().toISOString(),
+      assets: platform === "mastodon"
+        ? ["render-instagram-feed-01.png"]
+        : job.assets
+    })
   }
 
   private async runJob(job: PublicationJob): Promise<PublicationJob> {

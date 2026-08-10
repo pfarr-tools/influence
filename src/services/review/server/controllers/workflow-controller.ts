@@ -377,10 +377,13 @@ export async function publishPostNow(
   platform: PublicationPlatform,
   dependencies: ReviewServerDependencies
 ) {
-  await new PublishingService(
+  const job = await new PublishingService(
     dependencies.runtimeConfig.outputDir,
     createConfiguredAdapters()
   ).publishNow(postId, platform)
+  if (job.status !== "published") {
+    throw new Error(job.lastError ?? `${platform}: Veröffentlichung fehlgeschlagen.`)
+  }
   return getPostDetail(postId, dependencies, [
     { kind: "notice", text: `${platform} wurde veröffentlicht.` }
   ])
