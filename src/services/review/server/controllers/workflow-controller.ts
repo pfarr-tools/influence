@@ -389,6 +389,22 @@ export async function publishPostNow(
   ])
 }
 
+/** Cancels one scheduled automatic publication from the review UI. */
+export async function cancelScheduledPublication(
+  postId: string,
+  platform: PublicationPlatform,
+  format: string,
+  dependencies: ReviewServerDependencies
+) {
+  await new PublishingService(
+    dependencies.runtimeConfig.outputDir,
+    createConfiguredAdapters()
+  ).cancelScheduled(postId, platform, format)
+  return getPostDetail(postId, dependencies, [
+    { kind: "notice", text: `${platform} wurde aus der Planung entfernt.` }
+  ])
+}
+
 export async function deleteReviewPost(postId: string, dependencies: ReviewServerDependencies) {
   const post = getPostById(dependencies.calendar, postId)
   const week = getWeekForDate(dependencies.calendar, post.datum)

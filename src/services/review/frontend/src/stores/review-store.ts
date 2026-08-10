@@ -10,6 +10,7 @@ import {
   fetchWeek,
   getDefaultWeekDate,
   moveWeekPost as moveWeekPostApi,
+  cancelScheduledPublication as cancelScheduledPublicationApi,
   publishPostNow as publishPostNowApi,
   runPostAction,
   schedulePost as schedulePostApi,
@@ -109,6 +110,21 @@ export async function publishPostNow(postId: string, platform: string) {
       reviewStore.post = await publishPostNowApi(postId, platform)
     },
     "Veröffentlichung konnte nicht gestartet werden.",
+    platform
+  )
+}
+
+export async function cancelScheduledPublication(
+  postId: string,
+  platform: string,
+  format = "default"
+) {
+  await withLoading(
+    "Planung wird aufgehoben ...",
+    async () => {
+      reviewStore.post = await cancelScheduledPublicationApi(postId, platform, format)
+    },
+    "Veröffentlichungsplanung konnte nicht aufgehoben werden.",
     platform
   )
 }

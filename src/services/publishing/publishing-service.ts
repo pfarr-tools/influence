@@ -24,7 +24,7 @@ export class PublishingService {
     if (!(await isPublicationApproved(contentPaths.publicationApprovalPath))) {
       throw new Error("Die Veröffentlichung ist für diesen Beitrag noch nicht ausdrücklich freigegeben.")
     }
-    const existing = (await this.store.list()).find((job) => job.postId === postId && job.platform === platform && job.format === format && !["failed", "cancelled"].includes(job.status))
+    const existing = (await this.store.list()).find((job) => job.postId === postId && job.platform === platform && job.format === format && job.status !== "failed")
     if (existing) return existing
     const text = getPlatformText(content, platform)
     const assets = await resolvePublicationAssetsForJob(this.outputRoot, post, platform, format, content)
@@ -51,6 +51,24 @@ export class PublishingService {
     if (!job) throw new Error(`Publication Job "${jobId}" nicht gefunden.`)
     if (job.status !== "failed") throw new Error("Nur fehlgeschlagene Jobs können erneut versucht werden.")
     return this.runJob(job)
+  }
+
+  /** Cancels a scheduled publication before the scheduler can execute it. */
+  async cancelScheduled(
+    postId: string,
+    platform: PublicationPlatform,
+    format = "default"
+  ): Promise<PublicationJob> {
+    const job = (await this.store.list()).find(
+      (item) =>
+        item.postId === postId &&
+        item.platform === platform &&
+        item.format === format &&
+        item.status === "scheduled"
+    )
+    if (!job) throw new Error(`Keine geplante Veröffentlichung für ${platform} gefunden.`)
+    await this.store.remove(job.id)
+    return job
   }
 
   /** Publishes an existing approved or scheduled job immediately. */

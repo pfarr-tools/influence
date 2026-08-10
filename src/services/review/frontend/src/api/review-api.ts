@@ -137,3 +137,16 @@ export async function publishPostNow(
     )
   )
 }
+
+export async function cancelScheduledPublication(
+  postId: string,
+  platform: string,
+  format = "default"
+): Promise<PostDetailResponse> {
+  return readJson<PostDetailResponse>(
+    await fetch(
+      `/api/posts/${encodeURIComponent(postId)}/publication/${encodeURIComponent(platform)}?format=${encodeURIComponent(format)}`,
+      { method: "DELETE" }
+    )
+  )
+}

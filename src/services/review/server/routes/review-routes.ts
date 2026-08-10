@@ -38,6 +38,7 @@ import {
   getPostDetail,
   getWeekOverview,
   moveWeekPost,
+  cancelScheduledPublication,
   reschedulePost,
   runPostAction,
   publishPostNow,
@@ -195,6 +196,27 @@ async function routeReviewRequest(
       200,
       await runWeekAction(weekDate, action, dependencies, { force }),
       weekOverviewResponseSchemaPublic
+    )
+    return
+  }
+
+  if (
+    method === "DELETE" &&
+    requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/publication\/[^/]+$/)
+  ) {
+    const match = requestUrl.pathname.match(
+      /^\/api\/posts\/([^/]+)\/publication\/([^/]+)$/
+    )
+    respondJson(
+      response,
+      200,
+      await cancelScheduledPublication(
+        decodeURIComponent(match?.[1] ?? ""),
+        publicationPlatformSchemaPublic.parse(decodeURIComponent(match?.[2] ?? "")),
+        requestUrl.searchParams.get("format") ?? "default",
+        dependencies
+      ),
+      postDetailResponseSchemaPublic
     )
     return
   }

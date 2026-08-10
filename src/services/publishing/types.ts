@@ -17,7 +17,6 @@ export type PublicationStatus =
   | "processing"
   | "published"
   | "failed"
-  | "cancelled"
 
 /** A single publication attempt managed by Pfarr.Media. */
 export interface PublicationJob {

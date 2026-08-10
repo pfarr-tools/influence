@@ -97,6 +97,15 @@
                       :disabled="reviewStore.loading || channel.status === 'published'"
                       @click="publishChannel(channel.platform)"
                     >↗</button>
+                    <button
+                      v-if="channel.status === 'scheduled'"
+                      class="btn btn-sm btn-outline-danger"
+                      type="button"
+                      :aria-label="`${publicationLabel(channel.platform, channel.format)}-Planung aufheben`"
+                      :title="`${publicationLabel(channel.platform, channel.format)}-Planung aufheben`"
+                      :disabled="reviewStore.loading"
+                      @click="cancelChannel(channel.platform, channel.format)"
+                    >×</button>
                   </div>
                 </div>
               </div>
@@ -539,6 +548,7 @@ import {
   removePost,
   reschedulePost,
   publishPostNow,
+  cancelScheduledPublication,
   reviewStore,
   triggerPostAction
 } from "../stores/review-store.js"
@@ -766,6 +776,11 @@ async function publishChannel(platform: string) {
   await publishPostNow(postId.value, platform)
 }
 
+async function cancelChannel(platform: string, format: string) {
+  if (!window.confirm(`${publicationLabel(platform, format)}-Planung wirklich aufheben?`)) return
+  await cancelScheduledPublication(postId.value, platform, format)
+}
+
 function publicationLabel(platform: string, format = ""): string {
   if (platform === "instagram") {
     return `Instagram (${format === "story" ? "Story" : "Post"})`
@@ -794,7 +809,6 @@ function publicationStatusLabel(status: string): string {
     processing: "läuft",
     published: "veröffentlicht",
     failed: "Fehler",
-    cancelled: "abgebrochen"
   }[status] ?? status
 }
 

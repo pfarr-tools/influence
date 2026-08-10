@@ -61,6 +61,12 @@ export class PublicationJobStore {
     return job
   }
 
+  async remove(id: string): Promise<void> {
+    const jobs = await this.list()
+    const remainingJobs = jobs.filter((job) => job.id !== id)
+    if (remainingJobs.length !== jobs.length) await writeJsonFile(this.path, remainingJobs)
+  }
+
   /** Moves a completed job from the queue into the post-local publication history. */
   async archive(job: PublicationJob): Promise<void> {
     const path = join(this.outputRootForJob(job), publishedFileName)
