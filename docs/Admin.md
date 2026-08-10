@@ -9,7 +9,7 @@ Dieses Dokument beschreibt Installation, Konfiguration, Betrieb und Wartung von 
 ## Systemvoraussetzungen
 
 - Linux, macOS oder Windows mit funktionierender Node.js-Umgebung
-- Node.js `22.x`
+- Node.js `24.x`
 - `npm`
 - Schreibzugriff auf das Projektverzeichnis
 - Internetzugriff für:
@@ -361,7 +361,7 @@ Die lokale Review-Oberfläche dient für:
 Start:
 
 ```bash
-npm run dev -- review serve --host 127.0.0.1 --port 3040
+influence review serve --host 127.0.0.1 --port 3040
 ```
 
 Standardadresse:

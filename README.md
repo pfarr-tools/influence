@@ -18,7 +18,7 @@ Die Datenhaltung bleibt dateibasiert. Die erzeugten Inhalte liegen standardmäß
 
 ## Voraussetzungen
 
-- Node.js `22.x`
+- Node.js `24.x`
 - `npm`
 - für Grafik-Rendering: installierter Chromium-Browser über Playwright
 - optional für Reel-Video-Rendering: `ffmpeg`
@@ -53,13 +53,13 @@ cp config/.env.example config/.env
 Kalender prüfen:
 
 ```bash
-npm run dev -- calendar validate content/content-plan.json
+influence calendar validate content/content-plan.json
 ```
 
 Review-Oberfläche starten:
 
 ```bash
-npm run dev -- review serve --host 127.0.0.1 --port 3040
+influence review serve --host 127.0.0.1 --port 3040
 ```
 
 Danach ist die Oberfläche unter `http://127.0.0.1:3040/` erreichbar.

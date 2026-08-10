@@ -83,7 +83,7 @@ Akzeptanzkriterien:
 
 - `npm run typecheck` läuft fehlerfrei.
 - `npm test` läuft fehlerfrei.
-- `npm run dev -- --help` zeigt die CLI-Hilfe.
+- `influence --help` zeigt die CLI-Hilfe.
 
 # Phase 2 – Kalenderdaten laden und validieren
 
@@ -92,9 +92,9 @@ Implementiere Zod-Schemas für die bestehende Jahres-JSON.
 CLI:
 
 ```bash
-npm run dev -- calendar validate content/content-plan.json
-npm run dev -- calendar list-week 2026-08-10
-npm run dev -- calendar list-month 2026-09
+influence calendar validate content/content-plan.json
+influence calendar list-week 2026-08-10
+influence calendar list-month 2026-09
 ```
 
 Funktionen:
@@ -118,8 +118,8 @@ Implementiere das Schema aus `docs/CONTENT_SCHEMA.md`.
 CLI:
 
 ```bash
-npm run dev -- content scaffold --post-id post-0001
-npm run dev -- content scaffold-week --date 2026-08-10
+influence content scaffold --post-id post-0001
+influence content scaffold-week --date 2026-08-10
 ```
 
 Noch kein API-Aufruf. Erzeuge nur lokale Gerüste aus den Kalenderdaten.
@@ -145,9 +145,9 @@ Nutze die aktuelle OpenAI Responses API und Structured Outputs. Lies Modell und 
 CLI:
 
 ```bash
-npm run dev -- content generate --post-id post-0001
-npm run dev -- content generate-week --date 2026-08-10
-npm run dev -- content generate-month --month 2026-09
+influence content generate --post-id post-0001
+influence content generate-week --date 2026-08-10
+influence content generate-month --month 2026-09
 ```
 
 Optionen:
@@ -181,8 +181,8 @@ Implementiere einen Flux-Client über konfigurierbare HTTP-Endpunkte.
 CLI:
 
 ```bash
-npm run dev -- image generate --post-id post-0001
-npm run dev -- image generate-week --date 2026-08-10
+influence image generate --post-id post-0001
+influence image generate-week --date 2026-08-10
 ```
 
 Vorgaben:
@@ -226,8 +226,8 @@ Unterstützte Formate:
 CLI:
 
 ```bash
-npm run dev -- render post --post-id post-0001
-npm run dev -- render week --date 2026-08-10
+influence render post --post-id post-0001
+influence render week --date 2026-08-10
 ```
 
 Vorgaben:
@@ -262,8 +262,8 @@ Implementiere regelbasierte Checks vor einer möglichen Freigabe:
 CLI:
 
 ```bash
-npm run dev -- qa post --post-id post-0001
-npm run dev -- qa week --date 2026-08-10
+influence qa post --post-id post-0001
+influence qa week --date 2026-08-10
 ```
 
 Statusübergang:
@@ -447,11 +447,11 @@ Die UI kann serverseitige Endpunkte oder eine kleine lokale API verwenden.
 Mindestens erforderlich:
 
 ```bash
-npm run dev -- chat start --post-id post-0001
-npm run dev -- chat start --plan content/content-plan.json
-npm run dev -- chat message --session-id <id> --text "Der Ton ist noch zu sachlich."
-npm run dev -- chat revise --session-id <id>
-npm run dev -- chat apply --session-id <id>
+influence chat start --post-id post-0001
+influence chat start --plan content/content-plan.json
+influence chat message --session-id <id> --text "Der Ton ist noch zu sachlich."
+influence chat revise --session-id <id>
+influence chat apply --session-id <id>
 ```
 
 Mögliche HTTP-Endpunkte:
@@ -1107,12 +1107,12 @@ Facebook-Profil
 ## CLI
 
 ```bash
-npm run dev -- publish preview --post-id post-0007
-npm run dev -- publish schedule --post-id post-0007 --platform instagram --at 2026-08-16T08:00:00+02:00
-npm run dev -- publish run
-npm run dev -- publish retry --job-id <id>
-npm run dev -- publish facebook --post-id post-0007
-npm run dev -- publish mark-published --post-id post-0007 --platform facebook
+influence publish preview --post-id post-0007
+influence publish schedule --post-id post-0007 --platform instagram --at 2026-08-16T08:00:00+02:00
+influence publish run
+influence publish retry --job-id <id>
+influence publish facebook --post-id post-0007
+influence publish mark-published --post-id post-0007 --platform facebook
 ```
 
 ## Akzeptanzkriterien
@@ -1182,9 +1182,9 @@ interface DailyWatchword {
 CLI:
 
 ```bash
-npm run dev -- losungen import "data/losungen/Losungen Free 2026.xml"
-npm run dev -- losungen validate --year 2026
-npm run dev -- losungen show --date 2026-08-10
+influence losungen import "data/losungen/Losungen Free 2026.xml"
+influence losungen validate --year 2026
+influence losungen show --date 2026-08-10
 ```
 
 Anforderungen:
@@ -1232,8 +1232,8 @@ Regeln:
 CLI:
 
 ```bash
-npm run dev -- losungen render-story --date 2026-08-10
-npm run dev -- losungen schedule-story --date 2026-08-10 --at 07:00
+influence losungen render-story --date 2026-08-10
+influence losungen schedule-story --date 2026-08-10 --at 07:00
 ```
 
 ## Veröffentlichung
@@ -1270,9 +1270,9 @@ Implementiere einen RSS-/Podcast-Feed-Adapter.
 CLI:
 
 ```bash
-npm run dev -- sermon fetch-latest
-npm run dev -- sermon inspect-latest
-npm run dev -- sermon generate-latest
+influence sermon fetch-latest
+influence sermon inspect-latest
+influence sermon generate-latest
 ```
 
 Der Adapter soll, soweit im Feed vorhanden, übernehmen:
@@ -1483,11 +1483,11 @@ interface DailyPrayerPackage {
 CLI:
 
 ```bash
-npm run dev -- prayer generate --date 2026-08-10 --type morning
-npm run dev -- prayer generate --date 2026-08-10 --type evening
-npm run dev -- prayer render --date 2026-08-10 --type morning
-npm run dev -- prayer schedule --date 2026-08-10 --type morning --at 07:15
-npm run dev -- prayer schedule --date 2026-08-10 --type evening --at 21:00
+influence prayer generate --date 2026-08-10 --type morning
+influence prayer generate --date 2026-08-10 --type evening
+influence prayer render --date 2026-08-10 --type morning
+influence prayer schedule --date 2026-08-10 --type morning --at 07:15
+influence prayer schedule --date 2026-08-10 --type evening --at 21:00
 ```
 
 Optionen:
