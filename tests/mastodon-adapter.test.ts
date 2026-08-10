@@ -90,13 +90,14 @@ describe("MastodonOAuthService", () => {
     const service = new MastodonOAuthService({
       serverUrl: "https://mastodon.example",
       publicBaseUrl: "https://influence.example",
-      clientName: "Influence",
+      clientName: "christoph-fischer.de",
     }, fetchImpl)
 
     const authorizationUrl = new URL(await service.begin())
     expect(authorizationUrl.pathname).toBe("/oauth/authorize")
     expect(authorizationUrl.searchParams.get("redirect_uri")).toBe("https://influence.example/publish/mastodon/oauth/callback")
     expect(authorizationUrl.searchParams.get("code_challenge_method")).toBe("S256")
+    expect(new URLSearchParams(requests[0]?.init?.body as URLSearchParams).get("client_name")).toBe("christoph-fischer.de")
 
     const token = await service.complete("code-1", authorizationUrl.searchParams.get("state") ?? "")
     expect(token).toEqual({ accessToken: "access-1", scope: "read write:statuses write:media" })

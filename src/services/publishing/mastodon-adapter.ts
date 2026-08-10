@@ -222,7 +222,7 @@ export function createMastodonOAuthService(environment: Record<string, string | 
   return new MastodonOAuthService({
     serverUrl,
     publicBaseUrl,
-    clientName: environment.MASTODON_CLIENT_NAME?.trim() || "Influence",
+    clientName: environment.MASTODON_CLIENT_NAME?.trim() || "christoph-fischer.de",
     clientId: environment.MASTODON_CLIENT_ID,
     clientSecret: environment.MASTODON_CLIENT_SECRET
   })
