@@ -31,7 +31,7 @@ Für öffentliche Share-Links und automatische Kanalplanung sind diese
 ```dotenv
 PUBLIC_BASE_URL=https://example.org
 PUBLICATION_TIMEZONE=Europe/Berlin
-PUBLICATION_PLATFORMS=facebook,instagram,mastodon
+PUBLICATION_PLATFORMS=facebook,instagram,mastodon,linkedin
 PUBLICATION_DEFAULT_TIME_FACEBOOK=12:00
 PUBLICATION_DEFAULT_TIME_INSTAGRAM=08:00
 PUBLICATION_DEFAULT_TIME_MASTODON=08:15
@@ -46,6 +46,10 @@ PUBLIC_BASE_URL=https://example.org
 # Optional: override the Facebook Graph API host/version.
 # FACEBOOK_GRAPH_API_URL=https://graph.facebook.com
 # FACEBOOK_GRAPH_API_VERSION=v23.0
+LINKEDIN_AUTHOR_URN=urn:li:organization:123456789
+LINKEDIN_ACCESS_TOKEN=...
+# Optional; default: 202606.
+# LINKEDIN_API_VERSION=202606
 ```
 
 ## Allgemeine Konventionen

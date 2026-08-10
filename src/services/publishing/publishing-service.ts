@@ -93,7 +93,7 @@ export class PublishingService {
     if (!adapter) return this.store.save({ ...job, status: "failed", lastError: `${job.platform}: kein konfigurierter Adapter.`, updatedAt: new Date().toISOString() })
     const content = await this.loadContent(job)
     const assets = await resolvePublicationAssets(this.outputRoot, { id: job.postId, datum: job.contentDate } as CalendarPost, job.platform, job.format, content)
-    const processing = await this.store.save({ ...job, assets, status: "processing", attemptCount: job.attemptCount + 1, updatedAt: new Date().toISOString() })
+    const processing = await this.store.save({ ...job, text: getPlatformText(content, job.platform), assets, status: "processing", attemptCount: job.attemptCount + 1, updatedAt: new Date().toISOString() })
     try {
       const result = await adapter.publish({ job: processing, content, assetPaths: processing.assets.map((assetPath) => resolve(this.outputRoot, processing.contentDate, processing.postId, assetPath)) })
       return this.store.save({ ...processing, status: "published", remoteId: result.remoteId, remoteUrl: result.remoteUrl ?? null, responseMetadata: sanitizeMetadata(result.metadata), lastError: null, updatedAt: new Date().toISOString() })
@@ -123,8 +123,8 @@ async function resolvePublicationAssets(
   format: string,
   content: Awaited<ReturnType<typeof readContentPackage>>
 ): Promise<string[]> {
-  if (platform !== "facebook" && platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky") return content.metadata.assets
-  const renderFormat = platform === "facebook" ? "facebook-mastodon" : platform === "mastodon" || platform === "threads" || platform === "bluesky" || format !== "story" ? "instagram-feed" : "instagram-story"
+  if (platform !== "facebook" && platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky" && platform !== "linkedin") return content.metadata.assets
+  const renderFormat = platform === "facebook" ? "facebook-mastodon" : platform === "mastodon" || platform === "threads" || platform === "bluesky" || platform === "linkedin" || format !== "story" ? "instagram-feed" : "instagram-story"
   const summaryPath = getContentOutputPaths(outputRoot, post).baseDir + "/render-results.json"
   const summary = await readJsonFile<{ renders?: Array<{ format?: string; image_path?: string; page_index?: number }> }>(summaryPath)
   const assets = (summary.renders ?? [])
@@ -152,7 +152,7 @@ function getPlatformText(content: Awaited<ReturnType<typeof readContentPackage>>
   if (platform === "instagram" || platform === "threads") return content.platforms.instagram.caption
   if (platform === "mastodon") return content.platforms.mastodon.text
   if (platform === "bluesky") return content.platforms.bluesky?.text ?? ""
-  if (platform === "linkedin") return content.platforms.mastodon.text
+  if (platform === "linkedin") return content.platforms.instagram.caption
   return ""
 }
 

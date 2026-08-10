@@ -4,6 +4,7 @@ import { InstagramPublicationAdapter } from "./instagram-adapter.js"
 import { ThreadsPublicationAdapter } from "./threads-adapter.js"
 import { createBlueskyAdapter } from "./bluesky-adapter.js"
 import { FacebookPagePublicationAdapter } from "./facebook-adapter.js"
+import { createLinkedInAdapter } from "./linkedin-adapter.js"
 
 /** Adapter used by dry-runs and tests; it records no external side effects. */
 export class DryRunPublicationAdapter implements PublicationAdapter {
@@ -53,12 +54,8 @@ export function createConfiguredAdapters(environment: Record<string, string | un
   }
   const bluesky = createBlueskyAdapter(environment)
   if (bluesky) adapters.set("bluesky", bluesky)
-  const configs: Array<[PublicationPlatform, string, string]> = [["linkedin", "LINKEDIN_API_URL", "LINKEDIN_ACCESS_TOKEN"]]
-  for (const [platform, endpointKey, tokenKey] of configs) {
-    const endpoint = environment[endpointKey]?.trim()
-    const token = environment[tokenKey]?.trim()
-    if (endpoint && token) adapters.set(platform, new HttpPublicationAdapter(platform, endpoint, token))
-  }
+  const linkedin = createLinkedInAdapter(environment)
+  if (linkedin) adapters.set("linkedin", linkedin)
   const threadsToken = environment.THREADS_ACCESS_TOKEN?.trim()
   const threadsBaseUrl = environment.PUBLIC_BASE_URL?.trim()
   if (threadsToken && threadsBaseUrl) {

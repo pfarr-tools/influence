@@ -95,8 +95,9 @@ Influence liest Umgebungswerte aus:
 
 `PUBLICATION_PLATFORMS` bestimmt, für welche Plattformen Influence Jobs anlegt.
 Eine Plattform wird automatisch veröffentlicht, wenn ihre Zugangsdaten
-vollständig konfiguriert sind. Für Bluesky und LinkedIn sind das `*_API_URL`
-und `*_ACCESS_TOKEN`; Instagram und Threads verwenden native Meta-Adapter.
+vollständig konfiguriert sind. Für Bluesky ist das ein API-Endpunkt und ein
+Token; LinkedIn verwendet den nativen REST-Adapter mit `LINKEDIN_AUTHOR_URN`
+und `LINKEDIN_ACCESS_TOKEN`; Instagram und Threads verwenden native Meta-Adapter.
 Mastodon verwendet den nativen Adapter mit `MASTODON_SERVER_URL` und `MASTODON_ACCESS_TOKEN`. Nicht
 konfigurierte Plattformen bleiben in der Oberfläche und in der Queue sichtbar,
 können aber nicht automatisch veröffentlicht werden.
@@ -332,21 +333,31 @@ Weiterführend: [Bluesky: Get Started](https://docs.bsky.app/docs/get-started),
 Variablen:
 
 ```dotenv
-LINKEDIN_API_URL=https://bridge.example.org/linkedin/publish
+LINKEDIN_AUTHOR_URN=urn:li:organization:123456789
 LINKEDIN_ACCESS_TOKEN=...
+LINKEDIN_API_VERSION=202606
 ```
 
-Im LinkedIn Developer Portal eine App anlegen, das Produkt **Share on
-LinkedIn** (oder die für das Organisations-Posting erforderliche
-Berechtigung) aktivieren und OAuth für das gewünschte persönliche oder
-Organisationkonto durchführen. Für Organisationsseiten muss die LinkedIn-App
-zusätzlich als berechtigter Organisationsbenutzer zugelassen sein. Die Bridge
-übernimmt den Upload über die Images-/Videos-API und erstellt anschließend den
-Post über die Posts API; die LinkedIn-Post-ID wird als `id` zurückgegeben.
+`LINKEDIN_AUTHOR_URN` ist entweder `urn:li:person:<member-id>` für ein
+persönliches Profil oder `urn:li:organization:<organization-id>` für eine
+Unternehmensseite. Der native Adapter lädt die gerenderten PNG/JPEG-Bilder
+über die Images API hoch und veröffentlicht anschließend einen Text-, Bild-
+oder Multi-Image-Post über die Posts API. Zwei bis zwanzig Bilder werden als
+native Multi-Image-Post veröffentlicht.
+
+Im LinkedIn Developer Portal eine App anlegen, OAuth 2.0 aktivieren und das
+Produkt **Share on LinkedIn** hinzufügen. Für ein persönliches Profil wird
+`w_member_social` benötigt. Für eine Unternehmensseite wird
+`w_organization_social` benötigt; das LinkedIn-Mitglied, dessen Token du
+verwendest, muss auf der Seite die Rolle Administrator, Content Admin oder
+Direct Sponsored Content Poster besitzen. Den OAuth-Access-Token und die
+passende Author-URN anschließend in `config/.env` eintragen. Die monatliche
+API-Version (`YYYYMM`) kann mit `LINKEDIN_API_VERSION` überschrieben werden.
 
 Weiterführend: [LinkedIn Developer Portal](https://www.linkedin.com/developers/apps),
 [LinkedIn Posts API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api),
-[LinkedIn Media Uploads](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api).
+[LinkedIn Images API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api),
+[LinkedIn MultiImage API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/multiimage-post-api).
 
 #### Beispiel für mehrere Adapter
 
@@ -361,14 +372,13 @@ THREADS_ACCESS_TOKEN=...
 BLUESKY_SERVICE_URL=https://bsky.social
 BLUESKY_IDENTIFIER=dein-handle.bsky.social
 BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
-LINKEDIN_API_URL=https://bridge.example.org/linkedin/publish
+LINKEDIN_AUTHOR_URN=urn:li:organization:123456789
 LINKEDIN_ACCESS_TOKEN=...
 ```
 
 Nach einer Änderung an `config/.env` den laufenden Prozess neu starten. Für
 einen kontrollierten Test zunächst einen einzelnen Beitrag mit `publish`
-ausführen und anschließend den gespeicherten Veröffentlichungsstatus sowie
-die Antwort des Bridge-Service prüfen.
+ausführen und anschließend den gespeicherten Veröffentlichungsstatus prüfen.
 
 ### Beispiel
 
