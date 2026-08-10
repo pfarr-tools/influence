@@ -124,7 +124,20 @@ publishCommand.command("schedule")
 
 publishCommand.command("run").description("Run due publication jobs").action(async () => {
   try {
-    for (const job of await new PublishingService(defaultOutputRoot, createConfiguredAdapters()).runDue()) console.log(`${job.id}: ${job.status}`)
+    console.log("Checking publication queue …")
+    const jobs = await new PublishingService(defaultOutputRoot, createConfiguredAdapters()).runDue(
+      new Date(),
+      (progress) => {
+        if (progress.type === "scan-complete") {
+          console.log(`${progress.due} of ${progress.total} jobs are due.`)
+        } else if (progress.type === "started") {
+          console.log(`${progress.job.id}: publishing ${progress.job.platform} for ${progress.job.postId} …`)
+        } else {
+          console.log(`${progress.job.id}: ${progress.job.status}`)
+        }
+      }
+    )
+    if (jobs.length === 0) console.log("No publication jobs due.")
   } catch (error) { handleCliError(error) }
 })
 

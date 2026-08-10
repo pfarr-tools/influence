@@ -32,12 +32,16 @@ export class PublishingService {
     return job
   }
 
-  async runDue(now = new Date()): Promise<PublicationJob[]> {
+  async runDue(now = new Date(), onProgress?: PublicationProgressHandler): Promise<PublicationJob[]> {
     const jobs = await this.store.list()
+    const dueJobs = jobs.filter((job) => job.status === "approved" || (job.status === "scheduled" && job.scheduledAt && new Date(job.scheduledAt).getTime() <= now.getTime()))
+    onProgress?.({ type: "scan-complete", due: dueJobs.length, total: jobs.length })
     const results: PublicationJob[] = []
-    for (const job of jobs) {
-      if (!(job.status === "approved" || (job.status === "scheduled" && job.scheduledAt && new Date(job.scheduledAt).getTime() <= now.getTime()))) continue
-      results.push(await this.runJob(job))
+    for (const job of dueJobs) {
+      onProgress?.({ type: "started", job })
+      const result = await this.runJob(job)
+      results.push(result)
+      onProgress?.({ type: "finished", job: result })
     }
     return results
   }
@@ -89,6 +93,13 @@ export class PublishingService {
     return readContentPackage(path)
   }
 }
+
+export type PublicationProgressHandler = (progress: PublicationProgress) => void
+
+export type PublicationProgress =
+  | { type: "scan-complete"; due: number; total: number }
+  | { type: "started"; job: PublicationJob }
+  | { type: "finished"; job: PublicationJob }
 
 async function resolvePublicationAssets(
   outputRoot: string,

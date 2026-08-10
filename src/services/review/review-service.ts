@@ -235,8 +235,9 @@ export async function loadReviewPost(
   const publicationApproved = await isPublicationApproved(
     contentPaths.publicationApprovalPath
   )
-  const publicationJobs = (await new PublicationJobStore(outputRoot).list()).filter(
-    (job) => job.postId === postId
+  const publicationJobs = await new PublicationJobStore(outputRoot).listForPost(
+    postId,
+    post.datum
   )
 
   return {
@@ -659,8 +660,9 @@ async function buildReviewPostCard(
   const publicationApproved = await isPublicationApproved(
     contentPaths.publicationApprovalPath
   )
-  const publicationJobs = (await new PublicationJobStore(outputRoot).list()).filter(
-    (job) => job.postId === post.id
+  const publicationJobs = await new PublicationJobStore(outputRoot).listForPost(
+    post.id,
+    post.datum
   )
   const qaSummary = await readOptionalJson<PersistedQaSummary>(
     join(contentPaths.baseDir, "qa-results.json")

@@ -337,7 +337,7 @@ influence publish run
 influence publish retry --job-id <id>
 ```
 
-Jobs werden in `content/publication-jobs.json` mit Text, Assets, Status und Retry-Historie gespeichert. Zugangsdaten werden nicht in Jobs oder API-Metadaten abgelegt.
+Aktive Jobs werden in `content/publication-jobs.json` mit Text, Assets, Status und Retry-Historie gespeichert. Nach erfolgreicher Veröffentlichung wird der vollständige Job nach `content/<datum>/<post>/published.json` verschoben; dadurch bleibt die Warteschlange klein und die Veröffentlichungshistorie beim Beitrag erhalten. `influence publish run` zeigt beim Prüfen, Starten und Beenden jedes Jobs einen Status an. Zugangsdaten werden nicht in Jobs oder API-Metadaten abgelegt.
 
 Instagram-Posts verwenden die gerenderten `instagram-feed`-Bilder als Carousel (2–10 Seiten). Instagram Stories verwenden mit `--format story` jeweils ein gerendertes `instagram-story`-Bild pro Job. Die Bilder müssen über `PUBLIC_BASE_URL/files/...` öffentlich erreichbar sein; Meta akzeptiert keine lokalen Dateipfade.
 
