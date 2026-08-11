@@ -61,6 +61,7 @@ import {
   buildFacebookAssistant,
   PublicationJobStore,
   PublishingService,
+  resolveScheduleTime,
   type PublicationPlatform
 } from "./services/publishing/index.js"
 import { createMastodonOAuthService } from "./services/publishing/mastodon-adapter.js"
@@ -133,13 +134,13 @@ publishCommand.command("approve")
 publishCommand.command("schedule")
   .requiredOption("--post-id <postId>", "Approved calendar post identifier")
   .requiredOption("--platform <platform>", "Target platform")
-  .requiredOption("--at <dateTime>", "ISO date/time with timezone")
+  .requiredOption("--at <dateTime>", "ISO date/time with timezone, or now")
   .option("--format <format>", "Publication format", "default")
   .description("Schedule an approved post")
   .action(async (options: { postId: string; platform: string; at: string; format: string }) => {
     try {
       const calendar = await loadCalendarFromFile(defaultCalendarPath)
-      const job = await new PublishingService(defaultOutputRoot, createConfiguredAdapters()).schedulePost(calendar, options.postId, options.platform as PublicationPlatform, options.at, options.format, runtimeConfig.publicationTimezone)
+      const job = await new PublishingService(defaultOutputRoot, createConfiguredAdapters()).schedulePost(calendar, options.postId, options.platform as PublicationPlatform, resolveScheduleTime(options.at), options.format, runtimeConfig.publicationTimezone)
       console.log(`Scheduled ${job.id} for ${job.platform} at ${job.scheduledAt}`)
     } catch (error) { handleCliError(error) }
   })

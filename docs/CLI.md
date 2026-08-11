@@ -365,6 +365,7 @@ influence publish preview --post-id post-0007 --platform instagram
 influence publish preview --post-id post-0007 --platform instagram --format story
 influence publish schedule --post-id post-0007 --platform mastodon --at 2026-08-16T08:05:00+02:00
 influence publish schedule --post-id post-0007 --platform instagram --format story --at 2026-08-16T07:00:00+02:00
+influence publish schedule --post-id post-0007 --platform mastodon --at now
 influence publish run
 influence publish retry --job-id <id>
 ```
