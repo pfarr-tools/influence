@@ -125,7 +125,7 @@ async function resolvePublicationAssets(
   content: Awaited<ReturnType<typeof readContentPackage>>
 ): Promise<string[]> {
   if (platform !== "facebook" && platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky" && platform !== "linkedin") return content.metadata.assets
-  const renderFormat = platform === "facebook" ? "facebook-mastodon" : platform === "mastodon" || platform === "threads" || platform === "bluesky" || platform === "linkedin" || format !== "story" ? "instagram-feed" : "instagram-story"
+  const renderFormat = platform === "facebook" || platform === "mastodon" ? "facebook-mastodon" : platform === "threads" || platform === "bluesky" || platform === "linkedin" || format !== "story" ? "instagram-feed" : "instagram-story"
   const summaryPath = getContentOutputPaths(outputRoot, post).baseDir + "/render-results.json"
   const summary = await readJsonFile<{ renders?: Array<{ format?: string; image_path?: string; page_index?: number }> }>(summaryPath)
   const assets = (summary.renders ?? [])
