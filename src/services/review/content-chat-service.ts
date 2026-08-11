@@ -6,7 +6,6 @@ import { z } from "zod"
 
 import type { RuntimeConfig } from "../../config/runtime-config.js"
 import type { Calendar } from "../../domain/calendar.js"
-import type { ContentPackage } from "../../domain/content.js"
 import { getPostById, getWeekForDate, loadCalendarFromFile } from "../calendar/calendar-service.js"
 import { calendarSchema, calendarWeekSchema } from "../calendar/calendar-schema.js"
 import { CalendarValidationError } from "../calendar/errors.js"
@@ -116,6 +115,10 @@ export interface JsonChatModelClient {
     onDelta: (delta: string, snapshot: string) => Promise<void> | void
   ): Promise<JsonDiscussionResponse>
   reviseJson(request: JsonRevisionRequest): Promise<JsonRevisionResponse>
+  reviseJsonStream?(
+    request: JsonRevisionRequest,
+    onDelta: (delta: string, snapshot: string) => Promise<void> | void
+  ): Promise<JsonRevisionResponse>
 }
 
 export interface PreparedDiscussionRequest {
@@ -128,6 +131,7 @@ export interface ContentChatServiceDependencies {
   calendar: Calendar
   modelClient?: JsonChatModelClient
   now?: () => Date
+  onRevisionDelta?: (snapshot: string) => Promise<void> | void
   runtimeConfig: RuntimeConfig
 }
 
@@ -144,6 +148,8 @@ export interface ContentChatActionResult {
     totalTokens: number
   }
 }
+
+const maxRevisionAttempts = 3
 
 export async function startContentChatSession(
   input: ContentChatSessionInput,
@@ -275,7 +281,7 @@ export async function persistDiscussionReply(
 
 export async function requestContentChatRevision(
   sessionId: string,
-  options: { model: string },
+  options: { instruction?: string; model: string },
   dependencies: ContentChatServiceDependencies
 ): Promise<ContentChatActionResult> {
   const session = await loadContentChatSession(sessionId, dependencies.runtimeConfig.outputDir)
@@ -292,24 +298,52 @@ export async function requestContentChatRevision(
   const requestMessage = createMessage(
     "user",
     "revision_request",
-    "Bitte liefere jetzt eine überarbeitete JSON-Fassung im gleichen Schema.",
+    [
+      options.instruction ? `Änderungsanweisung: ${options.instruction}` : null,
+      "Bitte überarbeite jetzt den vollständigen Plan anhand des gesamten Chatverlaufs. Gib ausschließlich das vollständige JSON-Dokument im exakt gleichen Schema zurück. Lass alle unveränderten Felder und sämtliche Einträge vollständig enthalten. Gib keine Erklärung, keinen Patch und keine Markdown-Codeblöcke aus."
+    ].filter((value): value is string => value !== null).join("\n\n"),
     now
   )
 
-  let revisionResponse: JsonRevisionResponse
+  let revisionResponse: JsonRevisionResponse | null = null
+  let validationErrors: string[] = []
+  let lastRevisionError: unknown
 
-  try {
-    revisionResponse = await client.reviseJson({
-      input: buildRevisionInput(session),
-      instructions: buildRevisionInstructions(session),
-      model: options.model,
-      schema,
-      schemaName: session.schemaName
-    })
-  } catch (error) {
+  for (let attempt = 1; attempt <= maxRevisionAttempts; attempt += 1) {
+    try {
+      const revisionRequest = {
+        input: buildRevisionInput(session, validationErrors, schema, options.instruction),
+        instructions: buildRevisionInstructions(session, validationErrors),
+        model: options.model,
+        schema,
+        schemaName: session.schemaName
+      }
+      revisionResponse = client.reviseJsonStream
+        ? await client.reviseJsonStream(revisionRequest, async (_delta, snapshot) => {
+            await dependencies.onRevisionDelta?.(snapshot)
+          })
+        : await client.reviseJson(revisionRequest)
+    } catch (error) {
+      lastRevisionError = error
+      break
+    }
+
+    const attemptValidation = validateRevisionJson(session.schemaName, revisionResponse.parsedJson)
+    if (attemptValidation.success) {
+      validationErrors = []
+      break
+    }
+
+    validationErrors = attemptValidation.error.issues.map(formatValidationIssueInGerman)
+  }
+
+  if (!revisionResponse || lastRevisionError) {
+    const errorMessage = lastRevisionError instanceof Error
+      ? lastRevisionError.message
+      : "Unbekannter Fehler bei der strukturierten Überarbeitung."
     const revision = createInvalidRevision(
-      error instanceof Error ? { message: error.message } : { error: "unknown" },
-      "Die strukturierte Überarbeitung durch das Modell ist fehlgeschlagen.",
+      lastRevisionError instanceof Error ? { message: lastRevisionError.message } : { error: "unknown" },
+      errorMessage,
       now
     )
     const updatedSession = appendRevision(session, requestMessage, revision, now)
@@ -330,7 +364,7 @@ export async function requestContentChatRevision(
         )
       : createInvalidRevision(
           revisionResponse.rawResponse,
-          validation.error.issues.map(formatValidationIssueInGerman).join("\n"),
+          validationErrors.join("\n"),
           now,
           revisionResponse.model
         )
@@ -550,25 +584,51 @@ function buildDiscussionInput(session: ContentChatSession, latestPrompt: string)
   ].join("\n\n")
 }
 
-function buildRevisionInstructions(session: ContentChatSession): string {
+function buildRevisionInstructions(session: ContentChatSession, validationErrors: string[] = []): string {
   return [
-    "Return only valid JSON that matches the supplied schema exactly.",
+    "You are producing the final revised JSON document, not an explanation or a partial patch.",
+    "Return exactly one complete JSON object and nothing else: no Markdown fences, comments, prose, or placeholders.",
+    "The output must contain every required field and every item from the source document, including unchanged content.",
+    "Follow the supplied JSON Schema exactly. Do not add fields, omit fields, change types, or replace arrays with summaries.",
     "Keep stable identifiers, structural keys, and required fields intact unless the current context explicitly permits a change.",
     "Do not invent factual details for church, school, sermon, or community content.",
     "Use natural German content inside string values where content is rewritten.",
+    ...(validationErrors.length > 0
+      ? [
+          "A previous attempt failed application validation. Correct every error below and return the complete document again.",
+          "EXACT VALIDATION ERRORS FROM THE APPLICATION:",
+          ...validationErrors.map((error) => `- ${error}`)
+        ]
+      : []),
     buildSchemaGuidance(session)
   ].join("\n")
 }
 
-function buildRevisionInput(session: ContentChatSession): string {
+function buildRevisionInput(
+  session: ContentChatSession,
+  validationErrors: string[] = [],
+  schema: Record<string, unknown> = getJsonSchemaForSession(session),
+  instruction = ""
+): string {
   return [
     `Kontexttyp: ${session.contextType}`,
     `Kontextreferenz: ${session.contextRef}`,
     `Schema: ${session.schemaName}`,
+    "Verbindliches JSON-Schema für die vollständige Ausgabe:",
+    JSON.stringify(schema, null, 2),
+    ...(instruction.trim().length > 0
+      ? ["Direkte Änderungsanweisung des Benutzers:", instruction.trim()]
+      : []),
     "Arbeite auf Basis dieses JSON-Dokuments:",
     JSON.stringify(session.sourceJson, null, 2),
     "Berücksichtige diesen Chatverlauf bei der Überarbeitung:",
-    formatConversationHistory(session.messages)
+    formatConversationHistory(session.messages),
+    ...(validationErrors.length > 0
+      ? [
+          "Die vorige Ausgabe wurde von der Anwendung abgelehnt. Überarbeite sie jetzt anhand dieser exakten Fehler und sende danach wieder das vollständige JSON-Dokument:",
+          ...validationErrors.map((error) => `- ${error}`)
+        ]
+      : [])
   ].join("\n\n")
 }
 

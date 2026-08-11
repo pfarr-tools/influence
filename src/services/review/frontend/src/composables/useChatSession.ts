@@ -4,7 +4,8 @@ import {
   chatStore,
   ensurePostChatSession,
   reviseCurrentSession,
-  sendMessage
+  sendMessage,
+  sendMessageAndRevise
 } from "../stores/chat-store.js"
 
 export function useChatSession(postId: () => string) {
@@ -23,6 +24,7 @@ export function useChatSession(postId: () => string) {
     applyCurrentRevision,
     chatStore,
     reviseCurrentSession,
-    sendMessage
+    sendMessage,
+    sendMessageAndRevise
   }
 }

@@ -113,6 +113,55 @@ export async function requestChatRevision(
   )
 }
 
+export async function streamChatRevision(
+  sessionId: string,
+  text: string,
+  handlers: {
+    onComplete: (session: ChatSessionResponse) => void
+    onDelta: (snapshot: string) => void
+  }
+): Promise<void> {
+  const response = await fetch(`/api/chat/sessions/${encodeURIComponent(sessionId)}/revise/stream`, {
+    body: JSON.stringify({ text }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  })
+
+  if (!response.ok || !response.body) {
+    const errorBody = await response.json().catch(() => ({ error: "Unbekannter Fehler." }))
+    throw new Error(errorBody.error ?? "Unbekannter Fehler.")
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+
+  while (true) {
+    const chunk = await reader.read()
+    if (chunk.done) break
+
+    buffer += decoder.decode(chunk.value, { stream: true })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+
+    for (const line of lines) {
+      if (!line.trim()) continue
+      const event = JSON.parse(line) as
+        | { snapshot: string; type: "delta" }
+        | { error: string; type: "error" }
+        | { session: ChatSessionResponse; type: "done" }
+
+      if (event.type === "delta") {
+        handlers.onDelta(event.snapshot)
+      } else if (event.type === "done") {
+        handlers.onComplete(event.session)
+      } else {
+        throw new Error(event.error)
+      }
+    }
+  }
+}
+
 export async function applyChatRevision(
   sessionId: string
 ): Promise<ChatSessionResponse> {

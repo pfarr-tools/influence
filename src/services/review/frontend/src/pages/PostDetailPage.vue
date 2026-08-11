@@ -38,6 +38,9 @@
         >
           Löschen
         </button>
+        <button class="btn btn-sm btn-outline-secondary" type="button" @click="jsonEditorOpen = true">
+          JSON bearbeiten
+        </button>
         <span
           :class="[
             'badge fs-6',
@@ -85,7 +88,7 @@
                 <div class="border rounded p-2 d-flex justify-content-between align-items-center">
                   <div>
                     <div>{{ publicationLabel(channel.platform, channel.format) }}</div>
-                    <small class="text-secondary">{{ publicationDate(channel.scheduledAt) }}</small>
+                    <small class="text-secondary">{{ publicationDate(channel.scheduledAt, channel.timezone) }}</small>
                   </div>
                   <div class="d-flex align-items-center gap-2">
                     <span class="badge text-bg-light">{{ publicationStatusLabel(channel.status) }}</span>
@@ -511,12 +514,20 @@
       :busy="chatStore.loading"
       :error="chatStore.error"
       :loading-message="chatStore.loadingMessage"
+      :revision-draft="chatStore.revisionDraft"
       :open="chatOpen"
       :session="chatStore.session"
       @apply="applyPostRevision"
       @close="chatOpen = false"
       @revise="reviseCurrentSession"
       @send="sendMessage"
+      @send-and-revise="sendMessageAndRevise"
+    />
+    <JsonEditorModal
+      :open="jsonEditorOpen"
+      :scope="{ postId: postId }"
+      @close="jsonEditorOpen = false"
+      @saved="handleJsonSaved"
     />
 
     <PreviewModal
@@ -537,6 +548,7 @@ import type { ReviewActionApi } from "../../../server/contracts/review-contracts
 import AssetPanel from "../components/AssetPanel.vue"
 import BaseModal from "../components/BaseModal.vue"
 import ChatModal from "../components/ChatModal.vue"
+import JsonEditorModal from "../components/JsonEditorModal.vue"
 import PostActionsCard from "../components/PostActionsCard.vue"
 import PreviewGallery from "../components/PreviewGallery.vue"
 import PreviewModal from "../components/PreviewModal.vue"
@@ -584,6 +596,7 @@ const instagramSlides = ref<Array<{ id: number; text: string; type: string }>>(
 )
 const draggedInstagramSlideIndex = ref<number | null>(null)
 const chatOpen = ref(false)
+const jsonEditorOpen = ref(false)
 const previewOpen = ref(false)
 const previewGroupIndex = ref(0)
 const previewIndex = ref(0)
@@ -593,7 +606,7 @@ const postId = computed(() => String(route.params.postId ?? ""))
 const activePreviewItems = computed(
   () => post.value?.previewGroups[previewGroupIndex.value]?.items ?? []
 )
-const { applyCurrentRevision, chatStore, reviseCurrentSession, sendMessage } =
+const { applyCurrentRevision, chatStore, reviseCurrentSession, sendMessage, sendMessageAndRevise } =
   useChatSession(() => postId.value)
 
 async function applyPostRevision() {
@@ -601,6 +614,11 @@ async function applyPostRevision() {
   if (!chatStore.error) {
     await refreshPost()
   }
+}
+
+async function handleJsonSaved() {
+  jsonEditorOpen.value = false
+  await refreshPost()
 }
 
 watch(
@@ -794,11 +812,12 @@ function publicationLabel(platform: string, format = ""): string {
   }[platform] ?? platform
 }
 
-function publicationDate(scheduledAt: string | null): string {
+function publicationDate(scheduledAt: string | null, timezone: string): string {
   if (!scheduledAt) return "sofort"
   return `${new Intl.DateTimeFormat("de-DE", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: timezone,
   }).format(new Date(scheduledAt))} Uhr`
 }
 

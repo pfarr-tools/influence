@@ -3,7 +3,7 @@ import type { ChatSessionResponse } from "../../../server/contracts/review-contr
 import {
   applyChatRevision,
   createChatSession,
-  requestChatRevision,
+  streamChatRevision,
   streamChatMessage
 } from "../api/chat-api.js"
 
@@ -12,6 +12,7 @@ export const chatStore = reactive({
   error: "",
   loading: false,
   loadingMessage: "",
+  revisionDraft: "",
   session: null as ChatSessionResponse | null
 })
 
@@ -98,21 +99,36 @@ export async function sendMessage(text: string) {
   }
 }
 
-export async function reviseCurrentSession() {
+export async function sendMessageAndRevise(text: string) {
+  await reviseCurrentSession(text)
+}
+
+export async function reviseCurrentSession(instruction = "") {
   if (!chatStore.session) {
     throw new Error("Keine Chat-Sitzung vorhanden.")
   }
 
   chatStore.loading = true
   chatStore.error = ""
+  chatStore.loadingMessage = "Vollständigen Plan erstellen und validieren ..."
+  chatStore.revisionDraft = ""
 
   try {
-    chatStore.session = await requestChatRevision(chatStore.session.id)
+    await streamChatRevision(chatStore.session.id, instruction, {
+      onComplete: (session) => {
+        chatStore.session = session
+        chatStore.revisionDraft = ""
+      },
+      onDelta: (snapshot) => {
+        chatStore.revisionDraft = snapshot
+      }
+    })
   } catch (error) {
     chatStore.error = error instanceof Error ? error.message : "Revision konnte nicht angefordert werden."
   } finally {
     chatStore.loading = false
     chatStore.loadingMessage = ""
+    chatStore.revisionDraft = ""
   }
 }
 

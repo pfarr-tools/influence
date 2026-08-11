@@ -39,6 +39,9 @@
             />
           </svg>
         </button>
+        <button class="btn btn-outline-secondary week-toolbar__icon-action" type="button" aria-label="JSON bearbeiten" title="content-plan.json bearbeiten" @click="jsonEditorOpen = true">
+          { }
+        </button>
         <details ref="actionsMenu" class="week-actions-menu">
           <summary
             class="btn btn-outline-secondary week-actions-trigger"
@@ -213,12 +216,20 @@
       :busy="chatStore.loading"
       :error="chatStore.error"
       :loading-message="chatStore.loadingMessage"
+      :revision-draft="chatStore.revisionDraft"
       :open="chatOpen"
       :session="chatStore.session"
       @apply="applyWeekRevision"
       @close="chatOpen = false"
       @revise="reviseCurrentSession"
       @send="sendMessage"
+      @send-and-revise="sendMessageAndRevise"
+    />
+    <JsonEditorModal
+      :open="jsonEditorOpen"
+      scope="plan"
+      @close="jsonEditorOpen = false"
+      @saved="handleJsonSaved"
     />
 
     <BaseModal
@@ -274,6 +285,7 @@ import type { WeekActionApi } from "../../../server/contracts/review-contracts.j
 import ActionButtonGroup from "../components/ActionButtonGroup.vue"
 import BaseModal from "../components/BaseModal.vue"
 import ChatModal from "../components/ChatModal.vue"
+import JsonEditorModal from "../components/JsonEditorModal.vue"
 import WorkflowBadges from "../components/WorkflowBadges.vue"
 import {
   applyCurrentRevision,
@@ -281,7 +293,8 @@ import {
   ensurePlanChatSession,
   ensureWeekChatSession,
   reviseCurrentSession,
-  sendMessage
+  sendMessage,
+  sendMessageAndRevise
 } from "../stores/chat-store.js"
 import {
   addPostIdea,
@@ -307,6 +320,7 @@ const selectedWeekDate = ref("")
 const calendarJumpDate = ref("")
 const ideaOpen = ref(false)
 const chatOpen = ref(false)
+const jsonEditorOpen = ref(false)
 const idea = ref({ date: "", rubric: "", title: "" })
 const dragState = ref<DragState | null>(null)
 const actionsMenu = ref<HTMLDetailsElement | null>(null)
@@ -564,6 +578,11 @@ async function openChat(context: "plan" | "week") {
   }
 
   chatOpen.value = true
+}
+
+async function handleJsonSaved() {
+  jsonEditorOpen.value = false
+  await loadWeek(selectedWeekDate.value)
 }
 
 async function applyWeekRevision() {

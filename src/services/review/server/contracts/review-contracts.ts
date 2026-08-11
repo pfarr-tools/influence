@@ -211,7 +211,9 @@ const chatMessageSchema = z.object({
 
 const chatRevisionSchema = z.object({
   applied: z.boolean(),
+  errors: z.array(z.string()),
   instructions: z.string(),
+  rawOutput: z.string().nullable(),
   summary: z.string()
 })
 
@@ -277,7 +279,23 @@ export const chatMessageRequestSchema = z.object({
 })
 
 export const chatRevisionRequestSchema = z.object({
-  model: z.string().optional()
+  model: z.string().optional(),
+  text: z.string().optional()
+})
+
+export const jsonDocumentResponseSchema = z.object({
+  document: z.unknown(),
+  filename: z.string()
+})
+
+export const jsonDocumentSaveResponseSchema = z.object({
+  document: z.unknown(),
+  filename: z.string(),
+  notice: z.string()
+})
+
+export const jsonDocumentSaveRequestSchema = z.object({
+  document: z.unknown()
 })
 
 export const voiceoverUploadResponseSchema = z.object({

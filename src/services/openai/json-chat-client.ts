@@ -87,12 +87,10 @@ export function createOpenAIJsonChatClient(apiKey: string): JsonChatModelClient 
         instructions: request.instructions,
         input: request.input,
         text: {
-          format: {
-            type: "json_schema",
-            name: request.schemaName,
-            strict: true,
-            schema: request.schema
-          },
+          // The application performs the authoritative Zod validation and retry loop.
+          // JSON mode avoids rejecting the request because the source schema contains
+          // Zod-specific constraints or optional fields unsupported by strict provider schemas.
+          format: { type: "json_object" },
           verbosity: "medium"
         }
       })
@@ -100,6 +98,43 @@ export function createOpenAIJsonChatClient(apiKey: string): JsonChatModelClient 
       return {
         model: response.model,
         parsedJson: JSON.parse(response.output_text),
+        rawResponse: response,
+        usage: {
+          inputTokens: response.usage?.input_tokens ?? 0,
+          outputTokens: response.usage?.output_tokens ?? 0,
+          totalTokens: response.usage?.total_tokens ?? 0
+        }
+      }
+    },
+
+    async reviseJsonStream(
+      request: JsonRevisionRequest,
+      onDelta: (delta: string, snapshot: string) => Promise<void> | void
+    ): Promise<JsonRevisionResponse> {
+      const stream = client.responses.stream({
+        model: request.model,
+        instructions: request.instructions,
+        input: request.input,
+        text: {
+          format: { type: "json_object" },
+          verbosity: "medium"
+        }
+      })
+      let latestSnapshot = ""
+
+      for await (const event of stream) {
+        if (event.type === "response.output_text.delta") {
+          latestSnapshot += event.delta
+          await onDelta(event.delta, latestSnapshot)
+        }
+      }
+
+      const response = await stream.finalResponse()
+      const outputText = latestSnapshot || response.output_text
+
+      return {
+        model: response.model,
+        parsedJson: JSON.parse(outputText),
         rawResponse: response,
         usage: {
           inputTokens: response.usage?.input_tokens ?? 0,

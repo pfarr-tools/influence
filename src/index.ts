@@ -78,6 +78,7 @@ program
   .showHelpAfterError()
 
 const calendarCommand = program.command("calendar").description("Calendar commands")
+const planCommand = program.command("plan").description("Content plan commands")
 const contentCommand = program.command("content").description("Content commands")
 const imageCommand = program.command("image").description("Image commands")
 const qaCommand = program.command("qa").description("Quality assurance checks")
@@ -188,6 +189,21 @@ calendarCommand
       const calendar = await loadCalendarFromFile(path)
       console.log(
         `Calendar is valid: ${calendar.meta.titel} (${calendar.wochen.length} weeks, ${calendar.meta.umfang.beitraege} posts declared)`
+      )
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+planCommand
+  .command("validate")
+  .argument("[path]", "Path to the content plan JSON file", defaultCalendarPath)
+  .description("Validate the configured content plan and display all errors")
+  .action(async (path: string) => {
+    try {
+      const calendar = await loadCalendarFromFile(path)
+      console.log(
+        `Content plan is valid: ${calendar.meta.titel} (${calendar.wochen.length} weeks, ${calendar.meta.umfang.beitraege} posts declared)`
       )
     } catch (error) {
       handleCliError(error)

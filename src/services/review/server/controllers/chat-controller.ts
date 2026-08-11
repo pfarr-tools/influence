@@ -180,6 +180,7 @@ export async function requestChatRevision(
   const result = await requestContentChatRevision(
     sessionId,
     {
+      instruction: body.text,
       model: body.model ?? dependencies.runtimeConfig.openAiModel
     },
     {
@@ -190,6 +191,53 @@ export async function requestChatRevision(
   )
 
   return buildChatSessionResponse(result.session)
+}
+
+export async function streamChatRevision(
+  sessionId: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ReviewServerDependencies
+) {
+  const body = chatRevisionRequestSchema.parse(await parseJsonBody(request))
+  response.writeHead(200, {
+    "cache-control": "no-cache",
+    connection: "keep-alive",
+    "content-type": "application/x-ndjson; charset=utf-8"
+  })
+
+  const writeEvent = (event: Record<string, unknown>) => {
+    response.write(`${JSON.stringify(event)}\n`)
+  }
+
+  try {
+    const result = await requestContentChatRevision(
+      sessionId,
+      {
+        instruction: body.text,
+        model: body.model ?? dependencies.runtimeConfig.openAiModel
+      },
+      {
+        calendar: dependencies.calendar,
+        modelClient: dependencies.chatModelClient,
+        onRevisionDelta: (snapshot) => {
+          writeEvent({ snapshot, type: "delta" })
+        },
+        runtimeConfig: dependencies.runtimeConfig
+      }
+    )
+    writeEvent({
+      session: buildChatSessionResponse(result.session),
+      type: "done"
+    })
+  } catch (error) {
+    writeEvent({
+      error: error instanceof Error ? error.message : "Unbekannter Fehler.",
+      type: "error"
+    })
+  } finally {
+    response.end()
+  }
 }
 
 export async function applyChatRevision(

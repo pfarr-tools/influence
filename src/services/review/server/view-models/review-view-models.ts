@@ -406,7 +406,9 @@ export function buildChatSessionResponse(
     revision: latestRevision
       ? {
           applied: latestRevision.appliedAt !== null,
+          errors: latestRevision.validationErrors,
           instructions: latestRevision.diff.join("\n"),
+          rawOutput: extractRawRevisionOutput(latestRevision.rawResponse),
           summary:
             latestRevision.validationStatus === "valid"
               ? "Revision ist strukturell gültig."
@@ -414,6 +416,25 @@ export function buildChatSessionResponse(
         }
       : null,
     status: latestRevision ? latestRevision.validationStatus : "ohne Revision"
+  }
+}
+
+function extractRawRevisionOutput(rawResponse: unknown): string | null {
+  if (rawResponse && typeof rawResponse === "object" && "output_text" in rawResponse) {
+    const outputText = rawResponse.output_text
+    if (typeof outputText === "string") {
+      return outputText
+    }
+  }
+
+  if (rawResponse === null || rawResponse === undefined) {
+    return null
+  }
+
+  try {
+    return JSON.stringify(rawResponse, null, 2)
+  } catch {
+    return null
   }
 }
 

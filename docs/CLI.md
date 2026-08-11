@@ -68,6 +68,13 @@ LINKEDIN_ACCESS_TOKEN=...
 influence calendar validate content/content-plan.json
 ```
 
+### Content-Plan validieren
+
+```bash
+influence plan validate
+influence plan validate content/content-plan.json
+```
+
 ### Woche auflisten
 
 ```bash

@@ -133,7 +133,13 @@ describe("content chat service", () => {
       }
     )
 
-    expect(reviseJson).toHaveBeenCalledTimes(1)
+    expect(reviseJson).toHaveBeenCalledTimes(3)
+    expect(reviseJson.mock.calls[1]?.[0].instructions).toContain(
+      "EXACT VALIDATION ERRORS FROM THE APPLICATION:"
+    )
+    expect(reviseJson.mock.calls[1]?.[0].input).toContain("Die vorige Ausgabe wurde von der Anwendung abgelehnt.")
+    expect(reviseJson.mock.calls[0]?.[0].input).toContain("Verbindliches JSON-Schema für die vollständige Ausgabe:")
+    expect(reviseJson.mock.calls[0]?.[0].input).toContain('"properties"')
     expect(revised.session.revisions).toHaveLength(1)
     expect(revised.session.revisions[0]?.validationStatus).toBe("invalid")
     expect(revised.session.revisions[0]?.validationErrors.length).toBeGreaterThan(0)

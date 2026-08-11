@@ -85,6 +85,23 @@ export async function fetchPost(postId: string): Promise<PostDetailResponse> {
   )
 }
 
+export async function fetchJsonDocument(scope: "plan" | { postId: string }): Promise<{ document: unknown; filename: string }> {
+  const path = scope === "plan" ? "/api/plan/json" : `/api/posts/${encodeURIComponent(scope.postId)}/json`
+  return readJson(await fetch(path, { cache: "no-store" }))
+}
+
+export async function saveJsonDocument(
+  scope: "plan" | { postId: string },
+  document: unknown
+): Promise<{ document: unknown; filename: string; notice: string }> {
+  const path = scope === "plan" ? "/api/plan/json" : `/api/posts/${encodeURIComponent(scope.postId)}/json`
+  return readJson(await fetch(path, {
+    body: JSON.stringify({ document }),
+    headers: { "content-type": "application/json" },
+    method: "PUT"
+  }))
+}
+
 export async function runPostAction(
   postId: string,
   action: Exclude<ReviewActionApi, "export">,

@@ -13,6 +13,8 @@ import type { JsonChatModelClient } from "../../content-chat-service.js"
 import {
   assetUploadResponseSchema,
   chatSessionResponseSchemaPublic,
+  jsonDocumentResponseSchema,
+  jsonDocumentSaveResponseSchema,
   noticeResponseSchema,
   postDetailResponseSchemaPublic,
   publicationPlatformSchemaPublic,
@@ -30,9 +32,16 @@ import {
   createChatSession,
   getChatSession,
   requestChatRevision,
+  streamChatRevision,
   streamChatMessage,
   sendChatMessage
 } from "../controllers/chat-controller.js"
+import {
+  getPlanJson,
+  getPostJson,
+  savePlanJson,
+  savePostJson
+} from "../controllers/json-editor-controller.js"
 import {
   downloadPostExport,
   getPostDetail,
@@ -166,6 +175,28 @@ async function routeReviewRequest(
   if (method === "GET" && requestUrl.pathname === "/api/weeks/default") {
     respondJson(response, 200, { date: defaultDate })
     return
+  }
+
+  if (method === "GET" && requestUrl.pathname === "/api/plan/json") {
+    respondJson(response, 200, await getPlanJson(dependencies), jsonDocumentResponseSchema)
+    return
+  }
+
+  if (method === "PUT" && requestUrl.pathname === "/api/plan/json") {
+    respondJson(response, 200, await savePlanJson(request, dependencies), jsonDocumentSaveResponseSchema)
+    return
+  }
+
+  if (requestUrl.pathname.match(/^\/api\/posts\/[^/]+\/json$/)) {
+    const postId = decodeURIComponent(requestUrl.pathname.replace(/^\/api\/posts\/([^/]+)\/json$/, "$1"))
+    if (method === "GET") {
+      respondJson(response, 200, await getPostJson(postId, dependencies), jsonDocumentResponseSchema)
+      return
+    }
+    if (method === "PUT") {
+      respondJson(response, 200, await savePostJson(postId, request, dependencies), jsonDocumentSaveResponseSchema)
+      return
+    }
   }
 
   if (method === "GET" && requestUrl.pathname.match(/^\/api\/weeks\/[^/]+$/)) {
@@ -493,6 +524,18 @@ async function routeReviewRequest(
       chatSessionResponseSchemaPublic
     )
     return
+  }
+
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/chat\/sessions\/[^/]+\/revise\/stream$/)
+  ) {
+    return streamChatRevision(
+      requestUrl.pathname.replace(/^\/api\/chat\/sessions\/([^/]+)\/revise\/stream$/, "$1"),
+      request,
+      response,
+      dependencies
+    )
   }
 
   if (
