@@ -4,9 +4,12 @@ import { FacebookPagePublicationAdapter } from "../src/services/publishing/faceb
 
 describe("Facebook Page publication adapter", () => {
   it("publishes the generated landscape render as a Page photo", async () => {
-    let request: { url: string; body?: URLSearchParams } | undefined
+    const requests: Array<{ url: string; body?: URLSearchParams }> = []
     const fetchImpl = async (url: string | URL, init?: RequestInit) => {
-      request = { url: String(url), body: init?.body instanceof URLSearchParams ? init.body : undefined }
+      requests.push({ url: String(url), body: init?.body instanceof URLSearchParams ? init.body : undefined })
+      if (String(url).includes("/me/accounts")) {
+        return new Response(JSON.stringify({ data: [{ id: "page-1", access_token: "page-token" }] }), { status: 200 })
+      }
       return new Response(JSON.stringify({ id: "photo-1", post_id: "page-post-1" }), { status: 200 })
     }
     const adapter = new FacebookPagePublicationAdapter({ pageId: "page-1", accessToken: "token", publicBaseUrl: "https://influence.example" }, fetchImpl)
@@ -14,10 +17,12 @@ describe("Facebook Page publication adapter", () => {
     const result = await adapter.publish({ job: job(), content: {} as never, assetPaths: ["/tmp/post/render-facebook-mastodon-01.png"] })
 
     expect(result.remoteId).toBe("page-post-1")
-    expect(request?.url).toBe("https://graph.facebook.com/v23.0/page-1/photos")
-    expect(request?.body?.get("caption")).toBe("Facebook text")
-    expect(request?.body?.get("url")).toBe("https://influence.example/files/2026-08-10/post-1/render-facebook-mastodon-01.png")
-    expect(request?.body?.get("published")).toBe("true")
+    expect(requests[0]?.url).toBe("https://graph.facebook.com/v23.0/me/accounts?fields=id%2Caccess_token%2Ctasks&access_token=token")
+    expect(requests[1]?.url).toBe("https://graph.facebook.com/v23.0/page-1/photos")
+    expect(requests[1]?.body?.get("access_token")).toBe("page-token")
+    expect(requests[1]?.body?.get("caption")).toBe("Facebook text")
+    expect(requests[1]?.body?.get("url")).toBe("https://influence.example/files/2026-08-10/post-1/render-facebook-mastodon-01.png")
+    expect(requests[1]?.body?.get("published")).toBe("true")
   })
 })
 

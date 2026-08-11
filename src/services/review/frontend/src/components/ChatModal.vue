@@ -62,6 +62,7 @@
           rows="4"
           @keydown.ctrl.enter.prevent="submitMessage"
         />
+        <div class="form-text text-end">{{ draft.length }}</div>
         <button class="btn btn-primary mt-3" :disabled="busy || draft.trim().length === 0" type="submit">
           Nachricht senden
         </button>

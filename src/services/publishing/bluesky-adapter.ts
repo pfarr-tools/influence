@@ -41,13 +41,14 @@ export class BlueskyPublicationAdapter implements PublicationAdapter {
     if (countGraphemes(text) > maxTextGraphemes) {
       throw new Error("bluesky: Der Beitrag darf höchstens 300 Zeichen enthalten.")
     }
-    if (payload.assetPaths.length > maxImages) {
+    const assetPaths = payload.assetPaths
+    if (assetPaths.length > maxImages) {
       throw new Error("bluesky: Ein Beitrag darf höchstens vier Bilder enthalten.")
     }
 
     const session = await this.getSession()
     const images = [] as Array<{ alt: string; image: unknown }>
-    for (const [index, assetPath] of payload.assetPaths.entries()) {
+    for (const [index, assetPath] of assetPaths.entries()) {
       images.push({
         alt: payload.job.altTexts[index] ?? payload.job.altTexts[0] ?? "",
         image: await this.uploadBlob(assetPath, session.accessJwt)

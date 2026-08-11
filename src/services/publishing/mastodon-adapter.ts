@@ -3,6 +3,7 @@ import { basename, extname } from "node:path"
 import { readFile } from "node:fs/promises"
 
 import type { PublicationAdapter, PublicationPayload, PublicationPlatform, PublicationResult } from "./types.js"
+import { containsUrl } from "./text-utils.js"
 
 const mastodonScopes = "read write:statuses write:media"
 const oauthStateLifetimeMs = 10 * 60 * 1000
@@ -60,7 +61,8 @@ export class MastodonPublicationAdapter implements PublicationAdapter {
     }
 
     const mediaIds: string[] = []
-    for (const [index, assetPath] of payload.assetPaths.entries()) {
+    const assetPaths = containsUrl(payload.job.text) ? [] : payload.assetPaths
+    for (const [index, assetPath] of assetPaths.entries()) {
       const media = await this.uploadMedia(assetPath, payload.job.altTexts[index] ?? payload.job.altTexts[0] ?? "")
       mediaIds.push(media.id)
     }

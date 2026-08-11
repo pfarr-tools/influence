@@ -25,6 +25,7 @@ interface FacebookFetch {
 /** Publishes the generated Facebook landscape render to a Facebook Page. */
 export class FacebookPagePublicationAdapter implements PublicationAdapter {
   readonly platform = "facebook" as const
+  private pageAccessToken: string | null = null
 
   constructor(
     private readonly config: FacebookPageAdapterConfig,
@@ -37,7 +38,7 @@ export class FacebookPagePublicationAdapter implements PublicationAdapter {
     if (!assetPath) throw new Error("facebook: Für einen Page-Post wird ein gerendertes Bild benötigt.")
 
     const body = new URLSearchParams({
-      access_token: this.config.accessToken,
+      access_token: await this.resolvePageAccessToken(),
       caption: payload.job.text,
       published: "true",
       url: this.publicAssetUrl(assetPath, payload.job.contentDate, payload.job.postId)
@@ -55,6 +56,29 @@ export class FacebookPagePublicationAdapter implements PublicationAdapter {
     const remoteId = typeof result.post_id === "string" ? result.post_id : typeof result.id === "string" ? result.id : ""
     if (!remoteId) throw new Error(`facebook: Page-Post lieferte keine ID (${response.status}): ${getApiError(result)}`)
     return { remoteId, metadata: { mediaCount: 1, mediaType: "PHOTO", status: response.status } }
+  }
+
+  private async resolvePageAccessToken(): Promise<string> {
+    if (this.pageAccessToken) return this.pageAccessToken
+
+    const accountsUrl = new URL(this.endpoint("/../me/accounts"))
+    accountsUrl.searchParams.set("fields", "id,access_token,tasks")
+    accountsUrl.searchParams.set("access_token", this.config.accessToken)
+    const response = await this.fetchImpl(accountsUrl, { method: "GET" })
+    const result = await readJsonResponse(response)
+    if (!response.ok || !isRecord(result) || !Array.isArray(result.data)) {
+      throw new Error(`facebook: Page-Token konnte nicht ermittelt werden (${response.status}): ${getApiError(result)}`)
+    }
+
+    const page = result.data.find((entry) => (
+      isRecord(entry) && entry.id === this.config.pageId && typeof entry.access_token === "string"
+    ))
+    if (!isRecord(page) || typeof page.access_token !== "string") {
+      throw new Error(`facebook: Keine passende Page mit veröffentlichbarem Token für ${this.config.pageId} gefunden.`)
+    }
+
+    this.pageAccessToken = page.access_token
+    return this.pageAccessToken
   }
 
   private assertConfigured(): void {

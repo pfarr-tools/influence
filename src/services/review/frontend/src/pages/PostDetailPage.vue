@@ -204,6 +204,7 @@
                   class="form-control"
                   rows="3"
                 />
+                <div class="form-text text-end">{{ form.mainMessage.length }}</div>
               </div>
               <div class="col-12 form-section-heading">Bild und Flux</div>
               <div class="col-12">
@@ -213,6 +214,7 @@
                   class="form-control"
                   rows="3"
                 />
+                <div class="form-text text-end">{{ form.concept.length }}</div>
               </div>
               <div class="col-12">
                 <label class="form-label">Flux-Prompt</label>
@@ -221,6 +223,7 @@
                   class="form-control"
                   rows="3"
                 />
+                <div class="form-text text-end">{{ form.fluxPrompt.length }}</div>
               </div>
               <div class="col-12 form-section-heading">Facebook</div>
               <div class="col-md-6">
@@ -238,6 +241,7 @@
                   class="form-control"
                   rows="3"
                 />
+                <div class="form-text text-end">{{ form.facebookText.length }}</div>
               </div>
               <div class="col-12 form-section-heading">Instagram</div>
               <div class="col-12">
@@ -313,6 +317,7 @@
                         </div>
                       </div>
                     </div>
+                    <div class="form-text text-end">{{ slide.text.length }}</div>
                     <button
                       class="btn btn-sm btn-outline-danger"
                       type="button"
@@ -331,6 +336,7 @@
                   class="form-control"
                   rows="3"
                 />
+                <div class="form-text text-end">{{ form.instagramCaption.length }}</div>
               </div>
               <div class="col-12 form-section-heading">Mastodon</div>
               <div class="col-12">
@@ -340,6 +346,7 @@
                   class="form-control"
                   rows="3"
                 />
+                <div class="form-text text-end">{{ form.mastodonText.length }}</div>
               </div>
               <div class="col-12 form-section-heading">Bluesky</div>
               <div class="col-12">
@@ -360,6 +367,7 @@
                   class="form-control"
                   rows="3"
                 />
+                <div class="form-text text-end">{{ form.reelHook.length }}</div>
               </div>
               <div class="col-12">
                 <div
@@ -396,6 +404,7 @@
                       rows="2"
                       :aria-label="`Story-Slide ${index + 1}`"
                     />
+                    <div class="form-text text-end">{{ slide.text.length }}</div>
                     <button
                       class="btn btn-sm btn-outline-danger"
                       type="button"
@@ -414,6 +423,7 @@
                   class="form-control"
                   rows="4"
                 />
+                <div class="form-text text-end">{{ form.reelScript.length }}</div>
               </div>
               <div class="col-12">
                 <button

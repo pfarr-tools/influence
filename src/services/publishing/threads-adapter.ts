@@ -5,6 +5,7 @@ import type { PublicationAdapter, PublicationPayload, PublicationPlatform, Publi
 const defaultGraphApiBaseUrl = "https://graph.threads.net"
 const defaultGraphApiVersion = "v1.0"
 const threadsScopes = "threads_basic,threads_content_publish"
+const maxTextCharacters = 500
 const oauthStateLifetimeMs = 10 * 60 * 1000
 
 export const threadsOAuthCallbackPath = "/publish/threads/oauth/callback"
@@ -55,11 +56,15 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
 
   async publish(payload: PublicationPayload): Promise<PublicationResult> {
     this.assertConfigured()
-    if (payload.assetPaths.length > 20) throw new Error("threads: Ein Carousel darf höchstens zwanzig Bilder enthalten.")
+    if ([...payload.job.text].length > maxTextCharacters) {
+      throw new Error("threads: Der Beitrag darf höchstens 500 Zeichen enthalten.")
+    }
+    const assetPaths = payload.assetPaths
+    if (assetPaths.length > 20) throw new Error("threads: Ein Carousel darf höchstens zwanzig Bilder enthalten.")
 
     const children: string[] = []
-    if (payload.assetPaths.length > 1) {
-      for (const [index, assetPath] of payload.assetPaths.entries()) {
+    if (assetPaths.length > 1) {
+      for (const [index, assetPath] of assetPaths.entries()) {
         const child = await this.createContainer({
           media_type: "IMAGE",
           image_url: this.publicAssetUrl(assetPath, payload.job.contentDate, payload.job.postId),
@@ -70,12 +75,12 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
       }
     }
 
-    const parent = payload.assetPaths.length === 0
+    const parent = assetPaths.length === 0
       ? await this.createContainer({ media_type: "TEXT", text: payload.job.text })
-      : payload.assetPaths.length === 1
+      : assetPaths.length === 1
         ? await this.createContainer({
             media_type: "IMAGE",
-            image_url: this.publicAssetUrl(payload.assetPaths[0]!, payload.job.contentDate, payload.job.postId),
+            image_url: this.publicAssetUrl(assetPaths[0]!, payload.job.contentDate, payload.job.postId),
             text: payload.job.text,
             alt_text: payload.job.altTexts[0] ?? ""
           })
@@ -83,7 +88,7 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
 
     await this.waitUntilFinished(parent)
     const published = await this.publishContainer(parent)
-    return { remoteId: published, metadata: { mediaCount: payload.assetPaths.length, mediaType: payload.assetPaths.length > 1 ? "CAROUSEL" : payload.assetPaths.length === 1 ? "IMAGE" : "TEXT", status: 200 } }
+    return { remoteId: published, metadata: { mediaCount: assetPaths.length, mediaType: assetPaths.length > 1 ? "CAROUSEL" : assetPaths.length === 1 ? "IMAGE" : "TEXT", status: 200 } }
   }
 
   private assertConfigured(): void {

@@ -15,6 +15,7 @@
         @scroll="syncScroll"
       />
     </div>
+    <div class="form-text text-end">{{ jsonText.length }}</div>
     <div class="d-flex justify-content-between align-items-center mt-3">
       <span class="small text-secondary">Änderungen werden vor dem Speichern gegen das Schema geprüft.</span>
       <button class="btn btn-primary" type="button" :disabled="busy || !jsonText.trim()" @click="save">

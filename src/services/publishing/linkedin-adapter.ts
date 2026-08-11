@@ -35,10 +35,11 @@ export class LinkedInPublicationAdapter implements PublicationAdapter {
 
   async publish(payload: PublicationPayload): Promise<PublicationResult> {
     this.assertConfigured()
-    if (payload.assetPaths.length > 20) throw new Error("linkedin: Ein Multi-Image-Post darf höchstens zwanzig Bilder enthalten.")
+    const assetPaths = payload.assetPaths
+    if (assetPaths.length > 20) throw new Error("linkedin: Ein Multi-Image-Post darf höchstens zwanzig Bilder enthalten.")
 
     const images = []
-    for (const [index, assetPath] of payload.assetPaths.entries()) {
+    for (const [index, assetPath] of assetPaths.entries()) {
       images.push({
         id: await this.uploadImage(assetPath),
         altText: payload.job.altTexts[index] ?? payload.job.altTexts[0] ?? ""

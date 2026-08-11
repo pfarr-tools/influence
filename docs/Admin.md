@@ -200,9 +200,11 @@ user, with those permissions. Query:
 GET /me/accounts?fields=id,name,access_token,tasks
 ```
 
-Copy the Page's `id` to `FACEBOOK_PAGE_ID` and that entry's `access_token` to
-`FACEBOOK_ACCESS_TOKEN`. This must be a Page Access Token, not the User Access
-Token. The token must include the `CREATE_CONTENT` task for the selected Page.
+Copy the Page's `id` to `FACEBOOK_PAGE_ID` and the User Access Token to
+`FACEBOOK_ACCESS_TOKEN`. Influence calls `/me/accounts` automatically, selects
+the configured Page, and uses the returned Page Access Token for publishing.
+The User Access Token must have the permissions above; the selected Page must
+include the `CREATE_CONTENT` task.
 Restart Influence after changing `.env`, render the post, approve it, and
 schedule it as usual:
 

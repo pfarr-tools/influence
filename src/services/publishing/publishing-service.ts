@@ -4,6 +4,7 @@ import { getPostById } from "../calendar/calendar-service.js"
 import { assertContentApproved, getContentOutputPaths, isPublicationApproved, pathExists, readContentPackage, readJsonFile } from "../content/content-storage.js"
 import { PublicationJobStore } from "./job-store.js"
 import type { PublicationAdapter, PublicationJob, PublicationPlatform } from "./types.js"
+import { containsUrl } from "./text-utils.js"
 
 /** Creates or schedules approved jobs and executes them idempotently. */
 export class PublishingService {
@@ -125,6 +126,7 @@ async function resolvePublicationAssets(
   content: Awaited<ReturnType<typeof readContentPackage>>
 ): Promise<string[]> {
   if (platform !== "facebook" && platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky" && platform !== "linkedin") return content.metadata.assets
+  if (platform === "mastodon" && containsUrl(getPlatformText(content, platform))) return []
   const renderFormat = platform === "facebook" || platform === "mastodon" ? "facebook-mastodon" : platform === "threads" || platform === "bluesky" || platform === "linkedin" || format !== "story" ? "instagram-feed" : "instagram-story"
   const summaryPath = getContentOutputPaths(outputRoot, post).baseDir + "/render-results.json"
   const summary = await readJsonFile<{ renders?: Array<{ format?: string; image_path?: string; page_index?: number }> }>(summaryPath)
@@ -144,13 +146,15 @@ async function resolvePublicationAssetsForJob(
   content: Awaited<ReturnType<typeof readContentPackage>>
 ): Promise<string[]> {
   const summaryPath = `${getContentOutputPaths(outputRoot, post).baseDir}/render-results.json`
+  if (platform === "mastodon" && containsUrl(getPlatformText(content, platform))) return []
   if (!(await pathExists(summaryPath))) return content.metadata.assets
   return resolvePublicationAssets(outputRoot, post, platform, format, content)
 }
 
 function getPlatformText(content: Awaited<ReturnType<typeof readContentPackage>>, platform: PublicationPlatform): string {
   if (platform === "facebook") return content.platforms.facebook.text
-  if (platform === "instagram" || platform === "threads") return content.platforms.instagram.caption
+  if (platform === "instagram") return content.platforms.instagram.caption
+  if (platform === "threads") return content.platforms.bluesky?.text ?? ""
   if (platform === "mastodon") return content.platforms.mastodon.text
   if (platform === "bluesky") return content.platforms.bluesky?.text ?? ""
   if (platform === "linkedin") return content.platforms.instagram.caption
