@@ -50,6 +50,9 @@ describe("post renderer", () => {
     expect(resolveRenderTemplateKind("Gebet oder Lied")).toBe(
       "gebet-oder-liedgedanke"
     )
+    expect(
+      resolveRenderTemplateKind("Ein Lied, das mich begleitet")
+    ).toBe("gebet-oder-liedgedanke")
     expect(resolveRenderTemplateKind("Mittwochsserie")).toBe("wissenskarussell")
     expect(resolveRenderTemplateKind("Reli fragt")).toBe("reli-fragt")
     expect(resolveRenderTemplateKind("Predigt-Preview")).toBe("predigt-preview")

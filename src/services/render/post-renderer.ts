@@ -167,7 +167,10 @@ export async function renderWeekByDate(
  * @returns Stable renderer template family.
  */
 export function resolveRenderTemplateKind(rubric: string): RenderTemplateKind {
-  if (rubric === "Gebet oder Lied") {
+  if (
+    rubric === "Gebet oder Lied" ||
+    rubric === "Ein Lied, das mich begleitet"
+  ) {
     return "gebet-oder-liedgedanke"
   }
 
