@@ -291,6 +291,22 @@ Wenn der Beitrags-Termin später verschoben wird, werden bestehende geplante
 Kanaltermine auf das neue Datum übernommen, die lokale Uhrzeit pro Kanal bleibt
 dabei erhalten.
 
+Die Freigabe kann auch direkt über die CLI erfolgen:
+
+```bash
+influence publish approve --post-id post-0007
+```
+
+Dabei gelten dieselben Voraussetzungen wie in der Review-Oberfläche. Mit
+`--force` lässt sich die Statusprüfung des Beitrags übergehen:
+
+```bash
+influence publish approve --post-id post-0007 --force
+```
+
+Die konfigurierten Plattformen werden dabei automatisch zum vorgesehenen
+Zeitpunkt eingeplant.
+
 ## Typische Arbeitssequenzen
 
 ### Einzelner Beitrag

@@ -81,7 +81,8 @@
             <h2 class="h5">Veröffentlichung</h2>
             <p class="small text-secondary mb-3">
               Veröffentlichungen erfolgen erst nach Freigabe. Facebook-Profile
-              werden bewusst manuell geteilt.
+              werden weiterhin bewusst manuell geteilt; Facebook-Seiten können
+              automatisch veröffentlicht werden.
             </p>
             <div v-if="post.publicationChannels.length > 0" class="row g-2">
               <div v-for="channel in post.publicationChannels" :key="`${channel.platform}-${channel.format}`" class="col-sm-6">
@@ -808,7 +809,7 @@ function publicationLabel(platform: string, format = ""): string {
     threads: "Threads",
     bluesky: "Bluesky",
     linkedin: "LinkedIn",
-    facebook: "Facebook-Profil"
+    facebook: "Facebook (Page)"
   }[platform] ?? platform
 }
 

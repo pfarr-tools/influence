@@ -447,12 +447,13 @@ export async function approveReviewPostForPublication(
   calendar: Calendar,
   postId: string,
   outputRoot: string,
-  runtimeConfig?: RuntimeConfig
+  runtimeConfig?: RuntimeConfig,
+  options: { force?: boolean } = {}
 ): Promise<void> {
   const post = getPostById(calendar, postId)
   const contentPaths = getContentOutputPaths(outputRoot, post)
   const content = await readContentPackage(contentPaths.contentPath)
-  if (content.status !== "freigegeben") {
+  if (content.status !== "freigegeben" && !options.force) {
     throw new CalendarValidationError(
       "Die Veröffentlichung kann erst freigegeben werden, wenn der Inhalt freigegeben ist."
     )
@@ -472,7 +473,8 @@ export async function approveReviewPostForPublication(
       platform,
       resolvePublicationScheduledAt(post.datum, platform, runtimeConfig),
       "default",
-      runtimeConfig.publicationTimezone
+      runtimeConfig.publicationTimezone,
+      { force: options.force }
     )
   }
 }

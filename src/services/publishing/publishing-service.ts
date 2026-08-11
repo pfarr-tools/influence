@@ -15,12 +15,13 @@ export class PublishingService {
     platform: PublicationPlatform,
     at: string | null,
     format = "default",
-    timezone = "Europe/Berlin"
+    timezone = "Europe/Berlin",
+    options: { force?: boolean } = {}
   ): Promise<PublicationJob> {
     const post = getPostById(calendar, postId)
     const contentPaths = getContentOutputPaths(this.outputRoot, post)
     const content = await readContentPackage(contentPaths.contentPath)
-    assertContentApproved(content, contentPaths.contentPath)
+    if (!options.force) assertContentApproved(content, contentPaths.contentPath)
     if (!(await isPublicationApproved(contentPaths.publicationApprovalPath))) {
       throw new Error("Die Veröffentlichung ist für diesen Beitrag noch nicht ausdrücklich freigegeben.")
     }

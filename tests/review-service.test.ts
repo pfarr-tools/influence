@@ -147,6 +147,20 @@ describe("review service", () => {
     expect(jobs.every((job) => typeof job.scheduledAt === "string")).toBe(true)
   })
 
+  it("allows forced publication approval for content not marked approved", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    await writeQaReadyContent(calendar, tempDir, "post-0001")
+
+    await approveReviewPostForPublication(calendar, "post-0001", tempDir, undefined, {
+      force: true
+    })
+
+    const approval = await readJsonFile<{ approved: boolean }>(
+      join(tempDir, "2026-08-10", "post-0001", "publication-approval.json")
+    )
+    expect(approval.approved).toBe(true)
+  })
+
   it("writes a downloadable review export manifest", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
     await writeQaReadyContent(calendar, tempDir, "post-0001", {

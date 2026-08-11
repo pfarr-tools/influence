@@ -42,6 +42,7 @@ import {
 import {
   appendDiscussionMessage,
   applyContentChatRevision,
+  approveReviewPostForPublication,
   createReviewServer,
   loadContentChatSession,
   requestContentChatRevision,
@@ -106,6 +107,26 @@ publishCommand.command("preview")
       const service = new PublishingService(defaultOutputRoot, new Map([[platform, new DryRunPublicationAdapter(platform)]]))
       const job = await service.schedulePost(calendar, options.postId, platform, null, options.format)
       console.log(JSON.stringify({ dryRun: true, target: platform, job }, null, 2))
+    } catch (error) { handleCliError(error) }
+  })
+
+publishCommand.command("approve")
+  .requiredOption("--post-id <postId>", "Calendar post identifier")
+  .option("--force", "Approve publication even if the content is not marked as approved")
+  .description("Approve a post for publication and schedule its configured platforms")
+  .action(async (options: { postId: string; force?: boolean }) => {
+    try {
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      await approveReviewPostForPublication(
+        calendar,
+        options.postId,
+        defaultOutputRoot,
+        runtimeConfig,
+        { force: options.force }
+      )
+      console.log(
+        `${options.postId}: publication approved${options.force ? " (forced)" : ""} and scheduled.`
+      )
     } catch (error) { handleCliError(error) }
   })
 
