@@ -194,9 +194,17 @@ const currentCropMeta = computed(() => {
   }
   return `Zielgröße ${currentDescriptor.value.width} × ${currentDescriptor.value.height} Pixel`
 })
-const currentAspectStyle = computed(() => ({
-  aspectRatio: currentDescriptor.value ? `${currentDescriptor.value.width} / ${currentDescriptor.value.height}` : "16 / 9"
-}))
+const currentAspectStyle = computed(() => {
+  const descriptor = currentDescriptor.value
+  const width = descriptor?.width ?? 16
+  const height = descriptor?.height ?? 9
+  const aspectRatio = width / height
+
+  return {
+    aspectRatio: `${width} / ${height}`,
+    maxWidth: `min(100%, 38rem, calc(60vh * ${aspectRatio}))`
+  }
+})
 const canSubmit = computed(() => Boolean(selectedFile.value && selectedKinds.value.length > 0))
 
 watch(currentTargetKind, () => {
@@ -459,7 +467,6 @@ async function submitUpload() {
   border-radius: 0.75rem;
   cursor: grab;
   margin: 0 auto;
-  max-height: 60vh;
   overflow: hidden;
   position: relative;
   width: min(100%, 38rem);
