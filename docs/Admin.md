@@ -178,7 +178,7 @@ render as a photo post on a Facebook Page. The image must be reachable below
 ```dotenv
 PUBLIC_BASE_URL=https://influence.example
 PUBLICATION_PLATFORMS=facebook,instagram,mastodon
-PUBLICATION_DEFAULT_TIME_FACEBOOK=12:00
+PUBLICATION_DEFAULT_TIME=07:00
 FACEBOOK_PAGE_ID=123456789012345
 FACEBOOK_ACCESS_TOKEN=EAAB...
 # Optional:

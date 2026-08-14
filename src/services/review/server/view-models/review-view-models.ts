@@ -68,7 +68,8 @@ const weekActionLabels: Record<WeekActionApi, string> = {
 
 export function buildWeekOverviewResponse(
   overview: ReviewWeekOverview,
-  notices: Array<{ kind: "error" | "notice"; text: string }> = []
+  notices: Array<{ kind: "error" | "notice"; text: string }> = [],
+  defaultPublicationTime = "09:00"
 ): WeekOverviewResponse {
   return {
     defaultWeekDate: overview.selectedWeek.startDate,
@@ -81,6 +82,7 @@ export function buildWeekOverviewResponse(
         date: post.date,
         postId: post.postId,
         rubric: post.rubric,
+        scheduledTime: post.publicationTime || defaultPublicationTime,
         status: post.status,
         theme: post.theme,
         weekday: post.weekday,
@@ -113,6 +115,7 @@ export function buildPostDetailResponse(
     nextPostId?: string
     previousPostId?: string
     publicBaseUrl?: string
+    defaultPublicationTime?: string
   } = {}
 ): PostDetailResponse {
   const cacheVersion = Date.now()
@@ -167,9 +170,11 @@ export function buildPostDetailResponse(
       ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(facebookPublicUrl)}`
       : null,
     notices,
+    publicationDefaultTime: navigation.defaultPublicationTime ?? "09:00",
     post: {
       date: detail.post.datum,
       postId: detail.post.id,
+      publicationTime: detail.post.veroeffentlichungszeit ?? "",
       rubric: detail.post.rubrik,
       status: getPublicationStatus(
         detail.content.status,

@@ -54,7 +54,11 @@ export async function getWeekOverview(
     dependencies.runtimeConfig.outputDir
   )
 
-  return buildWeekOverviewResponse(overview, notices)
+  return buildWeekOverviewResponse(
+    overview,
+    notices,
+    dependencies.runtimeConfig.publicationDefaultTime
+  )
 }
 
 export async function runWeekAction(
@@ -162,7 +166,7 @@ export async function createReviewPostIdea(weekDate: string, input: PostIdeaRequ
   const post = {
     id, datum: input.date, wochentag: new Intl.DateTimeFormat("de-DE", { weekday: "long", timeZone: "UTC" }).format(new Date(`${input.date}T00:00:00Z`)),
     rubrik: input.rubric, saeule: "", ziel: "", vorproduktion: "", plattformen_und_formate: { facebook: ["feed"], instagram: ["feed"], mastodon: ["post"] },
-    struktur: ["Grundidee"], ki_hilfe: ["Keine"], status: "Idee", thema: input.title, konkrete_idee: "", redaktionsfelder: {
+    struktur: ["Grundidee"], ki_hilfe: ["Keine"], status: "Idee", thema: input.title, konkrete_idee: "", veroeffentlichungszeit: "", redaktionsfelder: {
       arbeitstitel: input.title, facebook_text: "", instagram_caption: "", mastodon_text: "", story_ablauf: [""], reel_skript: "", bildidee: "", ki_bildprompt: "", alt_text: "", hashtags: [], veroeffentlichungszeit: "", asset_pfade: [], notizen: ""
     }
   }
@@ -211,6 +215,7 @@ export async function getPostDetail(
   const postIndex = week.beitraege.findIndex((entry) => entry.id === postId)
   return buildPostDetailResponse(detail, week.zeitraum.von, notices, {
     publicBaseUrl: dependencies.runtimeConfig.publicBaseUrl,
+    defaultPublicationTime: dependencies.runtimeConfig.publicationDefaultTime,
     nextPostId: week.beitraege[postIndex + 1]?.id,
     previousPostId: week.beitraege[postIndex - 1]?.id
   })
@@ -259,11 +264,18 @@ export async function runPostAction(
       }])
     case "edit": {
       const body = postEditRequestSchema.parse(await parseJsonBody(request))
+      const post = getPostById(dependencies.calendar, postId)
       await updateReviewPost(
         dependencies.calendar,
         postId,
         dependencies.runtimeConfig.outputDir,
         body
+      )
+      post.veroeffentlichungszeit = body.publicationTime
+      await writeFile(
+        dependencies.runtimeConfig.calendarPath,
+        `${JSON.stringify(dependencies.calendar, null, 2)}\n`,
+        "utf8"
       )
       return getPostDetail(postId, dependencies, [{
         kind: "notice",

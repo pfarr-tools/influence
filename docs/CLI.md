@@ -32,9 +32,7 @@ Für öffentliche Share-Links und automatische Kanalplanung sind diese
 PUBLIC_BASE_URL=https://example.org
 PUBLICATION_TIMEZONE=Europe/Berlin
 PUBLICATION_PLATFORMS=facebook,instagram,mastodon,linkedin
-PUBLICATION_DEFAULT_TIME_FACEBOOK=12:00
-PUBLICATION_DEFAULT_TIME_INSTAGRAM=08:00
-PUBLICATION_DEFAULT_TIME_MASTODON=08:15
+PUBLICATION_DEFAULT_TIME=07:00
 FACEBOOK_PAGE_ID=123456789012345
 FACEBOOK_ACCESS_TOKEN=EAAB...
 INSTAGRAM_ACCOUNT_ID=17841400000000000
@@ -288,7 +286,7 @@ bekommen.
 Sobald ein Beitrag in der Review-Oberfläche mit `Veröffentlichung freigeben`
 freigegeben wird, legt Influence automatisch Publication-Jobs für die in
 `PUBLICATION_PLATFORMS` konfigurierten Kanäle an. Die Uhrzeiten kommen aus den
-jeweiligen `PUBLICATION_DEFAULT_TIME_*`-Variablen.
+der `PUBLICATION_DEFAULT_TIME`-Variable; ein abweichender Zeitpunkt kann pro Beitrag im Feld `veroeffentlichungszeit` gesetzt werden.
 
 Wenn der Beitrags-Termin später verschoben wird, werden bestehende geplante
 Kanaltermine auf das neue Datum übernommen, die lokale Uhrzeit pro Kanal bleibt

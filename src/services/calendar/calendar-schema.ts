@@ -2,6 +2,7 @@ import { z } from "zod"
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected ISO date YYYY-MM-DD")
 const isoMonthSchema = z.string().regex(/^\d{4}-\d{2}$/, "Expected ISO month YYYY-MM")
+const publicationTimeSchema = z.string().regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/, "Expected time HH:MM")
 const nonEmptyStringSchema = z.string().min(1)
 
 const sourceReferenceSchema = z.object({
@@ -92,6 +93,7 @@ export const calendarPostSchema = z.object({
   struktur: z.array(nonEmptyStringSchema).min(1),
   ki_hilfe: z.array(nonEmptyStringSchema).min(1),
   status: statusSchema,
+  veroeffentlichungszeit: publicationTimeSchema.optional(),
   redaktionsfelder: editorialFieldsSchema,
   thema: nonEmptyStringSchema,
   konkrete_idee: nonEmptyStringSchema,

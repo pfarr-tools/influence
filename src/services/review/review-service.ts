@@ -99,6 +99,7 @@ export interface ReviewPostCard {
   postId: string
   qaReadyForApproval: boolean
   rubric: string
+  publicationTime: string
   status: string
   theme: string
   weekday: string
@@ -471,7 +472,7 @@ export async function approveReviewPostForPublication(
       calendar,
       postId,
       platform,
-      resolvePublicationScheduledAt(post.datum, platform, runtimeConfig),
+      resolvePublicationScheduledAt(post.datum, post.veroeffentlichungszeit, runtimeConfig),
       "default",
       runtimeConfig.publicationTimezone,
       { force: options.force }
@@ -643,6 +644,7 @@ async function buildReviewPostCard(
       hasRenderedPreviews: false,
       isApproved: false,
       postId: post.id,
+      publicationTime: post.veroeffentlichungszeit ?? "",
       qaReadyForApproval: false,
       rubric: post.rubrik,
       status: "missing",
@@ -698,6 +700,7 @@ async function buildReviewPostCard(
     hasRenderedPreviews: (renderSummary?.renders?.length ?? 0) > 0,
     isApproved: content.qa.approved,
     postId: post.id,
+    publicationTime: post.veroeffentlichungszeit ?? "",
     qaReadyForApproval: qaSummary?.ready_for_approval ?? false,
     rubric: post.rubrik,
     status: getPublicationStatus(content.status, publicationApproved, publicationJobs),
@@ -748,21 +751,12 @@ function resolvePublicationPlatforms(value: string): PublicationPlatform[] {
 
 function resolvePublicationScheduledAt(
   date: string,
-  platform: PublicationPlatform,
+  publicationTime: string | undefined,
   runtimeConfig: RuntimeConfig
 ): string {
-  const defaultTimeByPlatform: Record<PublicationPlatform, string> = {
-    bluesky: runtimeConfig.publicationDefaultTimeBluesky,
-    facebook: runtimeConfig.publicationDefaultTimeFacebook,
-    instagram: runtimeConfig.publicationDefaultTimeInstagram,
-    linkedin: runtimeConfig.publicationDefaultTimeLinkedin,
-    mastodon: runtimeConfig.publicationDefaultTimeMastodon,
-    threads: runtimeConfig.publicationDefaultTimeThreads
-  }
-
   return buildZonedIsoTimestamp(
     date,
-    defaultTimeByPlatform[platform] ?? "09:00",
+    publicationTime || runtimeConfig.publicationDefaultTime,
     runtimeConfig.publicationTimezone
   )
 }

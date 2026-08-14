@@ -183,7 +183,7 @@
                 <div>
                   <h3 class="h6 mb-1">{{ post.theme }}</h3>
                   <div class="small text-secondary">
-                    <strong>{{ post.postId }}</strong> · {{ post.rubric }}
+                    <strong>{{ post.postId }}</strong> · {{ post.rubric }} · {{ post.scheduledTime }}
                   </div>
                 </div>
                 <span class="badge text-bg-light week-post-status">{{
@@ -349,7 +349,10 @@ const weekDays = computed(() => {
     const date = cursor.toISOString().slice(0, 10)
     days.push({
       date,
-      posts: postsByDate.get(date) ?? [],
+      posts: [...(postsByDate.get(date) ?? [])].sort((left, right) =>
+        left.scheduledTime.localeCompare(right.scheduledTime) ||
+        left.postId.localeCompare(right.postId)
+      ),
       weekday: new Intl.DateTimeFormat("de-DE", {
         timeZone: "UTC",
         weekday: "long"

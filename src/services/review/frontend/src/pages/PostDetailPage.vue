@@ -197,6 +197,15 @@
                   Termin ändern
                 </button>
               </div>
+              <div class="col-md-6">
+                <label class="form-label">Veröffentlichungszeit</label>
+                <input
+                  v-model="form.publicationTime"
+                  class="form-control"
+                  type="time"
+                />
+                <div class="form-text">Leer lassen, um die Standardzeit ({{ post.publicationDefaultTime }}) zu verwenden.</div>
+              </div>
               <div class="col-12">
                 <label class="form-label">Kernbotschaft</label>
                 <textarea
@@ -595,6 +604,7 @@ const form = reactive({
   instagramCaption: "",
   mainMessage: "",
   mastodonText: "",
+  publicationTime: "",
   blueskyText: "",
   reelHook: "",
   reelScript: "",
@@ -659,6 +669,7 @@ watch(post, (value) => {
   form.reelScript = value.content.reelScript
   form.title = value.content.title
   scheduledDate.value = value.post.date
+  form.publicationTime = value.post.publicationTime
   storySlides.value =
     value.content.storySlides.length > 0
       ? value.content.storySlides.map((text, index) => ({
@@ -718,6 +729,7 @@ async function savePost() {
     })),
     mainMessage: form.mainMessage,
     mastodonText: form.mastodonText,
+    publicationTime: form.publicationTime,
     blueskyText: form.blueskyText,
     reelHook: form.reelHook,
     reelScript: form.reelScript,

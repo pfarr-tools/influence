@@ -21,6 +21,7 @@ describe("review view models", () => {
             hasRenderedPreviews: false,
             isApproved: false,
             postId: "post-0001",
+            publicationTime: "",
             qaReadyForApproval: false,
             rubric: "Impuls",
             status: "in Arbeit",
