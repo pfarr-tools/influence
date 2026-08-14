@@ -164,6 +164,12 @@
             :key="post.postId"
             class="card week-post-card"
             draggable="true"
+            role="link"
+            tabindex="0"
+            :aria-label="`${post.theme} öffnen`"
+            @click="openPost(post.actionHref)"
+            @keydown.enter="openPost(post.actionHref)"
+            @keydown.space.prevent="openPost(post.actionHref)"
             @dragenter.prevent
             @dragstart="startDrag($event, post.postId, post.date, index)"
             @dragend="dragState = null"
@@ -189,17 +195,10 @@
               >
                 <WorkflowBadges compact :workflow="post.workflow" />
                 <div class="d-flex flex-wrap gap-1">
-                  <RouterLink
-                    v-if="post.actionHref"
-                    class="btn btn-sm btn-outline-secondary"
-                    :to="post.actionHref"
-                  >
-                    Öffnen
-                  </RouterLink>
                   <button
                     class="btn btn-sm btn-outline-danger"
                     type="button"
-                    @click.prevent="deletePost(post.postId)"
+                    @click.stop.prevent="deletePost(post.postId)"
                   >
                     Löschen
                   </button>
@@ -280,7 +279,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue"
-import { RouterLink, useRoute, useRouter } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 import type { WeekActionApi } from "../../../server/contracts/review-contracts.js"
 import ActionButtonGroup from "../components/ActionButtonGroup.vue"
 import BaseModal from "../components/BaseModal.vue"
@@ -435,6 +434,10 @@ async function navigateToWeek() {
   window.localStorage.setItem(lastWeekStorageKey, selectedWeekDate.value)
   calendarJumpDate.value = selectedWeekDate.value
   await router.push(`/weeks/${selectedWeekDate.value}`)
+}
+
+async function openPost(actionHref: string) {
+  await router.push(actionHref)
 }
 
 async function goToAdjacentWeek(weekDate: string) {
