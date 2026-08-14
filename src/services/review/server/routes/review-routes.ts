@@ -5,6 +5,7 @@ import { URL } from "node:url"
 
 import type { Calendar } from "../../../../domain/calendar.js"
 import type { RuntimeConfig } from "../../../../config/runtime-config.js"
+import { loadCalendarFromFile } from "../../../calendar/calendar-service.js"
 import { CalendarValidationError } from "../../../calendar/errors.js"
 import type { ContentGeneratorDependencies } from "../../../content/content-generator.js"
 import type { ImageModelClient } from "../../../image/flux-client.js"
@@ -58,6 +59,7 @@ import { mastodonOAuthCallbackPath, type MastodonOAuthService } from "../../../p
 import { threadsOAuthCallbackPath, type ThreadsOAuthService } from "../../../publishing/threads-adapter.js"
 import { facebookOAuthCallbackPath, type FacebookOAuthService } from "../../../publishing/facebook-adapter.js"
 import { syncContentRepository } from "../../../content/content-repository.js"
+import { buildPublishedFeed } from "../../../publishing/published-feed.js"
 
 export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   calendar: Calendar
@@ -85,7 +87,14 @@ export async function handleReviewRequest(
   dependencies: ReviewServerDependencies
 ): Promise<void> {
   try {
-    await routeReviewRequest(request, response, dependencies)
+    // Cron jobs and the CLI can add posts while this server stays running.
+    // Refresh the calendar snapshot per request so the review UI sees them
+    // without requiring a service restart.
+    const requestDependencies: ReviewServerDependencies = {
+      ...dependencies,
+      calendar: await loadCalendarFromFile(dependencies.runtimeConfig.calendarPath)
+    }
+    await routeReviewRequest(request, response, requestDependencies)
   } catch (error) {
     const statusCode =
       error instanceof CalendarValidationError || isValidationError(error)
@@ -193,6 +202,19 @@ async function routeReviewRequest(
 
   if (method === "GET" && requestUrl.pathname === "/api/weeks/default") {
     respondJson(response, 200, { date: defaultDate })
+    return
+  }
+
+  if (method === "GET" && requestUrl.pathname === "/api/feed/published.json") {
+    respondJson(
+      response,
+      200,
+      await buildPublishedFeed(
+        dependencies.calendar,
+        dependencies.runtimeConfig.outputDir,
+        dependencies.runtimeConfig.publicBaseUrl
+      )
+    )
     return
   }
 

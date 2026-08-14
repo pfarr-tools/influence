@@ -69,6 +69,19 @@ Danach ist die Oberfläche unter `http://127.0.0.1:3040/` erreichbar.
 - `src/` – CLI, Services und Review-Server
 - `content/content-plan.json` – Redaktionsplan
 - `content/` – erzeugte Inhalte, Bilder, Renderings, QA-Ergebnisse, Chat-Sitzungen
+
+## Published feed
+
+The review server exposes all successfully published posts as one JSON feed:
+
+```text
+GET /api/feed/published.json
+```
+
+Each post contains the editorial and platform texts, publication records with
+remote IDs/URLs, and image URLs below `/files/`. Set `PUBLIC_BASE_URL` to the
+public server URL so the image URLs are absolute and can be consumed by other
+applications.
 - `config/` – Umgebungs- und Beispielkonfiguration
 - `docs/` – Dokumentation
 

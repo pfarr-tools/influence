@@ -18,6 +18,7 @@ export interface ContentModelRequest {
   maxOutputTokens?: number
   model: string
   userPrompt: string
+  webSearch?: boolean
 }
 
 /**
@@ -58,6 +59,7 @@ export function createOpenAIContentClient(apiKey: string): ContentModelClient {
         instructions: input.developerPrompt,
         input: input.userPrompt,
         max_output_tokens: input.maxOutputTokens,
+        tools: input.webSearch ? [{ type: "web_search" }] : undefined,
         text: {
           format: {
             type: "json_schema",

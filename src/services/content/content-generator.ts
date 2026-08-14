@@ -27,6 +27,10 @@ export interface GenerateContentOptions {
   language: string
   model: string
   outputRoot: string
+  /** Optional source scaffold for content types that are not in the annual plan. */
+  scaffold?: ContentPackage
+  /** Enable Responses API web search for current-information content. */
+  webSearch?: boolean
 }
 
 /**
@@ -49,6 +53,7 @@ export interface ContentGenerationRequestPreview {
   developerPrompt: string
   model: string
   userPrompt: string
+  webSearch: boolean
 }
 
 /**
@@ -143,7 +148,7 @@ async function generateContentForCalendarPost(
   dependencies: ContentGeneratorDependencies
 ): Promise<GenerateContentResult> {
   const liturgicalContext = await loadLiturgicalContext(post, dependencies)
-  const scaffold = createContentScaffold(post, { liturgicalContext })
+  const scaffold = options.scaffold ?? createContentScaffold(post, { liturgicalContext })
   const outputPaths = getContentOutputPaths(options.outputRoot, post)
 
   if (!options.dryRun) {
@@ -155,7 +160,8 @@ async function generateContentForCalendarPost(
     scaffold,
     options.model,
     options.language,
-    liturgicalContext
+    liturgicalContext,
+    options.webSearch ?? isPrayerRubric(post.rubrik)
   )
 
   if (options.dryRun) {
@@ -251,7 +257,8 @@ function buildGenerationRequestPreview(
   scaffold: ContentPackage,
   model: string,
   language: string,
-  liturgicalContext?: LiturgicalContext
+  liturgicalContext?: LiturgicalContext,
+  webSearch = false
 ): ContentGenerationRequestPreview {
   const developerPrompt = [
     "You are part of a Protestant social media editorial team.",
@@ -264,7 +271,14 @@ function buildGenerationRequestPreview(
     "Set needs_input to true whenever required facts are missing.",
     "Keep qa.approved false.",
     "Do not ask for any text inside generated images.",
-    "When liturgical_context.resolved_weekly_verse is present, use its exact wording for Wochenspruch slots instead of placeholders."
+    "When liturgical_context.resolved_weekly_verse is present, use its exact wording for Wochenspruch slots instead of placeholders.",
+    ...(webSearch
+      ? [
+          "Use the web search tool before drafting to verify current situations.",
+          "For prayer posts, current situations are mandatory: select at least two concrete, relevant situations from reliable current reporting, including tagesschau.de and SWR Aktuell Baden-Württemberg where relevant.",
+          "Do not invent current events and do not replace concrete situations with generic references to crises."
+        ]
+      : [])
   ].join(" ")
 
   const userPrompt = JSON.stringify(
@@ -303,7 +317,8 @@ function buildGenerationRequestPreview(
       constraints: {
         preserve_source_truth: true,
         no_invented_current_events: true,
-        no_text_in_image_prompts: true
+        no_text_in_image_prompts: true,
+        web_search_required: webSearch
       }
     },
     null,
@@ -313,7 +328,8 @@ function buildGenerationRequestPreview(
   return {
     developerPrompt,
     model,
-    userPrompt
+    userPrompt,
+    webSearch
   }
 }
 
@@ -419,4 +435,8 @@ function sanitizeGeneratedFluxPrompt(prompt: string): string {
  */
 function shouldSkipModelGeneration(post: CalendarPost): boolean {
   return post.rubrik === "Predigt-Preview"
+}
+
+function isPrayerRubric(rubric: string): boolean {
+  return rubric === "Morgengebet" || rubric === "Abendgebet"
 }

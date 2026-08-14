@@ -72,6 +72,7 @@ import { createThreadsOAuthService } from "./services/publishing/threads-adapter
 import { createFacebookOAuthService } from "./services/publishing/facebook-adapter.js"
 import { syncContentRepository } from "./services/content/content-repository.js"
 import { scheduleTageslosungen } from "./services/losungen/tageslosungen-service.js"
+import { generatePrayer, type PrayerKind } from "./services/prayers/prayer-generator.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -94,6 +95,52 @@ const chatCommand = program.command("chat").description("Discuss and revise JSON
 const reviewCommand = program.command("review").description("Local review UI")
 const publishCommand = program.command("publish").description("Publication and scheduling commands")
 const losungenCommand = program.command("losungen").description("Tageslosungen commands")
+const prayerCommand = program.command("prayer").description("Morning and evening prayer commands")
+
+prayerCommand
+  .command("generate")
+  .requiredOption("--kind <kind>", "Prayer kind: morning or evening")
+  .option("--date <date>", "Target publication date (defaults to tomorrow morning or today evening)")
+  .option("--dry-run", "Show the OpenAI request without changing the calendar or calling the API", false)
+  .option("--force", "Overwrite an existing generated content package", false)
+  .option("--model <name>", "OpenAI model to use", runtimeConfig.openAiModel)
+  .option("--language <language>", "Content language", "de")
+  .description("Generate a dated prayer post from the universal prayer scaffold")
+  .action(async (options: {
+    date?: string
+    dryRun: boolean
+    force: boolean
+    kind: string
+    language: string
+    model: string
+  }) => {
+    try {
+      if (options.kind !== "morning" && options.kind !== "evening") {
+        throw new InvalidArgumentError('Kind must be "morning" or "evening".')
+      }
+      assertOutputRoot(defaultOutputRoot)
+      const result = await generatePrayer({
+        calendarPath: defaultCalendarPath,
+        date: options.date,
+        dryRun: options.dryRun,
+        force: options.force,
+        kind: options.kind as PrayerKind,
+        language: options.language,
+        model: options.model,
+        outputRoot: defaultOutputRoot,
+        publicationTimezone: runtimeConfig.publicationTimezone
+      }, {
+        modelClient:
+          options.dryRun || runtimeConfig.openAiApiKey === ""
+            ? undefined
+            : createOpenAIContentClient(runtimeConfig.openAiApiKey)
+      })
+      console.log(`${result.kind} prayer for ${result.date}: ${result.postId}`)
+      printGenerationResult(result.result)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
 
 losungenCommand
   .command("schedule")

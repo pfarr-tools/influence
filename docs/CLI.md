@@ -127,6 +127,40 @@ influence content generate-week --date 2026-08-10
 influence content generate-month --month 2026-08
 ```
 
+## Gebete
+
+Die universellen Gebets-Scaffolds in `assets/prayers/` werden mit einem Datum
+versehen und als normale, noch nicht freigegebene Beiträge in den Content-Kalender
+übernommen. Ohne `--date` erzeugt der Morgenlauf den nächsten Tag, der Abendlauf
+den aktuellen Tag:
+
+Für Morgengebet und Abendgebet aktiviert Influence automatisch die Websuche der
+Responses API. Dadurch kann das Modell vor dem Entwurf aktuelle Situationen aus
+der Nachrichtenlage prüfen. Dafür ist keine zusätzliche Anwendungskonfiguration
+nötig; der verwendete OpenAI API-Schlüssel muss Zugriff auf die Responses API mit
+Websuche haben.
+
+```bash
+influence prayer generate --kind morning
+influence prayer generate --kind evening
+
+# equivalent npm invocation
+npm run prayer:generate -- --kind morning
+```
+
+Für Cron (aus dem Projektverzeichnis, mit der gewünschten `.env`-Konfiguration):
+
+```cron
+0 16 * * * cd /path/to/influence && ./node_modules/.bin/influence prayer generate --kind morning >> /var/log/influence-prayers.log 2>&1
+0 11 * * * cd /path/to/influence && ./node_modules/.bin/influence prayer generate --kind evening >> /var/log/influence-prayers.log 2>&1
+```
+
+Mit `--date YYYY-MM-DD` lässt sich ein Lauf gezielt wiederholen; `--force` ist
+nötig, wenn ein vorhandenes Content-Paket überschrieben werden soll. Die
+generierten Beiträge bleiben in Arbeit und müssen weiterhin in der Review-UI
+geprüft, durch QA geführt und ausdrücklich zur Veröffentlichung freigegeben
+werden.
+
 ## Qualitätssicherung
 
 ### QA für einen Beitrag

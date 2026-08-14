@@ -40,7 +40,9 @@ describe("post renderer", () => {
     await rm(tempDir, { recursive: true, force: true })
   })
 
-  it("maps the supported rubrics onto the six renderer templates", () => {
+  it("maps the supported rubrics onto the renderer templates", () => {
+    expect(resolveRenderTemplateKind("Morgengebet")).toBe("morgengebet")
+    expect(resolveRenderTemplateKind("Abendgebet")).toBe("abendgebet")
     expect(resolveRenderTemplateKind("Mit dem Wochenspruch in die Woche")).toBe(
       "wochenspruch"
     )

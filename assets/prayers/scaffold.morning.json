@@ -1,0 +1,89 @@
+{
+  "id": "post-XXXX",
+  "status": "in Arbeit",
+  "needs_input": false,
+  "source": {
+    "calendar_post_id": "post-XXXX",
+    "date": "YYYY-MM-DD",
+    "rubric": "Morgengebet",
+    "liturgical_source": ""
+  },
+  "editorial_core": {
+    "title": "Morgengebet",
+    "main_message": "Mit offenen Augen für die Not der Welt und zugleich voller Hoffnung und Vertrauen in Gottes Zukunft in den neuen Tag gehen.",
+    "audience": "breite Öffentlichkeit",
+    "tone": [
+      "ruhig",
+      "hoffnungsvoll",
+      "zugewandt"
+    ],
+    "source_notes": [
+      "Goal: Ein kurzes Morgengebet, das den neuen Tag bewusst vor Gott beginnt und ausgewählte Ereignisse der aktuellen Nachrichtenlage aufnimmt.",
+      "Column: Gebet am Morgen",
+      "Production mode: tagesaktuell; Nachrichtenlage am Morgen der Veröffentlichung prüfen.",
+      "News selection: Nicht versuchen, die Nachrichtenlage vollständig abzubilden. Zwei bis vier konkrete Situationen auswählen, die exemplarisch für das stehen, was Menschen an diesem Morgen bewegt.",
+      "Verbindliche aktuelle Bezüge: Das Gebet MUSS mindestens zwei konkrete und zum Erzeugungszeitpunkt relevante aktuelle Situationen aufnehmen. Allgemeine Formulierungen wie 'die Krisen der Welt' oder 'alle Menschen in Not' ersetzen diese Bezüge nicht.",
+      "Konkretheit aktueller Bezüge: Für jede ausgewählte Situation im Gebet erkennbar benennen, was geschehen ist oder welche konkrete Lage besteht und welche Menschen davon betroffen sind. Nur verlässliche, aktuell überprüfte Informationen verwenden; nichts erfinden.",
+      "Ausgabeprüfung aktuelle Bezüge: Vor der Ausgabe prüfen, dass editorial_core.main_message und die wesentlichen Plattformtexte die mindestens zwei konkreten aktuellen Situationen tatsächlich als Fürbitte oder Gebetsanliegen enthalten.",
+      "News sources: Aktuelle weltweite Nachrichtenlage sowie tagesschau.de und SWR Aktuell Baden-Württemberg prüfen. Regionale und internationale Perspektiven miteinander verbinden.",
+      "Current possible themes as of 2026-08-14: Krieg und Gewalt im Nahen Osten; Krieg in der Ukraine; Angriffe auf medizinische Einrichtungen und die Not von Kranken und Helfenden in Konfliktgebieten; Dürre, Trockenheit und Niedrigwasser in Baden-Württemberg.",
+      "Prayer structure: Ankommen vor Gott | den neuen Tag als Geschenk wahrnehmen | ausgewählte Not der Welt vor Gott bringen | Menschen nennen, die leiden, helfen, Verantwortung tragen oder Frieden suchen | um Mut zum eigenen Handeln bitten | mit Hoffnung und Vertrauen in Gottes Zukunft enden.",
+      "Theological key: Jürgen Moltmann. Christliche Hoffnung ist keine optimistische Einschätzung der Gegenwart, sondern lebt aus Gottes verheißener Zukunft und widerspricht deshalb Leid, Gewalt, Tod und Resignation.",
+      "Theological key: Den gekreuzigten Gott bei den Leidenden suchen. Gott nicht als distanzierten Weltenlenker darstellen, sondern als den, der Leid und Verlassenheit kennt und den Leidenden nahe ist.",
+      "Theological key: Gottes Zukunft verändert die Gegenwart. Das Gebet soll nicht zur Passivität führen, sondern zu Wachheit, Mut, Solidarität und kleinen Schritten des Friedens an diesem Tag.",
+      "Theological key: Hoffnung nicht als Vertröstung formulieren. Leid und Gewalt dürfen beim Namen genannt werden. Gerade darin soll das Gebet der Vorstellung widersprechen, dass das Gegenwärtige das letzte Wort hat.",
+      "Language: Kurze, einfache Sätze. Konkrete Bilder und Situationen statt abstrakter politischer Begriffe. Keine Nachrichtenzusammenfassung und keine lange Liste von Krisen.",
+      "Language: Möglichst wenig kirchliche Binnenbegriffe. Das Gebet soll auch für Menschen zugänglich sein, die mit traditioneller Gebetssprache wenig anfangen können.",
+      "Ending: Nicht mit Angst oder einer Aufzählung ungelöster Probleme enden, sondern mit Vertrauen: Gottes Zukunft kommt uns entgegen; deshalb können wir diesen Tag beginnen.",
+      "AI support notes: Aktuelle Nachrichten sichten und verifizieren | mindestens zwei konkrete aktuelle Situationen auswählen | diese Situationen ausdrücklich als Gebetsanliegen einarbeiten | kurzes Gebet in einfacher Sprache entwerfen | vor der Ausgabe auf konkrete aktuelle Bezüge prüfen | theologisch auf Vertröstung, Allmachtsklischees und billigen Optimismus prüfen | Caption kürzen | Alt-Text"
+    ]
+  },
+  "platforms": {
+    "facebook": {
+      "text": "",
+      "headline": ""
+    },
+    "instagram": {
+      "caption": "",
+      "carousel": []
+    },
+    "mastodon": {
+      "text": ""
+    },
+    "bluesky": {
+      "text": ""
+    },
+    "story": {
+      "slides": []
+    },
+    "reel": {
+      "hook": "",
+      "script": "",
+      "shots": [],
+      "duration_seconds": 0
+    }
+  },
+  "visual": {
+    "concept": "",
+    "flux_prompt": "",
+    "negative_prompt": "text, letters, logo, watermark",
+    "formats": [
+      "4:5",
+      "9:16",
+      "1.91:1"
+    ],
+    "alt_text": ""
+  },
+  "qa": {
+    "warnings": [
+      "Alt text must be completed before approval"
+    ],
+    "approved": false
+  },
+  "metadata": {
+    "model": "",
+    "generated_at": "",
+    "prompt_version": "1.0",
+    "assets": []
+  }
+}

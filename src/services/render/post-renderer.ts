@@ -49,8 +49,10 @@ const renderFormats = {
 
 export type RenderFormatKey = keyof typeof renderFormats
 type RenderTemplateKind =
+  | "abendgebet"
   | "gebet-oder-liedgedanke"
   | "gemeinde-lebt"
+  | "morgengebet"
   | "predigt-preview"
   | "reli-fragt"
   | "tageslosungen"
@@ -177,6 +179,14 @@ export async function renderWeekByDate(
  * @returns Stable renderer template family.
  */
 export function resolveRenderTemplateKind(rubric: string): RenderTemplateKind {
+  if (rubric === "Morgengebet") {
+    return "morgengebet"
+  }
+
+  if (rubric === "Abendgebet") {
+    return "abendgebet"
+  }
+
   if (
     rubric === "Gebet oder Lied" ||
     rubric === "Ein Lied, das mich begleitet"
@@ -643,7 +653,11 @@ async function buildHtmlDocument(
 ): Promise<string> {
   const isLandscapePost = page.variant === "landscape-post"
   const templateName =
-    page.template === "tageslosungen"
+    page.template === "morgengebet"
+      ? "morning-prayer"
+      : page.template === "abendgebet"
+        ? "evening-prayer"
+        : page.template === "tageslosungen"
       ? "tageslosungen"
       :
     page.variant === "landscape-post"
@@ -831,6 +845,37 @@ async function buildHtmlDocument(
         box-shadow: 0 24px 64px var(--shadow);
       }
 
+      .prayer-panel {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .prayer-symbol {
+        width: 74px;
+        height: 74px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        border: 3px solid var(--accent);
+        box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 14%, transparent);
+      }
+
+      .prayer-symbol-morning {
+        background: radial-gradient(circle, var(--accent) 0 42%, transparent 44%);
+      }
+
+      .prayer-symbol-evening {
+        background: linear-gradient(135deg, transparent 0 45%, var(--accent) 47% 72%, transparent 74%);
+        border-color: var(--accent);
+      }
+
+      .template-morgengebet .prayer-panel {
+        background: linear-gradient(180deg, rgba(36, 84, 106, 0.32), rgba(11, 27, 40, 0.62));
+      }
+
+      .template-abendgebet .prayer-panel {
+        background: linear-gradient(180deg, rgba(47, 42, 93, 0.34), rgba(15, 16, 41, 0.66));
+      }
+
       .format-landscape .panel {
         gap: 12px;
         padding: 24px 26px;
@@ -943,7 +988,7 @@ async function buildHtmlDocument(
     </style>
   </head>
   <body>
-    <main class="canvas ${cssClass}${page.template === "tageslosungen" ? " template-tageslosungen" : ""}">
+    <main class="canvas ${cssClass}${page.template === "tageslosungen" ? " template-tageslosungen" : ""}${page.template === "morgengebet" ? " template-morgengebet" : ""}${page.template === "abendgebet" ? " template-abendgebet" : ""}">
       <section class="layout">
         <div class="panel-meta">
           <div class="eyebrow">${escapeHtml(page.eyebrow)}</div>
@@ -1040,6 +1085,28 @@ function resolvePalette(template: RenderTemplateKind): {
   text: string
   tint: string
 } {
+  if (template === "morgengebet") {
+    return {
+      accent: "#f6c453",
+      base: "#385b70",
+      baseDeep: "#172f43",
+      muted: "#e5f0f2",
+      text: "#ffffff",
+      tint: "rgba(246, 196, 83, 0.38)"
+    }
+  }
+
+  if (template === "abendgebet") {
+    return {
+      accent: "#c8b5f2",
+      base: "#302c59",
+      baseDeep: "#13152f",
+      muted: "#e5e0f5",
+      text: "#ffffff",
+      tint: "rgba(200, 181, 242, 0.3)"
+    }
+  }
+
   if (template === "gebet-oder-liedgedanke") {
     return {
       accent: "#f0c674",
@@ -1106,6 +1173,14 @@ function resolvePalette(template: RenderTemplateKind): {
 }
 
 function resolveEyebrow(template: RenderTemplateKind): string {
+  if (template === "morgengebet") {
+    return "Morgengebet"
+  }
+
+  if (template === "abendgebet") {
+    return "Abendgebet"
+  }
+
   if (template === "gebet-oder-liedgedanke") {
     return "Gebet oder Liedgedanke"
   }

@@ -1,0 +1,97 @@
+{
+  "id": "post-XXXX",
+  "status": "in Arbeit",
+  "needs_input": false,
+  "source": {
+    "calendar_post_id": "post-XXXX",
+    "date": "YYYY-MM-DD",
+    "rubric": "Abendgebet",
+    "liturgical_source": ""
+  },
+  "editorial_core": {
+    "title": "Abendgebet",
+    "main_message": "Den vergangenen Tag mit allem Gelungenen und Unvollendeten in Gottes Hand legen und darauf vertrauen, dass Gottes Zukunft auch dort beginnt, wo unsere Möglichkeiten für heute enden.",
+    "audience": "breite Öffentlichkeit",
+    "tone": [
+      "ruhig",
+      "hoffnungsvoll",
+      "geborgen"
+    ],
+    "source_notes": [
+      "Goal: Ein kurzes Abendgebet, das hilft, auf den vergangenen Tag zurückzuschauen, Gelungenes und Schweres Gott anzuvertrauen und mit Hoffnung zur Ruhe zu kommen.",
+      "Column: Gebet am Abend",
+      "Production mode: am Nachmittag des Vortags AI-generiert; Nachrichtenlage bis dahin prüfen; anschließend redaktionell prüfen und freigeben.",
+      "News selection: Nicht versuchen, die Nachrichtenlage vollständig abzubilden. Zwei bis vier konkrete Situationen auswählen, die exemplarisch für das stehen, was Menschen und Welt an diesem Tag beschäftigt.",
+      "Verbindliche aktuelle Bezüge: Das Gebet MUSS mindestens zwei konkrete und am Erzeugungszeitpunkt relevante aktuelle Situationen des vergangenen Tages aufnehmen. Allgemeine Formulierungen wie 'die Krisen der Welt' oder 'alle Menschen in Not' ersetzen diese Bezüge nicht.",
+      "Konkretheit aktueller Bezüge: Für jede ausgewählte Situation im Gebet erkennbar benennen, was geschehen ist oder welche konkrete Lage besteht und welche Menschen davon betroffen sind. Nur verlässliche, aktuell überprüfte Informationen verwenden; nichts erfinden.",
+      "Ausgabeprüfung aktuelle Bezüge: Vor der Ausgabe prüfen, dass editorial_core.main_message und die wesentlichen Plattformtexte die mindestens zwei konkreten aktuellen Situationen tatsächlich als Fürbitte oder Gebetsanliegen enthalten.",
+      "News sources: Aktuelle weltweite Nachrichtenlage sowie tagesschau.de und SWR Aktuell Baden-Württemberg prüfen. Regionale und internationale Perspektiven miteinander verbinden.",
+      "News timing: Da der Text am Nachmittag des Vortags erzeugt wird, keine Formulierungen verwenden, die konkrete Ereignisse des Veröffentlichungstages voraussetzen. Bei schnell veränderlichen Nachrichten vorsichtig und zeitlich robust formulieren.",
+      "Prayer structure: Vor Gott zur Ruhe kommen | dankbar auf das Gute des Tages schauen | Belastendes, Versäumtes und Unvollendetes loslassen | ausgewählte Not der Welt vor Gott bringen | Menschen anvertrauen, die in dieser Nacht leiden, wachen, arbeiten, helfen oder Angst haben | um Frieden für die Welt und das eigene Herz bitten | den Tag und die Nacht Gottes Zukunft anvertrauen.",
+      "Personal perspective: Raum schaffen für das, was Menschen selbst aus diesem Tag mitbringen: Freude und Dankbarkeit, Begegnungen und Arbeit, aber auch Fehler, Streit, Sorgen, Erschöpfung und Dinge, die unerledigt geblieben sind.",
+      "Personal perspective: Keine Bilanz verlangen. Der Abend ist nicht der Zeitpunkt, an dem ein Mensch beweisen muss, dass der Tag erfolgreich war. Vor Gott darf der Tag unvollendet bleiben.",
+      "World perspective: Die Welt nicht ausblenden, wenn der eigene Tag endet. Konkret an Menschen denken, für die die Nacht keine selbstverständliche Zeit der Ruhe ist: Menschen im Krieg, auf der Flucht, in Krankenhäusern, in Sorge um andere, bei nächtlicher Arbeit oder in Angst.",
+      "Theological key: Jürgen Moltmann. Christliche Hoffnung gründet nicht darin, dass am Ende des Tages alles gut geworden wäre. Sie gründet in Gottes verheißener Zukunft, die größer ist als das, was heute gelungen oder gescheitert ist.",
+      "Theological key: Hoffnung erlaubt das Loslassen. Wir müssen die Welt nicht über Nacht selbst festhalten. Unsere Verantwortung ist wirklich, aber sie ist nicht grenzenlos. Wir dürfen das Unvollendete Gott anvertrauen.",
+      "Theological key: Gottes Zukunft widerspricht der Vorstellung, Gewalt, Leid, Schuld und Tod hätten das letzte Wort. Deshalb kann das Gebet die Dunkelheit wahrnehmen, ohne ihr das letzte Wort zu überlassen.",
+      "Theological key: Den gekreuzigten Gott bei denen suchen, die leiden und keine Ruhe finden. Gott nicht als distanzierten Weltenlenker darstellen, sondern als den, der Leid, Angst und Verlassenheit kennt und den Leidenden nahe ist.",
+      "Theological key: Die Auferstehung eröffnet Zukunft. Der kommende Morgen kann als kleines Bild dafür anklingen: Nicht weil jeder neue Tag automatisch besser wird, sondern weil Gottes Möglichkeiten nicht an den Grenzen dieses Tages enden.",
+      "Theological key: Hoffnung ist mehr als Trost. Sie hält die Sehnsucht nach Frieden, Gerechtigkeit und neuem Leben wach. Auch im Schlaf geben wir diese Hoffnung nicht auf.",
+      "Language: Kurze, einfache Sätze. Ruhiger Rhythmus. Konkrete Bilder statt abstrakter theologischer Begriffe. Das Gebet soll sich zum langsamen Lesen eignen.",
+      "Language: Möglichst wenig kirchliche Binnenbegriffe. Das Gebet soll auch für Menschen zugänglich sein, die mit traditioneller Gebetssprache wenig anfangen können.",
+      "Language: Keine Nachrichtenzusammenfassung und keine lange Liste von Krisen. Nachrichten nur dort aufnehmen, wo sie tatsächlich zum Gebet werden.",
+      "Language: Keine vorschnelle Auflösung von Leid durch Sätze wie 'Alles wird gut'. Hoffnung soll gerade dort ausgesprochen werden, wo noch nichts gut ist.",
+      "Ending: Ruhig und vertrauensvoll enden. Der betende Mensch darf den Tag loslassen und schlafen. Die Welt bleibt in Gottes Hand. Gottes Zukunft kommt auch durch diese Nacht auf uns zu.",
+      "Possible final movement: Gott, was heute war, legen wir in deine Hand. Was gut war. Was wehgetan hat. Was unfertig bleibt. Uns selbst und diese unruhige Welt. Schenk uns Frieden für diese Nacht und halte deine Hoffnung in uns wach.",
+      "AI support notes: Aktuelle Nachrichten des Tages sichten und verifizieren | mindestens zwei konkrete aktuelle Situationen auswählen | diese Situationen ausdrücklich als Gebetsanliegen einarbeiten | kurzes Abendgebet in einfacher Sprache entwerfen | vor der Ausgabe auf konkrete aktuelle Bezüge und zeitliche Robustheit bis zum Folgetag prüfen | theologisch auf Vertröstung, Allmachtsklischees und billigen Optimismus prüfen | Caption kürzen | Alt-Text"
+    ]
+  },
+  "platforms": {
+    "facebook": {
+      "text": "",
+      "headline": ""
+    },
+    "instagram": {
+      "caption": "",
+      "carousel": []
+    },
+    "mastodon": {
+      "text": ""
+    },
+    "bluesky": {
+      "text": ""
+    },
+    "story": {
+      "slides": []
+    },
+    "reel": {
+      "hook": "",
+      "script": "",
+      "shots": [],
+      "duration_seconds": 0
+    }
+  },
+  "visual": {
+    "concept": "",
+    "flux_prompt": "",
+    "negative_prompt": "text, letters, logo, watermark",
+    "formats": [
+      "4:5",
+      "9:16",
+      "1.91:1"
+    ],
+    "alt_text": ""
+  },
+  "qa": {
+    "warnings": [
+      "Alt text must be completed before approval"
+    ],
+    "approved": false
+  },
+  "metadata": {
+    "model": "",
+    "generated_at": "",
+    "prompt_version": "1.0",
+    "assets": []
+  }
+}
