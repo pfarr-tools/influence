@@ -93,6 +93,13 @@ Influence liest Umgebungswerte aus:
 
 ### Veröffentlichung und Service-Adapter
 
+- `WEBHOOK_URL`
+  Optionaler Endpunkt. Nach `influence publish run` wird er per POST benachrichtigt,
+  sobald mindestens ein Beitrag erfolgreich veröffentlicht wurde.
+
+- `WEBHOOK_SECRET`
+  Secret für die Benachrichtigung. Es wird als `Authorization: Bearer ...` gesendet.
+
 `PUBLICATION_PLATFORMS` bestimmt, für welche Plattformen Influence Jobs anlegt.
 Eine Plattform wird automatisch veröffentlicht, wenn ihre Zugangsdaten
 vollständig konfiguriert sind. Für Bluesky ist das ein API-Endpunkt und ein

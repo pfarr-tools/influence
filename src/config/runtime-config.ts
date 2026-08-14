@@ -19,6 +19,8 @@ export interface RuntimeConfig {
   publicationDefaultTime: string
   publicationPlatforms: string
   publicationTimezone: string
+  webhookSecret?: string
+  webhookUrl?: string
   publicBaseUrl?: string
   reelSubtitleFontName: string
   reelSubtitleFontsDir: string
@@ -43,6 +45,8 @@ export function loadRuntimeConfig(): RuntimeConfig {
     publicationDefaultTime: readEnv("PUBLICATION_DEFAULT_TIME", "07:00"),
     publicationPlatforms: readEnv("PUBLICATION_PLATFORMS", "facebook,instagram,mastodon"),
     publicationTimezone: readEnv("PUBLICATION_TIMEZONE", readEnv("TZ", "Europe/Berlin")),
+    webhookSecret: readEnv("WEBHOOK_SECRET", ""),
+    webhookUrl: readEnv("WEBHOOK_URL", ""),
     publicBaseUrl: readEnv("PUBLIC_BASE_URL", ""),
     reelSubtitleFontName: readEnv(
       "REEL_SUBTITLE_FONT_NAME",

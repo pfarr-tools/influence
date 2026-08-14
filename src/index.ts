@@ -62,6 +62,7 @@ import {
   buildFacebookAssistant,
   PublicationJobStore,
   PublishingService,
+  notifyPublicationWebhook,
   resolveScheduleTime,
   type PublicationPlatform
 } from "./services/publishing/index.js"
@@ -162,6 +163,10 @@ publishCommand.command("run").description("Run due publication jobs").action(asy
         }
       }
     )
+    const publishedJobs = jobs.filter((job) => job.status === "published")
+    if (runtimeConfig.webhookUrl && publishedJobs.length > 0) {
+      await notifyPublicationWebhook(runtimeConfig.webhookUrl, runtimeConfig.webhookSecret ?? "", publishedJobs)
+    }
     if (jobs.length === 0) console.log("No publication jobs due.")
   } catch (error) { handleCliError(error) }
 })
