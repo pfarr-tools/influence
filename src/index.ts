@@ -1,4 +1,5 @@
 import { Command, InvalidArgumentError } from "commander"
+import { resolve } from "node:path"
 
 import {
   getPostsForMonth,
@@ -70,6 +71,7 @@ import { createMastodonOAuthService } from "./services/publishing/mastodon-adapt
 import { createThreadsOAuthService } from "./services/publishing/threads-adapter.js"
 import { createFacebookOAuthService } from "./services/publishing/facebook-adapter.js"
 import { syncContentRepository } from "./services/content/content-repository.js"
+import { scheduleTageslosungen } from "./services/losungen/tageslosungen-service.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -91,6 +93,49 @@ const renderCommand = program.command("render").description("Render commands")
 const chatCommand = program.command("chat").description("Discuss and revise JSON content")
 const reviewCommand = program.command("review").description("Local review UI")
 const publishCommand = program.command("publish").description("Publication and scheduling commands")
+const losungenCommand = program.command("losungen").description("Tageslosungen commands")
+
+losungenCommand
+  .command("schedule")
+  .option("--year <year>", "Jahr der Losungen", String(new Date().getFullYear()))
+  .option("--force", "Vorhandene Tageslosungen neu erstellen", false)
+  .action(async (options: { year: string; force?: boolean }) => {
+    try {
+      const year = Number(options.year)
+      if (!Number.isInteger(year) || year < 1900 || year > 2200) throw new InvalidArgumentError("Jahr muss zwischen 1900 und 2200 liegen.")
+      const result = await scheduleTageslosungen({
+        assetsRoot: resolve("assets/losungen"),
+        force: options.force ?? false,
+        outputRoot: defaultOutputRoot,
+        platforms: runtimeConfig.publicationPlatforms,
+        publicationTimezone: runtimeConfig.publicationTimezone,
+        sourceRoot: resolve("assets/losungen"),
+        year
+      }, {
+        pageRenderClient: createPlaywrightHtmlRenderClient(),
+        onProgress: (event) => {
+          if (event.type === "source-loaded") {
+            console.log(`[Tageslosungen] Quelle geladen: ${event.total} aktuelle Einträge für ${event.year}; ${event.ignoredPast} vergangene Einträge ignoriert.`)
+          } else if (event.type === "entry-start") {
+            console.log(`[${event.index}/${event.total}] ${event.entry.date} ${event.entry.weekday}: ${event.entry.verse}`)
+          } else if (event.type === "skipped") {
+            console.log(`  übersprungen: bereits vorhanden`)
+          } else if (event.type === "content-created") {
+            console.log(`  ✓ Content erstellt, freigegeben und Publikation bestätigt`)
+          } else if (event.type === "background-created") {
+            console.log(`  ✓ ${event.format}-Hintergrund ausgewählt und kopiert`)
+          } else if (event.type === "rendered") {
+            console.log(`  ✓ Social-Bilder gerendert: ${event.formats.join(", ")}`)
+          } else if (event.type === "platform-scheduled") {
+            console.log(`  ✓ ${event.platform} geplant für ${event.scheduledAt}`)
+          } else if (event.type === "entry-complete") {
+            console.log(`  ✓ Tageslosung abgeschlossen (${event.index}/${event.total})`)
+          }
+        }
+      })
+      console.log(`${result.created} Tageslosungen erstellt und geplant; ${result.skipped} übersprungen.`)
+    } catch (error) { handleCliError(error) }
+  })
 
 program.hook("postAction", async (_thisCommand, actionCommand) => {
   await syncContentRepository(

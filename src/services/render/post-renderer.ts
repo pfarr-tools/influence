@@ -31,6 +31,13 @@ const renderFormats = {
     label: "Instagram Feed",
     width: 1080
   },
+  square: {
+    assetSlug: "1x1",
+    cssClass: "format-square",
+    height: 1080,
+    label: "Square",
+    width: 1080
+  },
   "instagram-story": {
     assetSlug: "9x16",
     cssClass: "format-story",
@@ -40,12 +47,13 @@ const renderFormats = {
   }
 } as const
 
-type RenderFormatKey = keyof typeof renderFormats
+export type RenderFormatKey = keyof typeof renderFormats
 type RenderTemplateKind =
   | "gebet-oder-liedgedanke"
   | "gemeinde-lebt"
   | "predigt-preview"
   | "reli-fragt"
+  | "tageslosungen"
   | "wissenskarussell"
   | "wochenspruch"
 type RenderVariant = "feed-card" | "landscape-post" | "story-slide"
@@ -56,6 +64,7 @@ type RenderVariant = "feed-card" | "landscape-post" | "story-slide"
 export interface RenderPostOptions {
   force: boolean
   outputRoot: string
+  formats?: RenderFormatKey[]
 }
 
 /**
@@ -102,6 +111,7 @@ interface RenderPageSpec {
   pageIndex: number
   pageLabel: string
   secondaryText?: string
+  secondaryCitation?: string
   titleCard?: boolean
   template: RenderTemplateKind
   title: string
@@ -190,6 +200,10 @@ export function resolveRenderTemplateKind(rubric: string): RenderTemplateKind {
     return "gemeinde-lebt"
   }
 
+  if (rubric === "Tageslosungen") {
+    return "tageslosungen"
+  }
+
   if (
     rubric === "Mit dem Wochenspruch in die Woche" ||
     rubric === "Wochenspruch – meditativ"
@@ -258,7 +272,8 @@ async function renderCalendarPost(
   const allDocuments = await buildRenderDocumentsForPost(
     post,
     content,
-    options.outputRoot
+    options.outputRoot,
+    options.formats
   )
   const renders: RenderArtifactResult[] = []
   const aggregateWarnings = new Set<string>()
@@ -346,11 +361,12 @@ async function renderCalendarPost(
 async function buildRenderDocumentsForPost(
   post: CalendarPost,
   content: ContentPackage,
-  outputRoot: string
+  outputRoot: string,
+  formats?: RenderFormatKey[]
 ): Promise<RenderPageDocument[]> {
   const documents: RenderPageDocument[] = []
 
-  for (const format of Object.keys(renderFormats) as RenderFormatKey[]) {
+  for (const format of formats ?? (Object.keys(renderFormats).filter((key) => key !== "square") as RenderFormatKey[])) {
     documents.push(
       ...(await buildRenderDocuments(post, content, format, outputRoot))
     )
@@ -368,7 +384,7 @@ async function buildRenderDocuments(
   const template = resolveRenderTemplateKind(post.rubrik)
   const palette = resolvePalette(template)
   const dimensions = renderFormats[format]
-  const backgroundImagePath = resolveBackgroundAssetPath(
+  const backgroundImagePath = await resolveBackgroundAssetPath(
     outputRoot,
     post,
     format
@@ -406,7 +422,7 @@ function buildRenderPageSpecs(
     return [buildLandscapePageSpec(post, content, format)]
   }
 
-  if (format === "instagram-feed") {
+  if (format === "instagram-feed" || format === "square") {
     return buildFeedPageSpecs(post, content, format)
   }
 
@@ -443,6 +459,25 @@ function buildFeedPageSpecs(
   format: RenderFormatKey
 ): RenderPageSpec[] {
   const template = resolveRenderTemplateKind(post.rubrik)
+  if (template === "tageslosungen") {
+    const sourceNote = (prefix: string) => content.editorial_core.source_notes.find((note) => note.startsWith(prefix))?.replace(prefix, "").trim() ?? ""
+    return [{
+      citation: sourceNote("Losungsvers:"),
+      eyebrow: "",
+      format,
+      pageCount: 1,
+      pageIndex: 1,
+      pageLabel: renderFormats[format].label,
+      primaryText: content.editorial_core.main_message,
+      secondaryText: sourceNote("Lehrtext:"),
+      secondaryCitation: sourceNote("Lehrtextvers:"),
+      template,
+      title: content.editorial_core.title,
+      variant: "feed-card",
+      width: renderFormats[format].width,
+      height: renderFormats[format].height
+    }]
+  }
   const cards = content.platforms.instagram.carousel.filter(
     (card) => card.text.trim().length > 0
   )
@@ -517,6 +552,26 @@ function buildStoryPageSpecs(
     .map((slide) => slide.text.trim())
     .filter((slide) => slide.length > 0)
 
+  if (template === "tageslosungen") {
+    const sourceNote = (prefix: string) => content.editorial_core.source_notes.find((note) => note.startsWith(prefix))?.replace(prefix, "").trim() ?? ""
+    return [{
+      citation: sourceNote("Losungsvers:"),
+      eyebrow: "",
+      format,
+      pageCount: 1,
+      pageIndex: 1,
+      pageLabel: renderFormats[format].label,
+      primaryText: content.editorial_core.main_message,
+      secondaryText: sourceNote("Lehrtext:"),
+      secondaryCitation: sourceNote("Lehrtextvers:"),
+      template,
+      title: content.editorial_core.title,
+      variant: "story-slide",
+      width: renderFormats[format].width,
+      height: renderFormats[format].height
+    }]
+  }
+
   if (slides.length > 0) {
     const weeklyVerse = resolveWeeklyVerseText(content)
 
@@ -588,6 +643,9 @@ async function buildHtmlDocument(
 ): Promise<string> {
   const isLandscapePost = page.variant === "landscape-post"
   const templateName =
+    page.template === "tageslosungen"
+      ? "tageslosungen"
+      :
     page.variant === "landscape-post"
       ? "facebook-mastodon"
       : page.variant === "feed-card"
@@ -605,6 +663,7 @@ async function buildHtmlDocument(
           ? ""
           : formatPrimaryTextHtml(page.primaryText),
       secondaryText: isLandscapePost ? "" : (page.secondaryText ?? ""),
+      secondaryCitation: isLandscapePost ? "" : (page.secondaryCitation ?? ""),
       titleCard: page.titleCard ?? false,
       title: page.title,
       titleNote: isLandscapePost ? "" : (page.titleNote ?? "")
@@ -688,6 +747,35 @@ async function buildHtmlDocument(
       .format-landscape .layout {
         padding: 42px 48px;
         gap: 18px;
+      }
+
+      .format-square .layout,
+      .format-story .layout {
+        justify-content: center;
+      }
+
+      .format-square .panel,
+      .format-story .panel {
+        margin-top: 0;
+      }
+
+      .format-square .tageslosungen-panel,
+      .format-story .tageslosungen-panel {
+        width: 100%;
+      }
+
+      .template-tageslosungen .sender-mark {
+        position: absolute;
+        right: 56px;
+        bottom: 42px;
+        margin: 0;
+      }
+
+      .template-tageslosungen .panel {
+        background: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
+        border-radius: 0;
       }
 
       .panel-meta {
@@ -855,7 +943,7 @@ async function buildHtmlDocument(
     </style>
   </head>
   <body>
-    <main class="canvas ${cssClass}">
+    <main class="canvas ${cssClass}${page.template === "tageslosungen" ? " template-tageslosungen" : ""}">
       <section class="layout">
         <div class="panel-meta">
           <div class="eyebrow">${escapeHtml(page.eyebrow)}</div>
@@ -906,20 +994,17 @@ async function assertWritableRenderTargets(
   }
 }
 
-function resolveBackgroundAssetPath(
+async function resolveBackgroundAssetPath(
   outputRoot: string,
   post: CalendarPost,
   format: RenderFormatKey
-): string | undefined {
-  const assetPath = join(
-    outputRoot,
-    post.datum,
-    post.id,
-    "assets",
-    `background-${renderFormats[format].assetSlug}.webp`
-  )
-
-  return resolve(assetPath)
+): Promise<string | undefined> {
+  const basePath = join(outputRoot, post.datum, post.id, "assets", `background-${renderFormats[format].assetSlug}`)
+  for (const extension of ["webp", "jpg", "jpeg", "png"]) {
+    const candidate = resolve(`${basePath}.${extension}`)
+    if (await pathExists(candidate)) return candidate
+  }
+  return undefined
 }
 
 async function buildBackgroundCss(
