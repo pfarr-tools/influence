@@ -67,6 +67,7 @@ import {
 } from "./services/publishing/index.js"
 import { createMastodonOAuthService } from "./services/publishing/mastodon-adapter.js"
 import { createThreadsOAuthService } from "./services/publishing/threads-adapter.js"
+import { createFacebookOAuthService } from "./services/publishing/facebook-adapter.js"
 import { syncContentRepository } from "./services/content/content-repository.js"
 
 const program = new Command()
@@ -1015,6 +1016,7 @@ reviewCommand
         pageRenderClient: createPlaywrightHtmlRenderClient(),
         mastodonOAuth: createMastodonOAuthService(),
         threadsOAuth: createThreadsOAuthService(),
+        facebookOAuth: createFacebookOAuthService(),
         runtimeConfig
       })
 

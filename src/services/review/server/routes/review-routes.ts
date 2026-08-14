@@ -56,6 +56,7 @@ import {
 import { isValidationError, respondJson } from "../responses/json-response.js"
 import { mastodonOAuthCallbackPath, type MastodonOAuthService } from "../../../publishing/mastodon-adapter.js"
 import { threadsOAuthCallbackPath, type ThreadsOAuthService } from "../../../publishing/threads-adapter.js"
+import { facebookOAuthCallbackPath, type FacebookOAuthService } from "../../../publishing/facebook-adapter.js"
 import { syncContentRepository } from "../../../content/content-repository.js"
 
 export interface ReviewServerDependencies extends ContentGeneratorDependencies {
@@ -66,6 +67,7 @@ export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   runtimeConfig: RuntimeConfig
   mastodonOAuth?: MastodonOAuthService
   threadsOAuth?: ThreadsOAuthService
+  facebookOAuth?: FacebookOAuthService
 }
 
 const frontendRoot = resolve(
@@ -133,6 +135,23 @@ async function routeReviewRequest(
   if (requestUrl.pathname === "/admin/threads/oauth/start" && method === "GET") {
     if (!dependencies.threadsOAuth) { respondJson(response, 503, { error: "Threads-OAuth ist nicht konfiguriert." }); return }
     response.writeHead(302, { location: dependencies.threadsOAuth.begin() }); response.end(); return
+  }
+
+  if (requestUrl.pathname === "/admin/facebook/oauth/start" && method === "GET") {
+    if (!dependencies.facebookOAuth) { respondJson(response, 503, { error: "Facebook-OAuth ist nicht konfiguriert." }); return }
+    response.writeHead(302, { location: dependencies.facebookOAuth.begin() }); response.end(); return
+  }
+
+  if (requestUrl.pathname === facebookOAuthCallbackPath && method === "GET") {
+    if (!dependencies.facebookOAuth) { respondHtml(response, 503, "Facebook-OAuth ist nicht konfiguriert."); return }
+    const oauthError = requestUrl.searchParams.get("error")
+    if (oauthError) { respondHtml(response, 400, `Facebook-OAuth abgebrochen: ${escapeHtml(oauthError)}`); return }
+    const code = requestUrl.searchParams.get("code")
+    const state = requestUrl.searchParams.get("state")
+    if (!code || !state) { respondHtml(response, 400, "Facebook-OAuth: Code oder Status fehlt."); return }
+    const token = await dependencies.facebookOAuth.complete(code, state)
+    respondHtml(response, 200, `Facebook-OAuth erfolgreich. Trage diesen Token als <code>FACEBOOK_ACCESS_TOKEN</code> in <code>config/.env</code> ein und starte Influence neu:<pre>${escapeHtml(token.accessToken)}</pre>${token.expiresIn ? `<p>Gültigkeit: ${escapeHtml(String(token.expiresIn))} Sekunden</p>` : ""}`)
+    return
   }
 
   if (requestUrl.pathname === threadsOAuthCallbackPath && method === "GET") {

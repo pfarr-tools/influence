@@ -99,17 +99,24 @@ export class InstagramPostPublicationAdapter implements PublicationAdapter {
   }
 
   private async publishContainer(containerId: string): Promise<string> {
-    const body = new URLSearchParams({ creation_id: containerId, access_token: this.config.accessToken })
-    const response = await this.fetchImpl(this.endpoint("/media_publish"), {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body
-    })
-    const result = await readJsonResponse(response)
-    if (!response.ok || !isRecord(result) || typeof result.id !== "string") {
-      throw new Error(`instagram: Container konnte nicht veröffentlicht werden (${response.status}): ${getApiError(result)}`)
+    const attempts = 4
+    const delay = this.config.pollIntervalMs ?? 2000
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) await this.sleepImpl(delay)
+      const body = new URLSearchParams({ creation_id: containerId, access_token: this.config.accessToken })
+      const response = await this.fetchImpl(this.endpoint("/media_publish"), {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body
+      })
+      const result = await readJsonResponse(response)
+      if (response.ok && isRecord(result) && typeof result.id === "string") return result.id
+      const apiError = getApiError(result)
+      if (!apiError.toLowerCase().includes("media id is not available") || attempt === attempts - 1) {
+        throw new Error(`instagram: Container konnte nicht veröffentlicht werden (${response.status}): ${apiError}`)
+      }
     }
-    return result.id
+    throw new Error("instagram: Container konnte nicht veröffentlicht werden.")
   }
 
   protected async waitUntilFinished(containerId: string): Promise<void> {

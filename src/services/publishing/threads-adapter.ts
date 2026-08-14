@@ -67,8 +67,7 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
       for (const [index, assetPath] of assetPaths.entries()) {
         const child = await this.createContainer({
           media_type: "IMAGE",
-          image_url: this.publicAssetUrl(assetPath, payload.job.contentDate, payload.job.postId),
-          alt_text: payload.job.altTexts[index] ?? payload.job.altTexts[0] ?? ""
+          image_url: this.publicAssetUrl(assetPath, payload.job.contentDate, payload.job.postId)
         })
         await this.waitUntilFinished(child)
         children.push(child)
@@ -81,8 +80,7 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
         ? await this.createContainer({
             media_type: "IMAGE",
             image_url: this.publicAssetUrl(assetPaths[0]!, payload.job.contentDate, payload.job.postId),
-            text: payload.job.text,
-            alt_text: payload.job.altTexts[0] ?? ""
+            text: payload.job.text
           })
         : await this.createContainer({ media_type: "CAROUSEL", children: children.join(","), text: payload.job.text })
 
