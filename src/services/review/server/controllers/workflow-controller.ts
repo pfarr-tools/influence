@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { getPostById, getWeekForDate } from "../../../calendar/calendar-service.js"
 import { scaffoldPostById, scaffoldWeekByDate } from "../../../content/content-scaffolder.js"
 import { generateContentForWeek } from "../../../content/content-generator.js"
+import { markContentAsGenerated } from "../../../content/content-manual.js"
 import { runQaForPost, runQaForWeek } from "../../../content/content-qa.js"
 import {
   generateImagesForPost,
@@ -246,6 +247,16 @@ export async function runPostAction(
         dependencies
       )
       return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Inhalt generiert." }])
+    case "mark-generated":
+      await markContentAsGenerated(
+        dependencies.calendar,
+        postId,
+        dependencies.runtimeConfig.outputDir
+      )
+      return getPostDetail(postId, dependencies, [{
+        kind: "notice",
+        text: "Manuell verfasster Inhalt als generiert markiert."
+      }])
     case "edit": {
       const body = postEditRequestSchema.parse(await parseJsonBody(request))
       await updateReviewPost(

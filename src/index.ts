@@ -55,6 +55,7 @@ import {
   isPublicationApproved,
   readContentPackage
 } from "./services/content/content-storage.js"
+import { markContentAsGenerated } from "./services/content/content-manual.js"
 import {
   createConfiguredAdapters,
   DryRunPublicationAdapter,
@@ -276,6 +277,25 @@ contentCommand
       }
     }
   )
+
+contentCommand
+  .command("mark-generated")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .description("Mark manually authored content as generated")
+  .action(async (options: { postId: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const content = await markContentAsGenerated(
+        calendar,
+        options.postId,
+        defaultOutputRoot
+      )
+      console.log(`${options.postId}: content marked as generated (${content.metadata.generated_at})`)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
 
 contentCommand
   .command("generate-week")

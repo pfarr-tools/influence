@@ -20,6 +20,7 @@ const reviewActionSchema = z.enum([
   "generate",
   "images",
   "images-reel",
+  "mark-generated",
   "qa",
   "render",
   "render-reel",

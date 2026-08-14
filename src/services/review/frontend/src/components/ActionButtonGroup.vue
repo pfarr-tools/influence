@@ -131,6 +131,7 @@ function actionIcon(action: string): string {
   return {
     scaffold: "＋",
     generate: "▤",
+    "mark-generated": "✎",
     qa: "!",
     approve: "✓",
     images: "▧",

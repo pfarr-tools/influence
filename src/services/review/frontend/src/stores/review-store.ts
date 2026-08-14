@@ -158,6 +158,8 @@ function getPostActionLoadingMessage(
   switch (action) {
     case "generate":
       return force ? "Beitrag wird neu generiert ..." : "Beitrag wird generiert ..."
+    case "mark-generated":
+      return "Manueller Inhalt wird als generiert markiert ..."
     case "images":
       return force ? "Bilder werden neu erzeugt ..." : "Bilder werden erzeugt ..."
     case "images-reel":

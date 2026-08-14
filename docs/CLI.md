@@ -105,6 +105,9 @@ influence content scaffold-week --date 2026-08-10
 
 ```bash
 influence content generate --post-id post-0001
+
+# Mark manually authored content as generated
+influence content mark-generated --post-id post-0001
 ```
 
 Wichtige Optionen:

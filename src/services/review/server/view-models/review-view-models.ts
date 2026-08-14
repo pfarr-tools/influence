@@ -20,6 +20,7 @@ const reviewActionOrder: ReviewActionApi[] = [
   "edit",
   "scaffold",
   "generate",
+  "mark-generated",
   "qa",
   "approve",
   "images",
@@ -46,6 +47,7 @@ const reviewActionLabels: Record<ReviewActionApi, string> = {
   edit: "Speichern",
   export: "Exportieren",
   generate: "Generieren",
+  "mark-generated": "Als manuell erstellt markieren",
   images: "Bilder erzeugen",
   "images-reel": "Reelbilder erzeugen",
   qa: "Prüfen",
@@ -469,6 +471,8 @@ function isReviewActionCompleted(
   switch (action) {
     case "generate":
       return workflow.contentGenerated
+    case "mark-generated":
+      return workflow.contentGenerated
     case "images":
       return workflow.imagesGenerated
     case "images-reel":
@@ -523,6 +527,8 @@ function isReviewActionDisabled(
   switch (action) {
     case "approve":
       return !workflow.qaReadyForApproval
+    case "mark-generated":
+      return workflow.contentGenerated
     case "export":
       return !workflow.rendered
     case "images":
