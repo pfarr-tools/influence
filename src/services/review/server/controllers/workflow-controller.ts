@@ -349,7 +349,8 @@ export async function runPostAction(
       await approveReviewPost(
         dependencies.calendar,
         postId,
-        dependencies.runtimeConfig.outputDir
+        dependencies.runtimeConfig.outputDir,
+        { force }
       )
       return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Beitrag freigegeben." }])
     case "approve-publication":
@@ -357,7 +358,8 @@ export async function runPostAction(
         dependencies.calendar,
         postId,
         dependencies.runtimeConfig.outputDir,
-        dependencies.runtimeConfig
+        dependencies.runtimeConfig,
+        { force }
       )
       return getPostDetail(postId, dependencies, [{ kind: "notice", text: "Veröffentlichung freigegeben und geplant." }])
     default:

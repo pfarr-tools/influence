@@ -494,6 +494,24 @@
                   {{ error }}
                 </li>
               </ul>
+              <button
+                v-if="!post.qaSummary.readyForApproval"
+                class="btn btn-outline-danger btn-sm"
+                type="button"
+                :disabled="reviewStore.loading"
+                @click="forceApprove"
+              >
+                Trotz Fehlern freigeben (Force)
+              </button>
+              <button
+                v-if="!post.publicationApproved && post.workflow.contentGenerated"
+                class="btn btn-outline-danger btn-sm ms-2"
+                type="button"
+                :disabled="reviewStore.loading"
+                @click="forceApprovePublication"
+              >
+                Veröffentlichung trotz Fehlern freigeben (Force)
+              </button>
             </div>
           </div>
         </section>
@@ -711,6 +729,22 @@ async function handleAction(payload: { action: string; force: boolean }) {
     undefined,
     { force }
   )
+}
+
+async function forceApprove() {
+  if (!window.confirm("Beitrag trotz der QA-Fehler freigeben?")) {
+    return
+  }
+
+  await triggerPostAction(postId.value, "approve", undefined, { force: true })
+}
+
+async function forceApprovePublication() {
+  if (!window.confirm("Veröffentlichung trotz der QA-Fehler freigeben?")) {
+    return
+  }
+
+  await triggerPostAction(postId.value, "approve-publication", undefined, { force: true })
 }
 
 async function savePost() {
