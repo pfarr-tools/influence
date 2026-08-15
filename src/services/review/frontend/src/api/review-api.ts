@@ -27,7 +27,9 @@ export async function fetchWeek(
   weekDate: string
 ): Promise<WeekOverviewResponse> {
   return readJson<WeekOverviewResponse>(
-    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}`)
+    await fetch(`/api/weeks/${encodeURIComponent(weekDate)}`, {
+      cache: "no-store"
+    })
   )
 }
 

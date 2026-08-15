@@ -211,6 +211,13 @@ async function generateContentForCalendarPost(
   }
 
   const modelResponse = await modelClient.generateContent(requestPreview)
+
+  if (requestPreview.webSearch && !modelResponse.webSearchPerformed) {
+    throw new CalendarValidationError(
+      `Current-event lookup did not run for prayer post "${post.id}". No content was written.`
+    )
+  }
+
   await writeJsonFile(outputPaths.rawResponsePath, modelResponse.rawResponse)
 
   const validation = contentPackageSchema.safeParse(modelResponse.parsedContent)

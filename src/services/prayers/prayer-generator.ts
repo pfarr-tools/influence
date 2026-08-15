@@ -38,10 +38,6 @@ export async function generatePrayer(
     throw new Error(`Could not add prayer post ${postId} to the calendar.`)
   }
 
-  if (!options.dryRun) {
-    await writeJsonFile(options.calendarPath, calendar)
-  }
-
   const result = await generateContentForPost(
     calendar,
     post.id,
@@ -55,6 +51,10 @@ export async function generatePrayer(
     },
     dependencies
   )
+
+  if (!options.dryRun) {
+    await writeJsonFile(options.calendarPath, calendar)
+  }
 
   return { date, kind: options.kind, postId, result }
 }

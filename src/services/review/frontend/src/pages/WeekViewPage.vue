@@ -278,7 +278,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import type { WeekActionApi } from "../../../server/contracts/review-contracts.js"
 import ActionButtonGroup from "../components/ActionButtonGroup.vue"
@@ -324,6 +324,8 @@ const idea = ref({ date: "", rubric: "", title: "" })
 const dragState = ref<DragState | null>(null)
 const actionsMenu = ref<HTMLDetailsElement | null>(null)
 const lastWeekStorageKey = "influence.review.last-week"
+const weekRefreshIntervalMs = 30_000
+let weekRefreshTimer: ReturnType<typeof window.setInterval> | undefined
 
 const weekDays = computed(() => {
   const selectedWeek = week.value?.selectedWeek
@@ -391,6 +393,17 @@ const nextWeekDate = computed(() => {
 
 onMounted(async () => {
   await loadCurrentWeek()
+  weekRefreshTimer = window.setInterval(() => {
+    void refreshCurrentWeek()
+  }, weekRefreshIntervalMs)
+  document.addEventListener("visibilitychange", refreshWhenVisible)
+})
+
+onUnmounted(() => {
+  if (weekRefreshTimer !== undefined) {
+    window.clearInterval(weekRefreshTimer)
+  }
+  document.removeEventListener("visibilitychange", refreshWhenVisible)
 })
 
 watch(
@@ -415,6 +428,20 @@ async function loadCurrentWeek() {
   idea.value.date = reviewStore.week?.selectedWeek.startDate ?? ""
   if (!routeWeekDate && selectedWeekDate.value) {
     window.localStorage.setItem(lastWeekStorageKey, selectedWeekDate.value)
+  }
+}
+
+async function refreshCurrentWeek() {
+  if (!selectedWeekDate.value || reviewStore.loading || document.visibilityState !== "visible") {
+    return
+  }
+
+  await loadWeek(selectedWeekDate.value)
+}
+
+function refreshWhenVisible() {
+  if (document.visibilityState === "visible") {
+    void refreshCurrentWeek()
   }
 }
 

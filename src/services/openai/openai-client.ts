@@ -29,6 +29,7 @@ export interface ContentModelResponse {
   parsedContent: unknown
   rawResponse: unknown
   usage: TokenUsage
+  webSearchPerformed?: boolean
 }
 
 /**
@@ -79,7 +80,10 @@ export function createOpenAIContentClient(apiKey: string): ContentModelClient {
           inputTokens: response.usage?.input_tokens ?? 0,
           outputTokens: response.usage?.output_tokens ?? 0,
           totalTokens: response.usage?.total_tokens ?? 0
-        }
+        },
+        webSearchPerformed: input.webSearch === true
+          ? response.output.some((item) => item.type === "web_search_call")
+          : false
       }
     }
   }

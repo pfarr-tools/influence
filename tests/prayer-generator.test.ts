@@ -62,9 +62,30 @@ describe("prayer generator", () => {
     expect(result.result.dryRunRequest?.webSearch).toBe(true)
     expect(await readFile(calendarPath, "utf8")).toBe(before)
   })
+
+  it("does not persist an evening prayer when web search did not run", async () => {
+    const scaffold = JSON.parse(await readFile("assets/prayers/scaffold.evening.json", "utf8"))
+    const before = await readFile(calendarPath, "utf8")
+
+    await expect(generatePrayer({
+      calendarPath,
+      date: "2026-08-15",
+      dryRun: false,
+      force: false,
+      kind: "evening",
+      language: "de",
+      model: "test-model",
+      outputRoot: tempDir,
+      publicationTimezone: "Europe/Berlin"
+    }, { modelClient: mockClient(scaffold, false) })).rejects.toThrow(
+      "Current-event lookup did not run"
+    )
+
+    expect(await readFile(calendarPath, "utf8")).toBe(before)
+  })
 })
 
-function mockClient(content: unknown): ContentModelClient {
+function mockClient(content: unknown, webSearchPerformed = true): ContentModelClient {
   const generated = JSON.parse(JSON.stringify(content)) as {
     id: string
     source: { calendar_post_id: string; date: string }
@@ -79,7 +100,8 @@ function mockClient(content: unknown): ContentModelClient {
         model: "test-model",
         parsedContent: generated,
         rawResponse: { id: "test-response" },
-        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        webSearchPerformed
       }
     }
   }
