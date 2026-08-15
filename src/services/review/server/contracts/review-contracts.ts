@@ -107,6 +107,30 @@ const weekOverviewResponseSchema = z.object({
   )
 })
 
+const publicationQueueJobSchema = z.object({
+  assets: z.array(z.object({ href: z.string(), label: z.string() })),
+  contentDate: z.string(),
+  format: z.string(),
+  id: z.string(),
+  platform: z.string(),
+  postHref: z.string().nullable(),
+  postId: z.string(),
+  postTheme: z.string(),
+  scheduledAt: z.string().nullable(),
+  status: z.string(),
+  text: z.string(),
+  timezone: z.string()
+})
+
+const publicationQueueResponseSchema = z.object({
+  jobs: z.array(publicationQueueJobSchema),
+  notice: z.string().optional()
+})
+
+const publicationQueueScheduleRequestSchema = z.object({
+  scheduledAt: z.string().datetime({ offset: true })
+})
+
 const previewItemSchema = z.object({
   href: z.string(),
   label: z.string()
@@ -335,6 +359,8 @@ export const publicationPlatformSchemaPublic = z.enum([
 ])
 export const workflowSchemaPublic = workflowSchema
 export const weekOverviewResponseSchemaPublic = weekOverviewResponseSchema
+export const publicationQueueResponseSchemaPublic = publicationQueueResponseSchema
+export const publicationQueueScheduleRequestSchemaPublic = publicationQueueScheduleRequestSchema
 export const postDetailResponseSchemaPublic = postDetailResponseSchema
 export const chatSessionResponseSchemaPublic = chatSessionResponseSchema
 
@@ -350,3 +376,4 @@ export type ReviewActionApi = z.infer<typeof reviewActionSchema>
 export type ReviewActionButton = z.infer<typeof reviewActionButtonSchema>
 export type WeekActionApi = z.infer<typeof weekActionSchema>
 export type WeekOverviewResponse = z.infer<typeof weekOverviewResponseSchema>
+export type PublicationQueueResponse = z.infer<typeof publicationQueueResponseSchema>

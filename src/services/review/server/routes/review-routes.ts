@@ -17,6 +17,7 @@ import {
   jsonDocumentResponseSchema,
   jsonDocumentSaveResponseSchema,
   noticeResponseSchema,
+  publicationQueueResponseSchemaPublic,
   postDetailResponseSchemaPublic,
   publicationPlatformSchemaPublic,
   reviewActionSchemaPublic,
@@ -47,6 +48,10 @@ import {
   downloadPostExport,
   getPostDetail,
   getWeekOverview,
+  getPublicationQueue,
+  reschedulePublicationJob,
+  removePublicationJob,
+  duplicatePublicationJob,
   moveWeekPost,
   cancelScheduledPublication,
   reschedulePost,
@@ -202,6 +207,64 @@ async function routeReviewRequest(
 
   if (method === "GET" && requestUrl.pathname === "/api/weeks/default") {
     respondJson(response, 200, { date: defaultDate })
+    return
+  }
+
+  if (method === "GET" && requestUrl.pathname === "/api/publication-queue") {
+    respondJson(
+      response,
+      200,
+      await getPublicationQueue(dependencies),
+      publicationQueueResponseSchemaPublic
+    )
+    return
+  }
+
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/publication-queue\/[^/]+\/reschedule$/)
+  ) {
+    const jobId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/publication-queue\/([^/]+)\/reschedule$/, "$1")
+    )
+    respondJson(
+      response,
+      200,
+      await reschedulePublicationJob(jobId, request, dependencies),
+      publicationQueueResponseSchemaPublic
+    )
+    return
+  }
+
+  if (
+    method === "DELETE" &&
+    requestUrl.pathname.match(/^\/api\/publication-queue\/[^/]+$/)
+  ) {
+    const jobId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/publication-queue\//, "")
+    )
+    respondJson(
+      response,
+      200,
+      await removePublicationJob(jobId, dependencies),
+      publicationQueueResponseSchemaPublic
+    )
+    return
+  }
+
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/publication-queue\/[^/]+\/duplicate$/)
+  ) {
+    const jobId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/publication-queue\/([^/]+)\/duplicate$/, "$1")
+    )
+    respondJson(
+      response,
+      200,
+      await duplicatePublicationJob(jobId, dependencies),
+      publicationQueueResponseSchemaPublic
+    )
     return
   }
 

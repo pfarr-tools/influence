@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router"
 
 import PostDetailPage from "../pages/PostDetailPage.vue"
 import WeekViewPage from "../pages/WeekViewPage.vue"
+import PublicationQueuePage from "../pages/PublicationQueuePage.vue"
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -13,6 +14,10 @@ export const router = createRouter({
     {
       component: WeekViewPage,
       path: "/weeks/:weekDate"
+    },
+    {
+      component: PublicationQueuePage,
+      path: "/publication-queue"
     },
     {
       component: PostDetailPage,

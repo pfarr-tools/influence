@@ -1,5 +1,6 @@
 import type {
   PostDetailResponse,
+  PublicationQueueResponse,
   ReviewActionApi,
   WeekActionApi,
   WeekOverviewResponse
@@ -30,6 +31,37 @@ export async function fetchWeek(
     await fetch(`/api/weeks/${encodeURIComponent(weekDate)}`, {
       cache: "no-store"
     })
+  )
+}
+
+export async function fetchPublicationQueue(): Promise<PublicationQueueResponse> {
+  return readJson<PublicationQueueResponse>(
+    await fetch("/api/publication-queue", { cache: "no-store" })
+  )
+}
+
+export async function reschedulePublicationJob(
+  jobId: string,
+  scheduledAt: string
+): Promise<PublicationQueueResponse> {
+  return readJson<PublicationQueueResponse>(
+    await fetch(`/api/publication-queue/${encodeURIComponent(jobId)}/reschedule`, {
+      body: JSON.stringify({ scheduledAt }),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    })
+  )
+}
+
+export async function removePublicationJob(jobId: string): Promise<PublicationQueueResponse> {
+  return readJson<PublicationQueueResponse>(
+    await fetch(`/api/publication-queue/${encodeURIComponent(jobId)}`, { method: "DELETE" })
+  )
+}
+
+export async function duplicatePublicationJob(jobId: string): Promise<PublicationQueueResponse> {
+  return readJson<PublicationQueueResponse>(
+    await fetch(`/api/publication-queue/${encodeURIComponent(jobId)}/duplicate`, { method: "POST" })
   )
 }
 

@@ -1,15 +1,20 @@
 import { reactive } from "vue"
 import type {
   PostDetailResponse,
+  PublicationQueueResponse,
   ReviewActionApi,
   WeekActionApi,
   WeekOverviewResponse
 } from "../../../server/contracts/review-contracts.js"
 import {
   fetchPost,
+  fetchPublicationQueue,
   fetchWeek,
   getDefaultWeekDate,
   moveWeekPost as moveWeekPostApi,
+  duplicatePublicationJob as duplicatePublicationJobApi,
+  removePublicationJob as removePublicationJobApi,
+  reschedulePublicationJob as reschedulePublicationJobApi,
   cancelScheduledPublication as cancelScheduledPublicationApi,
   publishPostNow as publishPostNowApi,
   runPostAction,
@@ -24,6 +29,7 @@ export const reviewStore = reactive({
   loading: false,
   loadingMessage: "",
   post: null as PostDetailResponse | null,
+  publicationQueue: null as PublicationQueueResponse | null,
   week: null as WeekOverviewResponse | null
 })
 
@@ -33,6 +39,30 @@ export async function loadWeek(weekDate?: string) {
     reviewStore.week = await fetchWeek(selectedWeekDate)
     reviewStore.post = null
   }, "Woche konnte nicht geladen werden.")
+}
+
+export async function loadPublicationQueue() {
+  await withLoading("", async () => {
+    reviewStore.publicationQueue = await fetchPublicationQueue()
+  }, "Warteschlange konnte nicht geladen werden.")
+}
+
+export async function reschedulePublicationJob(jobId: string, scheduledAt: string) {
+  await withLoading("", async () => {
+    reviewStore.publicationQueue = await reschedulePublicationJobApi(jobId, scheduledAt)
+  }, "Veröffentlichung konnte nicht umgeplant werden.")
+}
+
+export async function removePublicationJob(jobId: string) {
+  await withLoading("", async () => {
+    reviewStore.publicationQueue = await removePublicationJobApi(jobId)
+  }, "Veröffentlichung konnte nicht entfernt werden.")
+}
+
+export async function duplicatePublicationJob(jobId: string) {
+  await withLoading("", async () => {
+    reviewStore.publicationQueue = await duplicatePublicationJobApi(jobId)
+  }, "Veröffentlichung konnte nicht dupliziert werden.")
 }
 
 export async function triggerWeekAction(

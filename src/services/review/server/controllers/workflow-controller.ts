@@ -1,6 +1,7 @@
 import type { IncomingMessage } from "node:http"
 import { rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import type { CalendarPost } from "../../../../domain/calendar.js"
 
 import {
   getPostById,
@@ -10,6 +11,10 @@ import {
   scaffoldPostById,
   scaffoldWeekByDate
 } from "../../../content/content-scaffolder.js"
+import {
+  getContentOutputPaths,
+  readContentPackage
+} from "../../../content/content-storage.js"
 import { generateContentForWeek } from "../../../content/content-generator.js"
 import { markContentAsGenerated } from "../../../content/content-manual.js"
 import { runQaForPost, runQaForWeek } from "../../../content/content-qa.js"
@@ -52,6 +57,9 @@ import {
   PublishingService,
   type PublicationPlatform
 } from "../../../publishing/index.js"
+import { PublicationJobStore } from "../../../publishing/job-store.js"
+import type { PublicationJob } from "../../../publishing/types.js"
+import { publicationQueueScheduleRequestSchemaPublic } from "../contracts/review-contracts.js"
 
 export async function getWeekOverview(
   weekDate: string,
@@ -69,6 +77,131 @@ export async function getWeekOverview(
     notices,
     dependencies.runtimeConfig.publicationDefaultTime
   )
+}
+
+export async function getPublicationQueue(
+  dependencies: ReviewServerDependencies,
+  notice = ""
+) {
+  const jobs = await new PublicationJobStore(
+    dependencies.runtimeConfig.outputDir
+  ).list()
+  return {
+    jobs: await Promise.all(jobs
+      .sort((left, right) =>
+        (left.scheduledAt ?? "9999").localeCompare(right.scheduledAt ?? "9999") ||
+        left.platform.localeCompare(right.platform) ||
+        left.id.localeCompare(right.id)
+      )
+      .map((job) => buildPublicationQueueJob(job, dependencies))),
+    ...(notice ? { notice } : {})
+  }
+}
+
+export async function reschedulePublicationJob(
+  jobId: string,
+  request: IncomingMessage,
+  dependencies: ReviewServerDependencies
+) {
+  const body = publicationQueueScheduleRequestSchemaPublic.parse(
+    await parseJsonBody(request)
+  )
+  await new PublicationJobStore(dependencies.runtimeConfig.outputDir).reschedule(
+    jobId,
+    body.scheduledAt
+  )
+  return getPublicationQueue(dependencies, "Veröffentlichung umgeplant.")
+}
+
+export async function removePublicationJob(
+  jobId: string,
+  dependencies: ReviewServerDependencies
+) {
+  const store = new PublicationJobStore(dependencies.runtimeConfig.outputDir)
+  const job = await store.get(jobId)
+  if (!job) throw new Error(`Publication Job "${jobId}" nicht gefunden.`)
+  if (job.status === "processing" || job.status === "published") {
+    throw new Error("Dieser Job kann nicht aus der Warteschlange entfernt werden.")
+  }
+  await store.remove(jobId)
+  return getPublicationQueue(dependencies, "Veröffentlichung aus der Warteschlange entfernt.")
+}
+
+export async function duplicatePublicationJob(
+  jobId: string,
+  dependencies: ReviewServerDependencies
+) {
+  await new PublicationJobStore(dependencies.runtimeConfig.outputDir).duplicate(jobId)
+  return getPublicationQueue(dependencies, "Veröffentlichung dupliziert.")
+}
+
+async function buildPublicationQueueJob(
+  job: PublicationJob,
+  dependencies: ReviewServerDependencies
+) {
+  let postHref: string | null = null
+  let postTheme = await getPublicationDescription(job, dependencies)
+  try {
+    const post = getPostById(dependencies.calendar, job.postId)
+    postHref = `/posts/${encodeURIComponent(post.id)}`
+    postTheme = describeCalendarPost(post.rubrik, post.thema, post.konkrete_idee)
+  } catch {
+    // Keep orphaned jobs visible so they can still be removed from the queue.
+  }
+  return {
+    assets: job.assets.map((asset) => ({
+      href: `/files/${encodeURIComponent(job.contentDate)}/${encodeURIComponent(job.postId)}/${asset
+        .split("/")
+        .map((part) => encodeURIComponent(part))
+        .join("/")}`,
+      label: asset.split("/").pop() ?? asset
+    })),
+    contentDate: job.contentDate,
+    format: job.format,
+    id: job.id,
+    platform: job.platform,
+    postHref,
+    postId: job.postId,
+    postTheme,
+    scheduledAt: job.scheduledAt,
+    status: job.status,
+    text: job.text,
+    timezone: job.timezone
+  }
+}
+
+async function getPublicationDescription(
+  job: PublicationJob,
+  dependencies: ReviewServerDependencies
+): Promise<string> {
+  try {
+    const content = await readContentPackage(
+      getContentOutputPaths(dependencies.runtimeConfig.outputDir, {
+        id: job.postId,
+        datum: job.contentDate
+      } as CalendarPost).contentPath
+    )
+    return describeCalendarPost(
+      content.source.rubric,
+      content.editorial_core.title,
+      content.editorial_core.title
+    )
+  } catch {
+    return job.postId
+  }
+}
+
+function describeCalendarPost(
+  rubric: string,
+  theme: string,
+  description: string
+): string {
+  if (rubric === "Tageslosungen") return "Tageslosung"
+  if (rubric === "Kirchenjahr") {
+    const value = description.trim() || theme.trim()
+    return value && value !== "Kirchenjahr" ? `Kirchenjahr ${value}` : "Kirchenjahr"
+  }
+  return theme
 }
 
 export async function runWeekAction(

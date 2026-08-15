@@ -67,6 +67,40 @@ export class PublicationJobStore {
     if (remainingJobs.length !== jobs.length) await writeJsonFile(this.path, remainingJobs)
   }
 
+  async reschedule(id: string, scheduledAt: string): Promise<PublicationJob> {
+    const job = await this.get(id)
+    if (!job) throw new Error(`Publication Job "${id}" nicht gefunden.`)
+    if (job.status === "processing" || job.status === "published") {
+      throw new Error("Dieser Job kann nicht mehr umgeplant werden.")
+    }
+    return this.save({
+      ...job,
+      scheduledAt,
+      status: "scheduled",
+      updatedAt: new Date().toISOString()
+    })
+  }
+
+  async duplicate(id: string): Promise<PublicationJob> {
+    const job = await this.get(id)
+    if (!job) throw new Error(`Publication Job "${id}" nicht gefunden.`)
+    if (job.status === "processing" || job.status === "published") {
+      throw new Error("Dieser Job kann nicht dupliziert werden.")
+    }
+    return this.create({
+      postId: job.postId,
+      contentDate: job.contentDate,
+      platform: job.platform,
+      format: job.format,
+      scheduledAt: job.scheduledAt,
+      timezone: job.timezone,
+      status: job.scheduledAt ? "scheduled" : "approved",
+      text: job.text,
+      assets: [...job.assets],
+      altTexts: [...job.altTexts]
+    })
+  }
+
   /** Moves a completed job from the queue into the post-local publication history. */
   async archive(job: PublicationJob): Promise<void> {
     const path = join(this.outputRootForJob(job), publishedFileName)
