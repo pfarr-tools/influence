@@ -713,7 +713,7 @@ async function buildHtmlDocument(
       titleCard: page.titleCard ?? false,
       title: page.title,
       titleNote: isLandscapePost ? "" : (page.titleNote ?? ""),
-      sourceMark: process.env.SOURCE_MARK?.trim() || "christoph-fischer.de"
+      sourceMark: process.env.SOURCE_MARK?.trim() || ""
     }
   )
 

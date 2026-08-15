@@ -23,6 +23,8 @@ import {
   resolveRenderTemplateKind
 } from "../src/services/render/index.js"
 
+process.env.SOURCE_MARK = "christoph-fischer.de"
+
 const fixturePath = join(
   process.cwd(),
   "content",
