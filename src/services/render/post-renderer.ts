@@ -50,6 +50,7 @@ const renderFormats = {
 export type RenderFormatKey = keyof typeof renderFormats
 type RenderTemplateKind =
   | "abendgebet"
+  | "kirchenjahr"
   | "gebet-oder-liedgedanke"
   | "gemeinde-lebt"
   | "morgengebet"
@@ -212,6 +213,10 @@ export function resolveRenderTemplateKind(rubric: string): RenderTemplateKind {
 
   if (rubric === "Tageslosungen") {
     return "tageslosungen"
+  }
+
+  if (rubric === "Kirchenjahr") {
+    return "kirchenjahr"
   }
 
   if (
@@ -392,14 +397,16 @@ async function buildRenderDocuments(
   outputRoot: string
 ): Promise<RenderPageDocument[]> {
   const template = resolveRenderTemplateKind(post.rubrik)
-  const palette = resolvePalette(template)
+  const palette = resolvePalette(template, content)
   const dimensions = renderFormats[format]
   const backgroundImagePath = await resolveBackgroundAssetPath(
     outputRoot,
     post,
     format
   )
-  const backgroundCss = backgroundImagePath
+  const backgroundCss = template === "kirchenjahr"
+    ? `background-color: ${palette.base}; background-image: none;`
+    : backgroundImagePath
     ? await buildBackgroundCss(backgroundImagePath, palette)
     : `background-image:
       radial-gradient(circle at top left, ${palette.tint} 0%, transparent 28%),
@@ -469,6 +476,7 @@ function buildFeedPageSpecs(
   format: RenderFormatKey
 ): RenderPageSpec[] {
   const template = resolveRenderTemplateKind(post.rubrik)
+  if (template === "kirchenjahr") return [buildKirchenjahrPageSpec(content, format, "feed-card")]
   if (template === "tageslosungen") {
     const sourceNote = (prefix: string) => content.editorial_core.source_notes.find((note) => note.startsWith(prefix))?.replace(prefix, "").trim() ?? ""
     return [{
@@ -558,6 +566,7 @@ function buildStoryPageSpecs(
   format: RenderFormatKey
 ): RenderPageSpec[] {
   const template = resolveRenderTemplateKind(post.rubrik)
+  if (template === "kirchenjahr") return [buildKirchenjahrPageSpec(content, format, "story-slide")]
   const slides = content.platforms.story.slides
     .map((slide) => slide.text.trim())
     .filter((slide) => slide.length > 0)
@@ -638,6 +647,27 @@ function buildStoryPageSpecs(
   ]
 }
 
+function buildKirchenjahrPageSpec(
+  content: ContentPackage,
+  format: RenderFormatKey,
+  variant: "feed-card" | "story-slide"
+): RenderPageSpec {
+  return {
+    eyebrow: "",
+    format,
+    pageCount: 1,
+    pageIndex: 1,
+    pageLabel: renderFormats[format].label,
+    primaryText: "",
+    titleNote: content.editorial_core.source_notes.find((note) => note.startsWith("Titel:"))?.replace("Titel:", "").trim(),
+    template: "kirchenjahr",
+    title: content.editorial_core.title,
+    variant,
+    width: renderFormats[format].width,
+    height: renderFormats[format].height
+  }
+}
+
 async function buildHtmlDocument(
   page: RenderPageSpec,
   cssClass: string,
@@ -658,8 +688,10 @@ async function buildHtmlDocument(
       : page.template === "abendgebet"
         ? "evening-prayer"
         : page.template === "tageslosungen"
-      ? "tageslosungen"
-      :
+          ? "tageslosungen"
+          : page.template === "kirchenjahr"
+            ? (page.variant === "story-slide" ? "kirchenjahr-story" : "kirchenjahr-feed")
+            :
     page.variant === "landscape-post"
       ? "facebook-mastodon"
       : page.variant === "feed-card"
@@ -680,7 +712,8 @@ async function buildHtmlDocument(
       secondaryCitation: isLandscapePost ? "" : (page.secondaryCitation ?? ""),
       titleCard: page.titleCard ?? false,
       title: page.title,
-      titleNote: isLandscapePost ? "" : (page.titleNote ?? "")
+      titleNote: isLandscapePost ? "" : (page.titleNote ?? ""),
+      sourceMark: process.env.SOURCE_MARK?.trim() || "christoph-fischer.de"
     }
   )
 
@@ -790,6 +823,53 @@ async function buildHtmlDocument(
         backdrop-filter: none;
         box-shadow: none;
         border-radius: 0;
+      }
+
+      .template-kirchenjahr::before {
+        display: none;
+      }
+
+      .template-kirchenjahr .panel {
+        width: 100%;
+        background: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
+        border-radius: 0;
+        text-align: center;
+      }
+
+      .template-kirchenjahr .panel-meta {
+        display: none;
+      }
+
+      .template-kirchenjahr .sender-mark {
+        position: absolute;
+        left: 56px;
+        right: 56px;
+        bottom: 36px;
+        margin: 0;
+        color: var(--text-primary);
+        text-align: center;
+        font-size: 26px;
+      }
+
+      .template-kirchenjahr .title {
+        font-size: 68px;
+      }
+
+      .format-story .template-kirchenjahr .title {
+        font-size: 82px;
+      }
+
+      .template-kirchenjahr .title-note {
+        color: var(--text-primary);
+        font-size: 38px;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      .format-story .template-kirchenjahr .title-note {
+        font-size: 44px;
       }
 
       .panel-meta {
@@ -988,7 +1068,7 @@ async function buildHtmlDocument(
     </style>
   </head>
   <body>
-    <main class="canvas ${cssClass}${page.template === "tageslosungen" ? " template-tageslosungen" : ""}${page.template === "morgengebet" ? " template-morgengebet" : ""}${page.template === "abendgebet" ? " template-abendgebet" : ""}">
+    <main class="canvas ${cssClass}${page.template === "tageslosungen" ? " template-tageslosungen" : ""}${page.template === "kirchenjahr" ? " template-kirchenjahr" : ""}${page.template === "morgengebet" ? " template-morgengebet" : ""}${page.template === "abendgebet" ? " template-abendgebet" : ""}">
       <section class="layout">
         <div class="panel-meta">
           <div class="eyebrow">${escapeHtml(page.eyebrow)}</div>
@@ -1077,7 +1157,7 @@ async function buildBackgroundCss(
       url("data:${mimeType};base64,${imageBuffer.toString("base64")}");`
 }
 
-function resolvePalette(template: RenderTemplateKind): {
+function resolvePalette(template: RenderTemplateKind, content?: ContentPackage): {
   accent: string
   base: string
   baseDeep: string
@@ -1085,6 +1165,11 @@ function resolvePalette(template: RenderTemplateKind): {
   text: string
   tint: string
 } {
+  if (template === "kirchenjahr") {
+    const color = content?.visual.concept.match(/^kirchenjahr:(.+)$/)?.[1] ?? "purple"
+    const text = color === "white" ? "#6f3f93" : "#ffffff"
+    return { accent: text, base: color, baseDeep: color, muted: text, text, tint: color }
+  }
   if (template === "morgengebet") {
     return {
       accent: "#f6c453",

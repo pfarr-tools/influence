@@ -73,6 +73,7 @@ import { createThreadsOAuthService } from "./services/publishing/threads-adapter
 import { createFacebookOAuthService } from "./services/publishing/facebook-adapter.js"
 import { syncContentRepository } from "./services/content/content-repository.js"
 import { scheduleTageslosungen } from "./services/losungen/tageslosungen-service.js"
+import { scheduleKirchenjahr } from "./services/kirchenjahr/kirchenjahr-service.js"
 import { generatePrayer, type PrayerKind } from "./services/prayers/prayer-generator.js"
 
 const program = new Command()
@@ -96,6 +97,7 @@ const chatCommand = program.command("chat").description("Discuss and revise JSON
 const reviewCommand = program.command("review").description("Local review UI")
 const publishCommand = program.command("publish").description("Publication and scheduling commands")
 const losungenCommand = program.command("losungen").description("Tageslosungen commands")
+const kirchenjahrCommand = program.command("kirchenjahr").description("Kirchenjahr commands")
 const prayerCommand = program.command("prayer").description("Morning and evening prayer commands")
 
 prayerCommand
@@ -182,6 +184,34 @@ losungenCommand
         }
       })
       console.log(`${result.created} Tageslosungen erstellt und geplant; ${result.skipped} übersprungen.`)
+    } catch (error) { handleCliError(error) }
+  })
+
+kirchenjahrCommand
+  .command("schedule")
+  .option("--year <year>", "Jahr des Kirchenjahrs", String(new Date().getFullYear()))
+  .option("--force", "Vorhandene Kirchenjahr-Beiträge neu erstellen", false)
+  .action(async (options: { year: string; force?: boolean }) => {
+    try {
+      const year = Number(options.year)
+      if (!Number.isInteger(year) || year < 1900 || year > 2200) throw new InvalidArgumentError("Jahr muss zwischen 1900 und 2200 liegen.")
+      const result = await scheduleKirchenjahr({
+        force: options.force ?? false,
+        outputRoot: defaultOutputRoot,
+        platforms: runtimeConfig.publicationPlatforms,
+        publicationTimezone: runtimeConfig.publicationTimezone,
+        year
+      }, {
+        pageRenderClient: createPlaywrightHtmlRenderClient(),
+        onProgress: (event) => {
+          if (event.type === "source-loaded") console.log(`[Kirchenjahr] Quelle geladen: ${event.total} aktuelle Einträge für ${event.year}; ${event.ignoredPast} vergangene Einträge ignoriert.`)
+          else if (event.type === "proprium-start") console.log(`[${event.index}/${event.total}] ${event.proprium.date} ${event.proprium.designation}`)
+          else if (event.type === "skipped") console.log("  übersprungen: bereits vorhanden")
+          else if (event.type === "rendered") console.log("  ✓ Social-Bilder gerendert: square, instagram-story")
+          else if (event.type === "scheduled") console.log(`  ✓ geplant für ${event.scheduledAt}`)
+        }
+      })
+      console.log(`${result.created} Kirchenjahr-Beiträge erstellt und geplant; ${result.skipped} übersprungen.`)
     } catch (error) { handleCliError(error) }
   })
 

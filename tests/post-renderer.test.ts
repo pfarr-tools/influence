@@ -59,6 +59,7 @@ describe("post renderer", () => {
     expect(resolveRenderTemplateKind("Reli fragt")).toBe("reli-fragt")
     expect(resolveRenderTemplateKind("Predigt-Preview")).toBe("predigt-preview")
     expect(resolveRenderTemplateKind("Gemeinde lebt")).toBe("gemeinde-lebt")
+    expect(resolveRenderTemplateKind("Kirchenjahr")).toBe("kirchenjahr")
   })
 
   it("builds a stable HTML snapshot for the Wochenspruch template", async () => {

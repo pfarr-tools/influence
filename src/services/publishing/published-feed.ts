@@ -59,7 +59,7 @@ export async function buildPublishedFeed(
       const contentPath = join(outputRoot, post.datum, post.id, "content.json")
       if (!(await pathExists(contentPath))) return null
       const content = await readContentPackage(contentPath)
-      if (content.source.rubric === "Tageslosungen") return null
+      if (content.source.rubric === "Tageslosungen" || content.source.rubric === "Kirchenjahr") return null
 
       return buildFeedPost(post, content, postJobs, outputRoot, publicBaseUrl)
     })
