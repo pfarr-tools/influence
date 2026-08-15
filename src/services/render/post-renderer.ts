@@ -3,6 +3,7 @@ import { dirname, extname, join, relative, resolve } from "node:path"
 
 import Handlebars from "handlebars"
 
+import { loadRuntimeConfig } from "../../config/runtime-config.js"
 import type { Calendar, CalendarPost } from "../../domain/calendar.js"
 import type { ContentPackage } from "../../domain/content.js"
 import { getPostById, getWeekForDate } from "../calendar/calendar-service.js"
@@ -713,7 +714,7 @@ async function buildHtmlDocument(
       titleCard: page.titleCard ?? false,
       title: page.title,
       titleNote: isLandscapePost ? "" : (page.titleNote ?? ""),
-      sourceMark: process.env.SOURCE_MARK?.trim() || ""
+      sourceMark: loadRuntimeConfig().sourceMark
     }
   )
 

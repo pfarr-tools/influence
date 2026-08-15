@@ -1,4 +1,4 @@
-# Codex-Implementierungsplan für Pfarr.Media
+# Codex-Implementierungsplan für Influence
 
 ## Rolle
 
@@ -312,7 +312,7 @@ Kein generatives Video in der ersten Version.
 
 ## Ziel
 
-Pfarr.Media soll bestehende Inhalts-JSONs nicht nur bearbeitbar anzeigen, sondern in eine geführte Chat-Diskussion mit ChatGPT überführen können.
+Influence soll bestehende Inhalts-JSONs nicht nur bearbeitbar anzeigen, sondern in eine geführte Chat-Diskussion mit ChatGPT überführen können.
 
 Der Benutzer kann dabei:
 
@@ -810,7 +810,7 @@ Dokumentiere nach der Umsetzung mindestens:
 
 ## Ziel
 
-Pfarr.Media veröffentlicht freigegebene Inhalte plattformabhängig über den jeweils geeigneten und offiziell unterstützten Weg.
+Influence veröffentlicht freigegebene Inhalte plattformabhängig über den jeweils geeigneten und offiziell unterstützten Weg.
 
 Dabei gilt:
 
@@ -892,7 +892,7 @@ Anforderungen:
 - Retry mit exponentiellem Backoff.
 - Fehlgeschlagene Jobs nach konfigurierbarer Anzahl von Versuchen auf `failed` setzen.
 - Videos und Reels als asynchron verarbeitete Medien behandeln.
-- Keine Jahresplanung vollständig an externe Plattformen übertragen; Pfarr.Media bleibt die Quelle der Planung.
+- Keine Jahresplanung vollständig an externe Plattformen übertragen; Influence bleibt die Quelle der Planung.
 
 ## Instagram Adapter
 
@@ -971,9 +971,9 @@ Keine Berechtigung darf vorausgesetzt werden.
 
 ### Grundsatz
 
-Auf Facebook wird auf das persönliche Profil veröffentlicht. Dafür gibt es keine offizielle Publishing API. Pfarr.Media veröffentlicht dort nicht automatisch.
+Auf Facebook wird auf das persönliche Profil veröffentlicht. Dafür gibt es keine offizielle Publishing API. Influence veröffentlicht dort nicht automatisch.
 
-Pfarr.Media erzeugt für jeden Facebook-Beitrag:
+Influence erzeugt für jeden Facebook-Beitrag:
 
 - den fertigen Facebook-Text
 - ein passendes Bild oder mehrere Bilder
@@ -1059,7 +1059,7 @@ Für reine Foto-Posts zeigt die Oberfläche:
 
 ### Öffentliche Share-Seiten
 
-Für Beiträge ohne bestehende Webseite kann Pfarr.Media optional kleine öffentliche HTML-Seiten erzeugen, zum Beispiel:
+Für Beiträge ohne bestehende Webseite kann Influence optional kleine öffentliche HTML-Seiten erzeugen, zum Beispiel:
 
 ```text
 https://media.pfarr.tools/posts/post-0007/
@@ -1255,10 +1255,10 @@ influence losungen schedule-story --date 2026-08-10 --at 07:00
 
 ## Ziel
 
-Nach einer neuen Predigt erkennt Pfarr.Media den neuesten Eintrag aus:
+Nach einer neuen Predigt erkennt Influence den neuesten Eintrag aus:
 
 ```text
-https://christoph-fischer.de/podcast.xml
+${BRAND_WEBSITE}/podcast.xml
 ```
 
 und erstellt daraus ein plattformübergreifendes Predigtpaket.
@@ -1380,7 +1380,7 @@ Ein Scheduler kann den Feed regelmäßig abrufen, zum Beispiel stündlich oder t
 
 ## Ziel
 
-Pfarr.Media kann morgens und abends jeweils ein kurzes Gebet als Story entwerfen. Das Gebet berücksichtigt:
+Influence kann morgens und abends jeweils ein kurzes Gebet als Story entwerfen. Das Gebet berücksichtigt:
 
 - Losung und Lehrtext des Tages
 - Wochenspruch und Kirchenjahresdaten

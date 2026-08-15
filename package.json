@@ -1,7 +1,16 @@
 {
   "name": "influence",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/pfarr-tools/influence.git"
+  },
+  "homepage": "https://github.com/pfarr-tools/influence#readme",
+  "bugs": {
+    "url": "https://github.com/pfarr-tools/influence/issues"
+  },
   "type": "module",
   "bin": {
     "influence": "bin/influence.js"
@@ -16,7 +25,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "release": "standard-version",
+    "release:first": "standard-version --first-release"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^6.0.8",
@@ -43,6 +54,7 @@
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "prettier": "^3.6.2",
+    "standard-version": "^9.5.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vite": "^7.1.3",

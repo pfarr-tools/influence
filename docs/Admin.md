@@ -49,6 +49,11 @@ cp config/.env.example config/.env
 
 Danach die Werte in `config/.env` anpassen.
 
+Beginne mit `BRAND_NAME`, `BRAND_WEBSITE`, `SOURCE_MARK` und `IMAGE_CREDITS`.
+Diese Variablen ersetzen organisations- oder personenbezogene Angaben in
+Renderings und OAuth-Registrierungen. Verwende keine persönlichen Defaults aus
+einer Beispielkonfiguration.
+
 ## Konfiguration
 
 Influence liest Umgebungswerte aus:
@@ -91,7 +96,7 @@ Influence liest Umgebungswerte aus:
 - `REEL_SUBTITLE_FONTS_DIR`
   Optionales Font-Verzeichnis für FFmpeg-Untertitel.
 
-### Veröffentlichung und Service-Adapter
+### Veröffentlichung und Plattform-Adapter
 
 - `WEBHOOK_URL`
   Optionaler Endpunkt. Nach `influence publish run` wird er per POST benachrichtigt,
@@ -101,11 +106,11 @@ Influence liest Umgebungswerte aus:
   Secret für die Benachrichtigung. Es wird als `Authorization: Bearer ...` gesendet.
 
 `PUBLICATION_PLATFORMS` bestimmt, für welche Plattformen Influence Jobs anlegt.
-Eine Plattform wird automatisch veröffentlicht, wenn ihre Zugangsdaten
-vollständig konfiguriert sind. Für Bluesky ist das ein API-Endpunkt und ein
-Token; LinkedIn verwendet den nativen REST-Adapter mit `LINKEDIN_AUTHOR_URN`
-und `LINKEDIN_ACCESS_TOKEN`; Instagram und Threads verwenden native Meta-Adapter.
-Mastodon verwendet den nativen Adapter mit `MASTODON_SERVER_URL` und `MASTODON_ACCESS_TOKEN`. Nicht
+Eine Plattform wird automatisch veröffentlicht, wenn ihre nativen Zugangsdaten
+vollständig konfiguriert sind. LinkedIn verwendet den nativen REST-Adapter mit
+`LINKEDIN_AUTHOR_URN` und `LINKEDIN_ACCESS_TOKEN`; Instagram und Threads
+verwenden native Meta-Adapter. Mastodon verwendet den nativen Adapter mit
+`MASTODON_SERVER_URL` und `MASTODON_ACCESS_TOKEN`. Nicht
 konfigurierte Plattformen bleiben in der Oberfläche und in der Queue sichtbar,
 können aber nicht automatisch veröffentlicht werden.
 
@@ -113,74 +118,25 @@ Facebook ist derzeit eine manuelle Veröffentlichung: Influence erstellt einen
 Facebook-Share-Link, es gibt dafür keinen automatischen Adapter und daher auch
 keine `FACEBOOK_*`-Variablen.
 
-#### Gemeinsamer Adapter-Vertrag
-
-Die vier generischen HTTP-Adapter verwenden denselben HTTP-Vertrag. Die URL in
-`*_API_URL` muss deshalb auf einen eigenen kleinen Bridge-Service oder auf einen
-bereits vorhandenen kompatiblen Publishing-Endpunkt zeigen; die nativen
-Provider-Endpunkte sind für diese vier Adapter nicht automatisch kompatibel.
-
-Mastodon ist die erste vollständig native Integration und benötigt keinen
-Bridge-Service. Sie lädt Medien direkt beim Mastodon-Server hoch und legt den
-Status anschließend über `/api/v1/statuses` an.
-
-Bei jeder Veröffentlichung sendet Influence eine `POST`-Anfrage mit:
-
-```http
-Authorization: Bearer <ACCESS_TOKEN>
-Content-Type: application/json
-```
-
-```json
-{
-  "text": "Beitragstext",
-  "format": "square",
-  "assets": ["/absolute/path/to/asset.png"],
-  "altTexts": ["Alternativtext"]
-}
-```
-
-Der Endpunkt muss bei Erfolg eine JSON-Antwort mit einer nichtleeren
-`id`-Eigenschaft liefern. Eine optionale `url` wird als Link zum veröffentlichten
-Beitrag gespeichert, zum Beispiel:
-
-```json
-{"id": "provider-post-id", "url": "https://example.invalid/post/123"}
-```
-
-Der Bridge-Service muss die lokalen Asset-Pfade erreichen können und die
-jeweilige native API für Medien-Upload und Veröffentlichung aufrufen. Er muss
-außerdem Fehler mit einem HTTP-Status außerhalb von `2xx` beantworten. Tokens
-werden ausschließlich aus der Prozessumgebung gelesen und nicht in den
-Publikationsjobs gespeichert.
-
 #### Instagram
-
-Variablen:
-
-```dotenv
-INSTAGRAM_API_URL=https://bridge.example.org/instagram/publish
-INSTAGRAM_ACCESS_TOKEN=...
-```
 
 Für die native Instagram Graph API benötigt das Instagram-Konto in der Regel
 ein Professional-Konto (Business oder Creator), das mit einer Facebook-Seite
-verbunden ist. Im Meta for Developers Dashboard eine App anlegen, Instagram
+verbunden ist. Im Meta-Entwicklerdashboard eine App anlegen, Instagram
 Graph API hinzufügen und einen User/Page-Token mit den für Content Publishing
-benötigten Berechtigungen ausstellen. Der Bridge-Service muss Instagram-
-Container anlegen, Medien gegebenenfalls unter einer öffentlich erreichbaren
-URL bereitstellen, den Container veröffentlichen und die von Instagram
-gelieferten IDs in `id`/`url` übersetzen.
+benötigten Berechtigungen ausstellen. Der native Instagram-Adapter legt
+Container an, verwendet öffentlich erreichbare Medien-URLs, veröffentlicht den
+Container und speichert die von Instagram gelieferten IDs.
 
 Weiterführend: [Instagram Graph API – Content Publishing](https://developers.facebook.com/docs/instagram-api/guides/content-publishing/),
 [Meta App Dashboard](https://developers.facebook.com/apps/).
 
-#### Facebook Page (native integration)
+#### Facebook-Seite (native Integration)
 
-The native adapter publishes the first generated `facebook-mastodon` landscape
-render as a photo post on a Facebook Page. The image must be reachable below
-`PUBLIC_BASE_URL/files/...` from Meta's servers. Add these values to
-`config/.env`:
+Der native Adapter veröffentlicht das erste erzeugte Querformat-
+Rendering `facebook-mastodon` als Fotobeitrag auf einer Facebook-Seite. Das
+Bild muss für die Meta-Server unter `PUBLIC_BASE_URL/files/...` erreichbar
+sein. Diese Werte gehören in `config/.env`:
 
 ```dotenv
 PUBLIC_BASE_URL=https://influence.example
@@ -193,27 +149,28 @@ FACEBOOK_ACCESS_TOKEN=EAAB...
 # FACEBOOK_GRAPH_API_VERSION=v23.0
 ```
 
-In the Meta for Developers dashboard, open the Facebook Page publishing use
-case (the `Anwendungsfall` you already added). In its permissions/requirements,
-add `pages_show_list`, `pages_read_engagement` and `pages_manage_posts`.
-Complete App Review for the permissions if Meta marks them as requiring review;
-while the app is in Development mode, the people testing it must have a role in
-the app and have a role on the Page.
+Öffne im Meta-Entwicklerdashboard den Anwendungsfall für die
+Facebook-Seitenveröffentlichung. Ergänze bei den Berechtigungen bzw.
+Anforderungen `pages_show_list`, `pages_read_engagement` und
+`pages_manage_posts`. Wenn Meta dafür eine App-Prüfung verlangt, muss diese
+abgeschlossen werden. Im Entwicklungsmodus müssen die testenden Personen eine
+Rolle in der App und auf der Seite haben.
 
-Then create a User Access Token in Graph API Explorer for the same app and
-user, with those permissions. Query:
+Erzeuge anschließend im Graph API Explorer für dieselbe App und dasselbe
+Benutzerkonto einen User Access Token mit diesen Berechtigungen. Verwende:
 
 ```text
 GET /me/accounts?fields=id,name,access_token,tasks
 ```
 
-Copy the Page's `id` to `FACEBOOK_PAGE_ID` and the User Access Token to
-`FACEBOOK_ACCESS_TOKEN`. Influence calls `/me/accounts` automatically, selects
-the configured Page, and uses the returned Page Access Token for publishing.
-The User Access Token must have the permissions above; the selected Page must
-include the `CREATE_CONTENT` task.
-Restart Influence after changing `.env`, render the post, approve it, and
-schedule it as usual:
+Übertrage die `id` der Seite nach `FACEBOOK_PAGE_ID` und den User Access Token
+nach `FACEBOOK_ACCESS_TOKEN`. Influence ruft `/me/accounts` automatisch auf,
+wählt die konfigurierte Seite aus und verwendet den zurückgegebenen Page
+Access Token für die Veröffentlichung. Der User Access Token muss die oben
+genannten Berechtigungen besitzen; die ausgewählte Seite muss die Aufgabe
+`CREATE_CONTENT` enthalten.
+Starte Influence nach Änderungen an `.env` neu, rendere den Beitrag, gib ihn
+frei und plane ihn wie gewohnt:
 
 ```bash
 influence render post --post-id post-0007
@@ -221,12 +178,13 @@ influence publish schedule --post-id post-0007 --platform facebook --at 2026-08-
 influence publish run
 ```
 
-The Graph API endpoint used is `POST /{page-id}/photos` with the public image
-URL, the Facebook text as `caption`, and `published=true`. The old
-`influence publish facebook --post-id ...` command remains available for a
-manual hand-off when the native adapter is not configured.
+Der verwendete Graph-API-Endpunkt ist `POST /{page-id}/photos` mit der
+öffentlichen Bild-URL, dem Facebook-Text als `caption` und
+`published=true`. Der alte Befehl `influence publish facebook --post-id ...`
+bleibt für die manuelle Übergabe verfügbar, wenn der native Adapter nicht
+konfiguriert ist.
 
-Further reading: [Facebook Pages API](https://developers.facebook.com/docs/pages-api),
+Weiterführend: [Facebook Pages API](https://developers.facebook.com/docs/pages-api),
 [Page photos](https://developers.facebook.com/docs/graph-api/reference/page/photos),
 [Meta App Dashboard](https://developers.facebook.com/apps/).
 
@@ -261,7 +219,7 @@ Variablen:
 ```dotenv
 MASTODON_SERVER_URL=https://mastodon.example
 MASTODON_ACCESS_TOKEN=...
-MASTODON_CLIENT_NAME=christoph-fischer.de
+MASTODON_CLIENT_NAME=Influence
 MASTODON_CLIENT_ID=
 MASTODON_CLIENT_SECRET=
 MASTODON_VISIBILITY=public
@@ -298,18 +256,10 @@ Weiterführend: [Mastodon: Anwendung und Token anlegen](https://docs.joinmastodo
 
 #### Threads
 
-Variablen:
-
-```dotenv
-THREADS_API_URL=https://bridge.example.org/threads/publish
-THREADS_ACCESS_TOKEN=...
-```
-
-Für Threads im Meta for Developers Dashboard eine App mit Threads API
+Für Threads im Meta-Entwicklerdashboard eine App mit Threads API
 konfigurieren und einen Token für das Threads-Profil mit den benötigten
-Publishing-Berechtigungen erzeugen. Die Bridge muss das Threads-Verfahren zum
-Erstellen und Veröffentlichen eines Containers sowie den Medien-Upload
-implementieren und die Threads-Post-ID zurückgeben.
+Publishing-Berechtigungen erzeugen. Influence verwendet dafür den nativen
+Threads-Adapter.
 
 Weiterführend: [Threads API – Getting Started](https://developers.facebook.com/docs/threads/get-started/),
 [Threads API – Posts](https://developers.facebook.com/docs/threads/posts/),
@@ -325,7 +275,7 @@ BLUESKY_IDENTIFIER=dein-handle.bsky.social
 BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
 ```
 
-Der native Adapter verwendet ein Bluesky App Password. Das wird im
+Der native Adapter verwendet ein Bluesky-App-Passwort. Das wird im
 Bluesky-Konto unter **Settings → Advanced → App Passwords** erstellt; das
 normale Kontopasswort sollte nicht in einem Integrationsdienst hinterlegt
 werden. Der Adapter erstellt eine AT-Protocol-Session, lädt Bilder als Blobs
@@ -368,16 +318,17 @@ Weiterführend: [LinkedIn Developer Portal](https://www.linkedin.com/developers/
 [LinkedIn Images API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api),
 [LinkedIn MultiImage API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/multiimage-post-api).
 
-#### Beispiel für mehrere Adapter
+#### Beispiel für mehrere Plattformen
 
 ```dotenv
 PUBLICATION_PLATFORMS=facebook,instagram,mastodon,threads,bluesky,linkedin
-INSTAGRAM_API_URL=https://bridge.example.org/instagram/publish
+INSTAGRAM_ACCOUNT_ID=17841400000000000
 INSTAGRAM_ACCESS_TOKEN=...
 MASTODON_SERVER_URL=https://mastodon.example
 MASTODON_ACCESS_TOKEN=...
-THREADS_API_URL=https://bridge.example.org/threads/publish
+THREADS_APP_ID=...
 THREADS_ACCESS_TOKEN=...
+THREADS_USER_ID=...
 BLUESKY_SERVICE_URL=https://bsky.social
 BLUESKY_IDENTIFIER=dein-handle.bsky.social
 BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
@@ -388,6 +339,20 @@ LINKEDIN_ACCESS_TOKEN=...
 Nach einer Änderung an `config/.env` den laufenden Prozess neu starten. Für
 einen kontrollierten Test zunächst einen einzelnen Beitrag mit `publish`
 ausführen und anschließend den gespeicherten Veröffentlichungsstatus prüfen.
+
+## Releases
+
+Release-Commits verwenden Conventional-Commit-Präfixe wie `feat:`, `fix:`,
+`docs:` oder `chore:`. `standard-version` steuert die lokale Versionierung:
+
+```bash
+npm run release:first  # einmalig für die erste Version
+npm run release        # danach patch/minor/major aus Committypen ableiten
+```
+
+Dabei werden `package.json`, `package-lock.json`, `CHANGELOG.md` und ein Git-
+Tag aktualisiert. Der Befehl pusht nichts und veröffentlicht nicht automatisch.
+Das Prüfen und Pushen von Commit und Tag bleibt ein bewusster manueller Schritt.
 
 ### Beispiel
 

@@ -2,8 +2,8 @@
   "language": "de-DE",
   "timezone": "Europe/Brussels",
   "brand": {
-    "name": "Christoph Fischer",
-    "website": "christoph-fischer.de",
+    "name": "Your organization",
+    "website": "https://example.org",
     "defaultTone": ["klar", "ruhig", "zugänglich", "evangelisch"]
   },
   "render": {

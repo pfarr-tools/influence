@@ -28,7 +28,7 @@ const platformDefaultSchema = z.object({
 })
 
 const workflowBlockSchema = z.object({
-  aufgaben: z.array(nonEmptyStringSchema).min(1),
+  aufgaben: z.array(nonEmptyStringSchema),
   dauer: nonEmptyStringSchema.optional(),
   empfohlener_zeitpunkt: nonEmptyStringSchema.optional()
 })
@@ -130,8 +130,8 @@ export const calendarSchema = z.object({
       bis: isoDateSchema
     }),
     umfang: z.object({
-      wochen: z.number().int().positive(),
-      beitraege: z.number().int().positive()
+      wochen: z.number().int().nonnegative(),
+      beitraege: z.number().int().nonnegative()
     }),
     zeitzone: nonEmptyStringSchema,
     sprache: nonEmptyStringSchema,
@@ -139,7 +139,7 @@ export const calendarSchema = z.object({
     hinweis_zur_liturgie: nonEmptyStringSchema,
     copyright_hinweis: nonEmptyStringSchema
   }),
-  quellen: z.array(sourceDefinitionSchema).min(1),
+  quellen: z.array(sourceDefinitionSchema),
   plattform_defaults: z.object({
     facebook: platformDefaultSchema,
     instagram: platformDefaultSchema,
@@ -151,7 +151,7 @@ export const calendarSchema = z.object({
     samstag: workflowBlockSchema
   }),
   statuswerte: z.array(statusSchema).min(1),
-  wochen: z.array(calendarWeekSchema).min(1)
+  wochen: z.array(calendarWeekSchema)
 })
 
 /** Zod schema for `YYYY-MM` month input accepted by the CLI. */

@@ -18,7 +18,7 @@ export type PublicationStatus =
   | "published"
   | "failed"
 
-/** A single publication attempt managed by Pfarr.Media. */
+/** A single publication attempt managed by Influence. */
 export interface PublicationJob {
   id: string
   postId: string

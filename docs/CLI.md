@@ -15,7 +15,7 @@ influence <kommando>
 ## Voraussetzungen
 
 - installierte Projektabhängigkeiten
-- korrekt konfigurierte `config/.env`
+- korrekt konfigurierte `config/.env` (Vorlage: `config/.env.example`)
 - für Rendering: installierter Playwright-Chromium
 - für Reel-Video-Rendering: optional `ffmpeg`
 
@@ -33,20 +33,24 @@ PUBLIC_BASE_URL=https://example.org
 PUBLICATION_TIMEZONE=Europe/Berlin
 PUBLICATION_PLATFORMS=facebook,instagram,mastodon,linkedin
 PUBLICATION_DEFAULT_TIME=07:00
+BRAND_NAME=Influence
+BRAND_WEBSITE=https://example.org
+SOURCE_MARK=example.org
+IMAGE_CREDITS=Dein Name oder Bildquelle
 FACEBOOK_PAGE_ID=123456789012345
 FACEBOOK_ACCESS_TOKEN=EAAB...
 INSTAGRAM_ACCOUNT_ID=17841400000000000
 INSTAGRAM_ACCESS_TOKEN=...
 PUBLIC_BASE_URL=https://example.org
-# Optional: override the Graph API host/version when Meta changes defaults.
+# Optional: Graph-API-Host oder Version anpassen, falls Meta die Defaults ändert.
 # INSTAGRAM_GRAPH_API_URL=https://graph.instagram.com
 # INSTAGRAM_GRAPH_API_VERSION=v23.0
-# Optional: override the Facebook Graph API host/version.
+# Optional: Facebook-Graph-API-Host oder Version anpassen.
 # FACEBOOK_GRAPH_API_URL=https://graph.facebook.com
 # FACEBOOK_GRAPH_API_VERSION=v23.0
 LINKEDIN_AUTHOR_URN=urn:li:organization:123456789
 LINKEDIN_ACCESS_TOKEN=...
-# Optional; default: 202606.
+# Optional; Standard: 202606.
 # LINKEDIN_API_VERSION=202606
 ```
 

@@ -23,7 +23,7 @@ import {
   resolveRenderTemplateKind
 } from "../src/services/render/index.js"
 
-process.env.SOURCE_MARK = "christoph-fischer.de"
+process.env.SOURCE_MARK = "example.org"
 
 const fixturePath = join(
   process.cwd(),
@@ -99,7 +99,7 @@ describe("post renderer", () => {
       <div class="accent-line"></div>
       <p class="body-text" data-overflow-id="primary-text">Wohl dem Volk, dessen Gott der HERR ist, dem Volk, das er zum Erbe erwählt hat! (Ps 33,12)</p>
       <div class="citation">Ps 33,12</div>
-      <p class="sender-mark">christoph-fischer.de</p>
+      <p class="sender-mark">example.org</p>
       </section>
       </section>
       </main>"

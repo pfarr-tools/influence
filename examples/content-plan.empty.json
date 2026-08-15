@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "titel": "Mein Influence-Redaktionskalender",
+    "inhaber": "Noch nicht festgelegt",
+    "version": "1.0",
+    "erstellt_am": "2026-01-01",
+    "zeitraum": { "von": "2026-01-01", "bis": "2026-12-31" },
+    "umfang": { "wochen": 0, "beitraege": 0 },
+    "zeitzone": "Europe/Berlin",
+    "sprache": "de-DE",
+    "ziel": "Noch nicht festgelegt",
+    "hinweis_zur_liturgie": "Noch nicht festgelegt",
+    "copyright_hinweis": "Rechte der verwendeten Quellen vor Veröffentlichung prüfen."
+  },
+  "quellen": [],
+  "plattform_defaults": {
+    "facebook": { "formats": ["Bild + Text"], "text_length": "Noch nicht festgelegt", "notes": "Noch nicht festgelegt" },
+    "instagram": { "formats": ["Feed-Post"], "text_length": "Noch nicht festgelegt", "notes": "Noch nicht festgelegt" },
+    "mastodon": { "formats": ["Text + Bild"], "text_length": "Noch nicht festgelegt", "notes": "Noch nicht festgelegt" }
+  },
+  "workflow": {
+    "monatlicher_block": { "aufgaben": [] },
+    "woechentlicher_block": { "aufgaben": [] },
+    "samstag": { "aufgaben": [] }
+  },
+  "statuswerte": ["Idee", "in Arbeit", "zur Prüfung", "freigegeben", "terminiert", "veröffentlicht", "verworfen"],
+  "wochen": []
+}
