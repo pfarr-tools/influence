@@ -4,40 +4,102 @@
       <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
         <div>
           <h2 class="h5 mb-1">Assets</h2>
-          <p class="text-secondary small mb-0">Manuelle Uploads werden auf bekannte Asset-Slots verteilt.</p>
+          <p class="text-secondary small mb-0">
+            Manuelle Uploads werden auf bekannte Asset-Slots verteilt.
+          </p>
         </div>
-        <button class="btn btn-outline-secondary btn-sm" type="button" @click="openModal = true">
+        <button
+          class="btn btn-outline-secondary btn-sm"
+          type="button"
+          @click="openModal = true"
+        >
           Asset hochladen
         </button>
       </div>
       <ul class="list-group list-group-flush mt-3">
-        <li v-for="asset in assets" :key="asset.href" class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
-          <a class="text-truncate" :href="asset.href" target="_blank" rel="noreferrer">{{ asset.label }}</a>
+        <li
+          v-for="asset in assets"
+          :key="asset.href"
+          class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2"
+        >
+          <a
+            class="text-truncate"
+            :href="asset.href"
+            target="_blank"
+            rel="noreferrer"
+            >{{ asset.label }}</a
+          >
           <span class="d-flex gap-2 flex-shrink-0">
-            <a class="btn btn-sm btn-outline-secondary" :download="asset.label.split('/').pop()" :href="asset.href">Download</a>
-            <button class="btn btn-sm btn-outline-danger" type="button" @click="removeAsset(asset)">Löschen</button>
+            <a
+              class="btn btn-sm btn-outline-secondary"
+              :download="asset.label.split('/').pop()"
+              :href="asset.href"
+              >Download</a
+            >
+            <button
+              class="btn btn-sm btn-outline-danger"
+              type="button"
+              @click="removeAsset(asset)"
+            >
+              Löschen
+            </button>
           </span>
         </li>
       </ul>
     </div>
   </section>
 
-  <BaseModal :open="openModal" dialog-class="asset-modal-dialog" title="Asset hochladen" @close="closeModal">
+  <BaseModal
+    :open="openModal"
+    dialog-class="asset-modal-dialog"
+    title="Asset hochladen"
+    @close="closeModal"
+  >
     <div class="row g-4">
       <div class="col-lg-4">
         <div class="mb-3">
           <label class="form-label" for="asset-file">Datei</label>
-          <input id="asset-file" ref="fileInput" class="form-control" type="file" @change="handleFileChange" />
+          <input
+            id="asset-file"
+            ref="fileInput"
+            class="form-control"
+            type="file"
+            @change="handleFileChange"
+          />
         </div>
         <div class="alert alert-secondary mb-3">
-          Bilddateien können nach dem Upload in mehrere feste Zielgrößen zugeschnitten werden.
+          Bilddateien können nach dem Upload in mehrere feste Zielgrößen
+          zugeschnitten werden.
         </div>
-        <div v-if="localError" class="alert alert-danger mb-3">{{ localError }}</div>
-        <div v-if="successMessage" class="alert alert-success mb-3">{{ successMessage }}</div>
+        <div class="mb-3">
+          <label class="form-label" for="asset-image-credits"
+            >Image credits</label
+          >
+          <input
+            id="asset-image-credits"
+            v-model="imageCredits"
+            class="form-control"
+            type="text"
+          />
+        </div>
+        <label class="form-check mb-3">
+          <input v-model="isAi" class="form-check-input" type="checkbox" />
+          <span class="form-check-label">KI</span>
+        </label>
+        <div v-if="localError" class="alert alert-danger mb-3">
+          {{ localError }}
+        </div>
+        <div v-if="successMessage" class="alert alert-success mb-3">
+          {{ successMessage }}
+        </div>
         <div class="mb-3">
           <div class="fw-semibold mb-2">Bild-Assets</div>
           <div class="d-grid gap-2">
-            <label v-for="target in imageTargets" :key="target.kind" class="asset-target-option">
+            <label
+              v-for="target in imageTargets"
+              :key="target.kind"
+              class="asset-target-option"
+            >
               <input
                 v-model="selectedKinds"
                 class="form-check-input mt-0"
@@ -63,21 +125,38 @@
           </label>
         </div>
         <div v-if="selectedKinds.includes('reel-shot')" class="mb-3">
-          <label class="form-label" for="asset-reel-shot-index">Reel-Shot</label>
-          <select id="asset-reel-shot-index" v-model="reelShotIndex" class="form-select">
-            <option v-for="index in reelShotOptions" :key="index" :value="index">Shot {{ index }}</option>
+          <label class="form-label" for="asset-reel-shot-index"
+            >Reel-Shot</label
+          >
+          <select
+            id="asset-reel-shot-index"
+            v-model="reelShotIndex"
+            class="form-select"
+          >
+            <option
+              v-for="index in reelShotOptions"
+              :key="index"
+              :value="index"
+            >
+              Shot {{ index }}
+            </option>
           </select>
         </div>
       </div>
 
       <div class="col-lg-8">
         <div class="asset-crop-shell">
-          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div
+            class="d-flex justify-content-between align-items-start gap-3 mb-3"
+          >
             <div>
               <div class="fw-semibold">{{ currentCropLabel }}</div>
               <div class="small text-secondary">{{ currentCropMeta }}</div>
             </div>
-            <div v-if="selectedImageKinds.length > 0" class="small text-secondary">
+            <div
+              v-if="selectedImageKinds.length > 0"
+              class="small text-secondary"
+            >
               {{ currentTargetIndex + 1 }} / {{ selectedImageKinds.length }}
             </div>
           </div>
@@ -91,10 +170,18 @@
               @pointerup="stopDrag"
               @pointercancel="stopDrag"
             >
-              <img v-if="selectedImageUrl" ref="cropImage" :src="selectedImageUrl" alt="" :style="cropImageStyle" />
+              <img
+                v-if="selectedImageUrl"
+                ref="cropImage"
+                :src="selectedImageUrl"
+                alt=""
+                :style="cropImageStyle"
+              />
             </div>
           </div>
-          <div class="small text-secondary mt-2">Im Bild ziehen zum Positionieren, Zoom-Regler für den Ausschnitt.</div>
+          <div class="small text-secondary mt-2">
+            Im Bild ziehen zum Positionieren, Zoom-Regler für den Ausschnitt.
+          </div>
           <div class="mt-3">
             <label class="form-label" for="asset-crop-zoom">Zoom</label>
             <input
@@ -111,7 +198,11 @@
             <button
               v-for="(kind, index) in selectedImageKinds"
               :key="kind"
-              :class="index === currentTargetIndex ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline-secondary'"
+              :class="
+                index === currentTargetIndex
+                  ? 'btn btn-sm btn-primary'
+                  : 'btn btn-sm btn-outline-secondary'
+              "
               type="button"
               @click="currentTargetIndex = index"
             >
@@ -123,8 +214,21 @@
     </div>
 
     <template #footer>
-      <button class="btn btn-outline-secondary" type="button" @click="closeModal">Abbrechen</button>
-      <button class="btn btn-primary" :disabled="busy || !canSubmit" type="button" @click="submitUpload">Asset speichern</button>
+      <button
+        class="btn btn-outline-secondary"
+        type="button"
+        @click="closeModal"
+      >
+        Abbrechen
+      </button>
+      <button
+        class="btn btn-primary"
+        :disabled="busy || !canSubmit"
+        type="button"
+        @click="submitUpload"
+      >
+        Asset speichern
+      </button>
     </template>
   </BaseModal>
 </template>
@@ -135,17 +239,34 @@ import BaseModal from "./BaseModal.vue"
 import { useAssetUpload } from "../composables/useAssetUpload.js"
 import { deleteAsset } from "../api/asset-api.js"
 
-type ImageTargetKind = "background-1.91x1" | "background-4x5" | "background-9x16" | "reel-shot"
+type ImageTargetKind =
+  "background-1.91x1" | "background-4x5" | "background-9x16" | "reel-shot"
 
 const imageTargets = [
-  { height: 630, kind: "background-1.91x1", label: "Hintergrund 1.91:1", width: 1200 },
-  { height: 1350, kind: "background-4x5", label: "Hintergrund 4:5", width: 1080 },
-  { height: 1920, kind: "background-9x16", label: "Hintergrund 9:16", width: 1080 },
+  {
+    height: 630,
+    kind: "background-1.91x1",
+    label: "Hintergrund 1.91:1",
+    width: 1200
+  },
+  {
+    height: 1350,
+    kind: "background-4x5",
+    label: "Hintergrund 4:5",
+    width: 1080
+  },
+  {
+    height: 1920,
+    kind: "background-9x16",
+    label: "Hintergrund 9:16",
+    width: 1080
+  },
   { height: 1920, kind: "reel-shot", label: "Reel-Shot", width: 1080 }
 ] as const
 
 const props = defineProps<{
   assets: Array<{ href: string; kind: string; label: string }>
+  imageCredits: string
   onRefresh: () => Promise<void>
   postId: string
 }>()
@@ -157,14 +278,25 @@ const openModal = ref(false)
 const selectedFile = ref<File | null>(null)
 const selectedImageUrl = ref("")
 const selectedKinds = ref<string[]>([])
+const imageCredits = ref(props.imageCredits)
+const isAi = ref(false)
 const reelShotIndex = ref(1)
 const currentTargetIndex = ref(0)
 const currentZoom = ref("1")
 const successMessage = ref("")
 const localError = ref("")
-const dragState = ref<{ pointerId: number; startX: number; startY: number } | null>(null)
-const cropStates = ref<Record<string, { offsetX: number; offsetY: number; zoom: number }>>({})
-const { busy, error, submitAsset } = useAssetUpload(props.postId, props.onRefresh)
+const dragState = ref<{
+  pointerId: number
+  startX: number
+  startY: number
+} | null>(null)
+const cropStates = ref<
+  Record<string, { offsetX: number; offsetY: number; zoom: number }>
+>({})
+const { busy, error, submitAsset } = useAssetUpload(
+  props.postId,
+  props.onRefresh
+)
 
 async function removeAsset(asset: { href: string; label: string }) {
   if (!window.confirm(`Asset „${asset.label}“ wirklich löschen?`)) return
@@ -172,7 +304,10 @@ async function removeAsset(asset: { href: string; label: string }) {
     await deleteAsset(props.postId, asset.label)
     await props.onRefresh()
   } catch (value) {
-    localError.value = value instanceof Error ? value.message : "Asset konnte nicht gelöscht werden."
+    localError.value =
+      value instanceof Error
+        ? value.message
+        : "Asset konnte nicht gelöscht werden."
   }
 }
 
@@ -180,11 +315,28 @@ watch(error, (value) => {
   localError.value = value
 })
 
-const reelShotOptions = computed(() => Math.max(1, props.assets.filter((asset) => asset.kind === "reel-shot").length + 1))
-const selectedImageKinds = computed(() => selectedKinds.value.filter((kind) => kind !== "reel-audio"))
-const currentTargetKind = computed(() => selectedImageKinds.value[currentTargetIndex.value] as ImageTargetKind | undefined)
-const currentDescriptor = computed(() => descriptorForKind(currentTargetKind.value))
-const currentCropLabel = computed(() => currentDescriptor.value?.label ?? (selectedImageUrl.value ? "Bildzuschnitt" : "Kein Bild geladen"))
+const reelShotOptions = computed(() =>
+  Math.max(
+    1,
+    props.assets.filter((asset) => asset.kind === "reel-shot").length + 1
+  )
+)
+const selectedImageKinds = computed(() =>
+  selectedKinds.value.filter((kind) => kind !== "reel-audio")
+)
+const currentTargetKind = computed(
+  () =>
+    selectedImageKinds.value[currentTargetIndex.value] as
+      ImageTargetKind | undefined
+)
+const currentDescriptor = computed(() =>
+  descriptorForKind(currentTargetKind.value)
+)
+const currentCropLabel = computed(
+  () =>
+    currentDescriptor.value?.label ??
+    (selectedImageUrl.value ? "Bildzuschnitt" : "Kein Bild geladen")
+)
 const currentCropMeta = computed(() => {
   if (!selectedImageUrl.value) {
     return "Wähle ein Bild und mindestens ein Ziel."
@@ -205,7 +357,9 @@ const currentAspectStyle = computed(() => {
     maxWidth: `min(100%, 38rem, calc(60vh * ${aspectRatio}))`
   }
 })
-const canSubmit = computed(() => Boolean(selectedFile.value && selectedKinds.value.length > 0))
+const canSubmit = computed(() =>
+  Boolean(selectedFile.value && selectedKinds.value.length > 0)
+)
 
 watch(currentTargetKind, () => {
   const state = getCurrentCropState()
@@ -246,6 +400,8 @@ function resetModalState() {
   successMessage.value = ""
   selectedFile.value = null
   selectedKinds.value = []
+  imageCredits.value = props.imageCredits
+  isAi.value = false
   reelShotIndex.value = 1
   currentTargetIndex.value = 0
   currentZoom.value = "1"
@@ -292,8 +448,13 @@ function clampCurrentCropState() {
   }
   const state = getCurrentCropState()
   const frameWidth = stage.clientWidth || 640
-  const frameHeight = stage.clientHeight || Math.round(frameWidth * descriptor.height / descriptor.width)
-  const baseScale = Math.max(frameWidth / image.naturalWidth, frameHeight / image.naturalHeight)
+  const frameHeight =
+    stage.clientHeight ||
+    Math.round((frameWidth * descriptor.height) / descriptor.width)
+  const baseScale = Math.max(
+    frameWidth / image.naturalWidth,
+    frameHeight / image.naturalHeight
+  )
   const scaledWidth = image.naturalWidth * baseScale * state.zoom
   const scaledHeight = image.naturalHeight * baseScale * state.zoom
   const maxOffsetX = Math.max(0, (scaledWidth - frameWidth) / 2)
@@ -312,8 +473,13 @@ const cropImageStyle = computed(() => {
   const state = getCurrentCropState()
   clampCurrentCropState()
   const frameWidth = stage.clientWidth || 640
-  const frameHeight = stage.clientHeight || Math.round(frameWidth * descriptor.height / descriptor.width)
-  const baseScale = Math.max(frameWidth / image.naturalWidth, frameHeight / image.naturalHeight)
+  const frameHeight =
+    stage.clientHeight ||
+    Math.round((frameWidth * descriptor.height) / descriptor.width)
+  const baseScale = Math.max(
+    frameWidth / image.naturalWidth,
+    frameHeight / image.naturalHeight
+  )
   const displayWidth = image.naturalWidth * baseScale * state.zoom
   const displayHeight = image.naturalHeight * baseScale * state.zoom
   return {
@@ -372,8 +538,13 @@ async function renderCroppedBlob(kind: ImageTargetKind): Promise<Blob> {
   const cropKey = `${kind}:${reelShotIndex.value}`
   const state = cropStates.value[cropKey] ?? { offsetX: 0, offsetY: 0, zoom: 1 }
   const frameWidth = stage.clientWidth || 640
-  const frameHeight = stage.clientHeight || Math.round(frameWidth * descriptor.height / descriptor.width)
-  const baseScale = Math.max(frameWidth / image.naturalWidth, frameHeight / image.naturalHeight)
+  const frameHeight =
+    stage.clientHeight ||
+    Math.round((frameWidth * descriptor.height) / descriptor.width)
+  const baseScale = Math.max(
+    frameWidth / image.naturalWidth,
+    frameHeight / image.naturalHeight
+  )
   const displayWidth = image.naturalWidth * baseScale * state.zoom
   const displayHeight = image.naturalHeight * baseScale * state.zoom
   const scaleBackX = image.naturalWidth / displayWidth
@@ -382,8 +553,14 @@ async function renderCroppedBlob(kind: ImageTargetKind): Promise<Blob> {
   const sourceHeight = frameHeight * scaleBackY
   const centerX = image.naturalWidth / 2 - state.offsetX * scaleBackX
   const centerY = image.naturalHeight / 2 - state.offsetY * scaleBackY
-  const sourceX = Math.max(0, Math.min(image.naturalWidth - sourceWidth, centerX - sourceWidth / 2))
-  const sourceY = Math.max(0, Math.min(image.naturalHeight - sourceHeight, centerY - sourceHeight / 2))
+  const sourceX = Math.max(
+    0,
+    Math.min(image.naturalWidth - sourceWidth, centerX - sourceWidth / 2)
+  )
+  const sourceY = Math.max(
+    0,
+    Math.min(image.naturalHeight - sourceHeight, centerY - sourceHeight / 2)
+  )
   const canvas = document.createElement("canvas")
   canvas.width = descriptor.width
   canvas.height = descriptor.height
@@ -391,15 +568,29 @@ async function renderCroppedBlob(kind: ImageTargetKind): Promise<Blob> {
   if (!context) {
     throw new Error("Canvas-Kontext konnte nicht erstellt werden.")
   }
-  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, descriptor.width, descriptor.height)
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    descriptor.width,
+    descriptor.height
+  )
   return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Bildzuschnitt konnte nicht exportiert werden."))
-        return
-      }
-      resolve(blob)
-    }, "image/webp", 0.95)
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Bildzuschnitt konnte nicht exportiert werden."))
+          return
+        }
+        resolve(blob)
+      },
+      "image/webp",
+      0.95
+    )
   })
 }
 
@@ -417,6 +608,8 @@ async function submitUpload() {
     for (const kind of selectedKinds.value) {
       const formData = new FormData()
       formData.set("asset_kind", kind)
+      formData.set("image_credits", imageCredits.value)
+      formData.set("is_ai", String(isAi.value))
       if (kind === "reel-shot") {
         formData.set("reel_shot_index", String(reelShotIndex.value))
       }
@@ -431,7 +624,10 @@ async function submitUpload() {
     successMessage.value = "Asset gespeichert."
     await props.onRefresh()
   } catch (uploadError) {
-    localError.value = uploadError instanceof Error ? uploadError.message : "Asset konnte nicht gespeichert werden."
+    localError.value =
+      uploadError instanceof Error
+        ? uploadError.message
+        : "Asset konnte nicht gespeichert werden."
   }
 }
 </script>

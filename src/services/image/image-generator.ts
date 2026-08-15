@@ -3,10 +3,7 @@ import { dirname, relative } from "node:path"
 
 import type { Calendar, CalendarPost } from "../../domain/calendar.js"
 import type { ContentPackage } from "../../domain/content.js"
-import {
-  getPostById,
-  getWeekForDate
-} from "../calendar/calendar-service.js"
+import { getPostById, getWeekForDate } from "../calendar/calendar-service.js"
 import { CalendarValidationError } from "../calendar/errors.js"
 import {
   assertContentApproved,
@@ -15,10 +12,8 @@ import {
   readContentPackage,
   writeJsonFile
 } from "../content/content-storage.js"
-import type {
-  ImageModelClient,
-  ImageModelRequest
-} from "./flux-client.js"
+import type { ImageModelClient, ImageModelRequest } from "./flux-client.js"
+import { burnImageCredits } from "./image-credits.js"
 
 const supportedFormats = {
   "1.91:1": { width: 1200, height: 630, slug: "1.91x1" },
@@ -61,8 +56,10 @@ export interface GenerateReelImagesResult {
 /**
  * Request preview used by dry-run mode.
  */
-export interface ImageGenerationRequestPreview
-  extends Omit<ImageModelRequest, "aspectRatio"> {
+export interface ImageGenerationRequestPreview extends Omit<
+  ImageModelRequest,
+  "aspectRatio"
+> {
   aspectRatio: SupportedFormat
   height: number
   postId: string
@@ -131,7 +128,9 @@ export async function generateImagesForWeek(
   const results: GenerateImagesResult[] = []
 
   for (const post of week.beitraege) {
-    results.push(await generateImagesForCalendarPost(post, options, dependencies))
+    results.push(
+      await generateImagesForCalendarPost(post, options, dependencies)
+    )
   }
 
   return results
@@ -157,7 +156,9 @@ export async function generateReelImagesForWeek(
   const results: GenerateReelImagesResult[] = []
 
   for (const post of week.beitraege) {
-    results.push(await generateReelImagesForCalendarPost(post, options, dependencies))
+    results.push(
+      await generateReelImagesForCalendarPost(post, options, dependencies)
+    )
   }
 
   return results
@@ -182,7 +183,14 @@ async function generateImagesForCalendarPost(
   const targetFormats = resolveTargetFormats(post, content)
   const summaryPath = `${contentPaths.baseDir}/image-generation-results.json`
   const requests = targetFormats.map((format) =>
-    buildRequestPreview(post.id, content, options.model, format, safePrompt, options.seed)
+    buildRequestPreview(
+      post.id,
+      content,
+      options.model,
+      format,
+      safePrompt,
+      options.seed
+    )
   )
 
   if (options.dryRun) {
@@ -194,7 +202,10 @@ async function generateImagesForCalendarPost(
         aspectRatio: request.aspectRatio,
         height: request.height,
         mimeType: "image/webp",
-        rawResponsePath: buildRawResponsePath(contentPaths.baseDir, request.aspectRatio),
+        rawResponsePath: buildRawResponsePath(
+          contentPaths.baseDir,
+          request.aspectRatio
+        ),
         request: requestToStoredRequest(request),
         seed: request.seed,
         status: "succeeded",
@@ -205,7 +216,12 @@ async function generateImagesForCalendarPost(
     }
   }
 
-  await assertWritableImageTargets(contentPaths.baseDir, targetFormats, summaryPath, options.force)
+  await assertWritableImageTargets(
+    contentPaths.baseDir,
+    targetFormats,
+    summaryPath,
+    options.force
+  )
 
   const imageClient = dependencies.imageClient
 
@@ -220,12 +236,24 @@ async function generateImagesForCalendarPost(
 
   for (const request of requests) {
     const assetPath = buildAssetPath(contentPaths.baseDir, request.aspectRatio)
-    const rawResponsePath = buildRawResponsePath(contentPaths.baseDir, request.aspectRatio)
+    const rawResponsePath = buildRawResponsePath(
+      contentPaths.baseDir,
+      request.aspectRatio
+    )
 
     try {
-      const response = await imageClient.generateImage(requestToStoredRequest(request))
+      const response = await imageClient.generateImage(
+        requestToStoredRequest(request)
+      )
       await mkdir(dirname(assetPath), { recursive: true })
-      await writeFile(assetPath, Buffer.from(response.imageBase64, "base64"))
+      await writeFile(
+        assetPath,
+        await burnImageCredits(Buffer.from(response.imageBase64, "base64"), {
+          credits: process.env.IMAGE_CREDITS,
+          isAi: true,
+          model: options.model
+        })
+      )
       await writeJsonFile(rawResponsePath, response.rawResponse)
 
       jobs.push({
@@ -269,7 +297,12 @@ async function generateImagesForCalendarPost(
     post_id: post.id
   })
 
-  await updateContentAssets(contentPaths.contentPath, contentPaths.baseDir, content, jobs)
+  await updateContentAssets(
+    contentPaths.contentPath,
+    contentPaths.baseDir,
+    content,
+    jobs
+  )
 
   return {
     contentPath: contentPaths.contentPath,
@@ -326,7 +359,10 @@ async function generateReelImagesForCalendarPost(
         aspectRatio: request.aspectRatio,
         height: request.height,
         mimeType: "image/webp",
-        rawResponsePath: buildReelRawResponsePath(contentPaths.baseDir, index + 1),
+        rawResponsePath: buildReelRawResponsePath(
+          contentPaths.baseDir,
+          index + 1
+        ),
         request: requestToStoredRequest(request),
         seed: request.seed,
         status: "succeeded",
@@ -337,7 +373,12 @@ async function generateReelImagesForCalendarPost(
     }
   }
 
-  await assertWritableReelImageTargets(contentPaths.baseDir, shots.length, summaryPath, options.force)
+  await assertWritableReelImageTargets(
+    contentPaths.baseDir,
+    shots.length,
+    summaryPath,
+    options.force
+  )
 
   const imageClient = dependencies.imageClient
 
@@ -353,12 +394,24 @@ async function generateReelImagesForCalendarPost(
   for (const [index, request] of requests.entries()) {
     const sequence = index + 1
     const assetPath = buildReelAssetPath(contentPaths.baseDir, sequence)
-    const rawResponsePath = buildReelRawResponsePath(contentPaths.baseDir, sequence)
+    const rawResponsePath = buildReelRawResponsePath(
+      contentPaths.baseDir,
+      sequence
+    )
 
     try {
-      const response = await imageClient.generateImage(requestToStoredRequest(request))
+      const response = await imageClient.generateImage(
+        requestToStoredRequest(request)
+      )
       await mkdir(dirname(assetPath), { recursive: true })
-      await writeFile(assetPath, Buffer.from(response.imageBase64, "base64"))
+      await writeFile(
+        assetPath,
+        await burnImageCredits(Buffer.from(response.imageBase64, "base64"), {
+          credits: process.env.IMAGE_CREDITS,
+          isAi: true,
+          model: options.model
+        })
+      )
       await writeJsonFile(rawResponsePath, response.rawResponse)
 
       jobs.push({
@@ -402,7 +455,12 @@ async function generateReelImagesForCalendarPost(
     post_id: post.id
   })
 
-  await updateContentAssets(contentPaths.contentPath, contentPaths.baseDir, content, jobs)
+  await updateContentAssets(
+    contentPaths.contentPath,
+    contentPaths.baseDir,
+    content,
+    jobs
+  )
 
   return {
     contentPath: contentPaths.contentPath,
@@ -419,7 +477,9 @@ function resolveTargetFormats(
   const platformFormats = [
     ...post.plattformen_und_formate.facebook.map(() => "1.91:1" as const),
     ...post.plattformen_und_formate.instagram.map((format) =>
-      format.toLowerCase().includes("story") ? ("9:16" as const) : ("4:5" as const)
+      format.toLowerCase().includes("story")
+        ? ("9:16" as const)
+        : ("4:5" as const)
     ),
     ...post.plattformen_und_formate.mastodon.map(() => "1.91:1" as const)
   ]
@@ -527,7 +587,10 @@ function buildAssetPath(baseDir: string, format: SupportedFormat): string {
   return `${baseDir}/assets/background-${supportedFormats[format].slug}.webp`
 }
 
-function buildRawResponsePath(baseDir: string, format: SupportedFormat): string {
+function buildRawResponsePath(
+  baseDir: string,
+  format: SupportedFormat
+): string {
   return `${baseDir}/raw-flux-response-${supportedFormats[format].slug}.json`
 }
 

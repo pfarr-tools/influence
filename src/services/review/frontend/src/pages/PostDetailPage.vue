@@ -38,7 +38,11 @@
         >
           Löschen
         </button>
-        <button class="btn btn-sm btn-outline-secondary" type="button" @click="jsonEditorOpen = true">
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          type="button"
+          @click="jsonEditorOpen = true"
+        >
           JSON bearbeiten
         </button>
         <span
@@ -85,22 +89,38 @@
               automatisch veröffentlicht werden.
             </p>
             <div v-if="post.publicationChannels.length > 0" class="row g-2">
-              <div v-for="channel in post.publicationChannels" :key="`${channel.platform}-${channel.format}`" class="col-sm-6">
-                <div class="border rounded p-2 d-flex justify-content-between align-items-center">
+              <div
+                v-for="channel in post.publicationChannels"
+                :key="`${channel.platform}-${channel.format}`"
+                class="col-sm-6"
+              >
+                <div
+                  class="border rounded p-2 d-flex justify-content-between align-items-center"
+                >
                   <div>
-                    <div>{{ publicationLabel(channel.platform, channel.format) }}</div>
-                    <small class="text-secondary">{{ publicationDate(channel.scheduledAt, channel.timezone) }}</small>
+                    <div>
+                      {{ publicationLabel(channel.platform, channel.format) }}
+                    </div>
+                    <small class="text-secondary">{{
+                      publicationDate(channel.scheduledAt, channel.timezone)
+                    }}</small>
                   </div>
                   <div class="d-flex align-items-center gap-2">
-                    <span class="badge text-bg-light">{{ publicationStatusLabel(channel.status) }}</span>
+                    <span class="badge text-bg-light">{{
+                      publicationStatusLabel(channel.status)
+                    }}</span>
                     <button
                       class="btn btn-sm btn-outline-secondary"
                       type="button"
                       :aria-label="`Jetzt auf ${publicationLabel(channel.platform, channel.format)} veröffentlichen`"
                       :title="`Jetzt auf ${publicationLabel(channel.platform, channel.format)} veröffentlichen`"
-                      :disabled="reviewStore.loading || channel.status === 'published'"
+                      :disabled="
+                        reviewStore.loading || channel.status === 'published'
+                      "
                       @click="publishChannel(channel.platform)"
-                    >↗</button>
+                    >
+                      ↗
+                    </button>
                     <button
                       v-if="channel.status === 'scheduled'"
                       class="btn btn-sm btn-outline-danger"
@@ -109,17 +129,31 @@
                       :title="`${publicationLabel(channel.platform, channel.format)}-Planung aufheben`"
                       :disabled="reviewStore.loading"
                       @click="cancelChannel(channel.platform, channel.format)"
-                    >×</button>
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-            <p v-else class="small text-secondary">Noch keine Kanäle geplant.</p>
+            <p v-else class="small text-secondary">
+              Noch keine Kanäle geplant.
+            </p>
             <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
-              <button class="btn btn-primary btn-sm" type="button" :disabled="!post.workflow.qaReadyForApproval" @click="shareFacebook">
+              <button
+                class="btn btn-primary btn-sm"
+                type="button"
+                :disabled="!post.workflow.qaReadyForApproval"
+                @click="shareFacebook"
+              >
                 Auf Facebook teilen
               </button>
-              <span v-if="facebookNotice" class="small text-secondary" role="status">{{ facebookNotice }}</span>
+              <span
+                v-if="facebookNotice"
+                class="small text-secondary"
+                role="status"
+                >{{ facebookNotice }}</span
+              >
             </div>
           </div>
         </section>
@@ -130,8 +164,8 @@
           @close="facebookShareModalOpen = false"
         >
           <p class="mb-3">
-            Der Facebook-Share-Dialog ist geöffnet. Kopiere dort den vorbereiteten
-            Beitragstext und füge optional das Bild hinzu.
+            Der Facebook-Share-Dialog ist geöffnet. Kopiere dort den
+            vorbereiteten Beitragstext und füge optional das Bild hinzu.
           </p>
           <div class="d-flex flex-wrap gap-2">
             <button
@@ -151,11 +185,19 @@
               Bild kopieren
             </button>
           </div>
-          <p v-if="facebookCopyNotice" class="small text-secondary mt-3 mb-0" role="status">
+          <p
+            v-if="facebookCopyNotice"
+            class="small text-secondary mt-3 mb-0"
+            role="status"
+          >
             {{ facebookCopyNotice }}
           </p>
           <template #footer>
-            <button class="btn btn-secondary" type="button" @click="facebookShareModalOpen = false">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              @click="facebookShareModalOpen = false"
+            >
               Schließen
             </button>
           </template>
@@ -204,7 +246,11 @@
                   class="form-control"
                   type="time"
                 />
-                <div class="form-text">Leer lassen, um die Standardzeit ({{ post.publicationDefaultTime }}) zu verwenden.</div>
+                <div class="form-text">
+                  Leer lassen, um die Standardzeit ({{
+                    post.publicationDefaultTime
+                  }}) zu verwenden.
+                </div>
               </div>
               <div class="col-12">
                 <label class="form-label">Kernbotschaft</label>
@@ -213,7 +259,9 @@
                   class="form-control"
                   rows="3"
                 />
-                <div class="form-text text-end">{{ form.mainMessage.length }}</div>
+                <div class="form-text text-end">
+                  {{ form.mainMessage.length }}
+                </div>
               </div>
               <div class="col-12 form-section-heading">Bild und Flux</div>
               <div class="col-12">
@@ -232,7 +280,9 @@
                   class="form-control"
                   rows="3"
                 />
-                <div class="form-text text-end">{{ form.fluxPrompt.length }}</div>
+                <div class="form-text text-end">
+                  {{ form.fluxPrompt.length }}
+                </div>
               </div>
               <div class="col-12 form-section-heading">Facebook</div>
               <div class="col-md-6">
@@ -250,7 +300,9 @@
                   class="form-control"
                   rows="3"
                 />
-                <div class="form-text text-end">{{ form.facebookText.length }}</div>
+                <div class="form-text text-end">
+                  {{ form.facebookText.length }}
+                </div>
               </div>
               <div class="col-12 form-section-heading">Instagram</div>
               <div class="col-12">
@@ -326,7 +378,9 @@
                         </div>
                       </div>
                     </div>
-                    <div class="form-text text-end">{{ slide.text.length }}</div>
+                    <div class="form-text text-end">
+                      {{ slide.text.length }}
+                    </div>
                     <button
                       class="btn btn-sm btn-outline-danger"
                       type="button"
@@ -345,7 +399,9 @@
                   class="form-control"
                   rows="3"
                 />
-                <div class="form-text text-end">{{ form.instagramCaption.length }}</div>
+                <div class="form-text text-end">
+                  {{ form.instagramCaption.length }}
+                </div>
               </div>
               <div class="col-12 form-section-heading">Mastodon</div>
               <div class="col-12">
@@ -355,18 +411,25 @@
                   class="form-control"
                   rows="3"
                 />
-                <div class="form-text text-end">{{ form.mastodonText.length }}</div>
+                <div class="form-text text-end">
+                  {{ form.mastodonText.length }}
+                </div>
               </div>
               <div class="col-12 form-section-heading">Bluesky</div>
               <div class="col-12">
-                <label class="form-label">Bluesky-Text <span class="text-secondary">(max. 300 Zeichen)</span></label>
+                <label class="form-label"
+                  >Bluesky-Text
+                  <span class="text-secondary">(max. 300 Zeichen)</span></label
+                >
                 <textarea
                   v-model="form.blueskyText"
                   class="form-control"
                   rows="3"
                   maxlength="300"
                 />
-                <div class="form-text text-end">{{ form.blueskyText.length }}/300</div>
+                <div class="form-text text-end">
+                  {{ form.blueskyText.length }}/300
+                </div>
               </div>
               <div class="col-12 form-section-heading">Reel</div>
               <div class="col-12">
@@ -413,7 +476,9 @@
                       rows="2"
                       :aria-label="`Story-Slide ${index + 1}`"
                     />
-                    <div class="form-text text-end">{{ slide.text.length }}</div>
+                    <div class="form-text text-end">
+                      {{ slide.text.length }}
+                    </div>
                     <button
                       class="btn btn-sm btn-outline-danger"
                       type="button"
@@ -432,7 +497,9 @@
                   class="form-control"
                   rows="4"
                 />
-                <div class="form-text text-end">{{ form.reelScript.length }}</div>
+                <div class="form-text text-end">
+                  {{ form.reelScript.length }}
+                </div>
               </div>
               <div class="col-12">
                 <button
@@ -504,7 +571,9 @@
                 Trotz Fehlern freigeben (Force)
               </button>
               <button
-                v-if="!post.publicationApproved && post.workflow.contentGenerated"
+                v-if="
+                  !post.publicationApproved && post.workflow.contentGenerated
+                "
                 class="btn btn-outline-danger btn-sm ms-2"
                 type="button"
                 :disabled="reviewStore.loading"
@@ -519,6 +588,7 @@
         <AssetPanel
           class="mb-4"
           :assets="post.assets"
+          :image-credits="post.imageCredits"
           :on-refresh="refreshPost"
           :post-id="post.post.postId"
         />
@@ -645,8 +715,13 @@ const postId = computed(() => String(route.params.postId ?? ""))
 const activePreviewItems = computed(
   () => post.value?.previewGroups[previewGroupIndex.value]?.items ?? []
 )
-const { applyCurrentRevision, chatStore, reviseCurrentSession, sendMessage, sendMessageAndRevise } =
-  useChatSession(() => postId.value)
+const {
+  applyCurrentRevision,
+  chatStore,
+  reviseCurrentSession,
+  sendMessage,
+  sendMessageAndRevise
+} = useChatSession(() => postId.value)
 
 async function applyPostRevision() {
   await applyCurrentRevision()
@@ -682,7 +757,8 @@ watch(post, (value) => {
   form.instagramCaption = value.content.instagramCaption
   form.mainMessage = value.content.mainMessage
   form.mastodonText = value.content.mastodonText
-  form.blueskyText = value.content.platforms?.bluesky?.text ?? value.content.blueskyText
+  form.blueskyText =
+    value.content.platforms?.bluesky?.text ?? value.content.blueskyText
   form.reelHook = value.content.reelHook
   form.reelScript = value.content.reelScript
   form.title = value.content.title
@@ -744,7 +820,9 @@ async function forceApprovePublication() {
     return
   }
 
-  await triggerPostAction(postId.value, "approve-publication", undefined, { force: true })
+  await triggerPostAction(postId.value, "approve-publication", undefined, {
+    force: true
+  })
 }
 
 async function savePost() {
@@ -787,7 +865,8 @@ async function shareFacebook() {
   try {
     await copyFacebookText()
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Kopieren fehlgeschlagen."
+    const message =
+      error instanceof Error ? error.message : "Kopieren fehlgeschlagen."
     facebookNotice.value = message
     facebookCopyNotice.value = message
   }
@@ -817,11 +896,13 @@ async function copyFacebookText() {
 
 async function copyFacebookImage() {
   if (!post.value?.facebookImageHref) {
-    facebookCopyNotice.value = "Kein Facebook-Bild gefunden. Rendere zuerst die Social-Bilder für diesen Beitrag."
+    facebookCopyNotice.value =
+      "Kein Facebook-Bild gefunden. Rendere zuerst die Social-Bilder für diesen Beitrag."
     return
   }
   if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
-    facebookCopyNotice.value = "Das Kopieren von Bildern wird von diesem Browser nicht unterstützt."
+    facebookCopyNotice.value =
+      "Das Kopieren von Bildern wird von diesem Browser nicht unterstützt."
     return
   }
 
@@ -837,7 +918,10 @@ async function copyFacebookImage() {
     ])
     facebookCopyNotice.value = "Facebook-Bild kopiert."
   } catch (error) {
-    facebookCopyNotice.value = error instanceof Error ? error.message : "Bild konnte nicht kopiert werden."
+    facebookCopyNotice.value =
+      error instanceof Error
+        ? error.message
+        : "Bild konnte nicht kopiert werden."
   } finally {
     facebookCopyBusy.value = false
   }
@@ -852,7 +936,12 @@ async function publishChannel(platform: string) {
 }
 
 async function cancelChannel(platform: string, format: string) {
-  if (!window.confirm(`${publicationLabel(platform, format)}-Planung wirklich aufheben?`)) return
+  if (
+    !window.confirm(
+      `${publicationLabel(platform, format)}-Planung wirklich aufheben?`
+    )
+  )
+    return
   await cancelScheduledPublication(postId.value, platform, format)
 }
 
@@ -860,13 +949,15 @@ function publicationLabel(platform: string, format = ""): string {
   if (platform === "instagram") {
     return `Instagram (${format === "story" ? "Story" : "Post"})`
   }
-  return {
-    mastodon: "Mastodon",
-    threads: "Threads",
-    bluesky: "Bluesky",
-    linkedin: "LinkedIn",
-    facebook: "Facebook (Page)"
-  }[platform] ?? platform
+  return (
+    {
+      mastodon: "Mastodon",
+      threads: "Threads",
+      bluesky: "Bluesky",
+      linkedin: "LinkedIn",
+      facebook: "Facebook (Page)"
+    }[platform] ?? platform
+  )
 }
 
 function publicationDate(scheduledAt: string | null, timezone: string): string {
@@ -874,18 +965,20 @@ function publicationDate(scheduledAt: string | null, timezone: string): string {
   return `${new Intl.DateTimeFormat("de-DE", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: timezone,
+    timeZone: timezone
   }).format(new Date(scheduledAt))} Uhr`
 }
 
 function publicationStatusLabel(status: string): string {
-  return {
-    approved: "bereit",
-    scheduled: "geplant",
-    processing: "läuft",
-    published: "veröffentlicht",
-    failed: "Fehler",
-  }[status] ?? status
+  return (
+    {
+      approved: "bereit",
+      scheduled: "geplant",
+      processing: "läuft",
+      published: "veröffentlicht",
+      failed: "Fehler"
+    }[status] ?? status
+  )
 }
 
 function addStorySlide() {

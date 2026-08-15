@@ -33,6 +33,7 @@ import {
   revokePublicationApproval,
   writeJsonFile
 } from "../content/content-storage.js"
+import { burnImageCredits } from "../image/image-credits.js"
 
 type PersistedQaSummary = {
   errors?: string[]
@@ -187,6 +188,8 @@ export type ReviewAssetKind =
 export interface StoreReviewAssetInput {
   assetKind: ReviewAssetKind
   file: ReviewUploadedFile
+  imageCredits?: string
+  isAi?: boolean
   reelShotIndex?: number
 }
 
@@ -324,7 +327,14 @@ export async function storeReviewAsset(
   )
 
   await mkdir(join(contentPaths.baseDir, "assets"), { recursive: true })
-  await writeFile(assetAbsolutePath, input.file.buffer)
+  const assetBuffer =
+    input.assetKind === "reel-audio"
+      ? input.file.buffer
+      : await burnImageCredits(input.file.buffer, {
+          credits: input.imageCredits,
+          isAi: input.isAi
+        })
+  await writeFile(assetAbsolutePath, assetBuffer)
   await writeJsonFile(contentPaths.contentPath, {
     ...content,
     metadata: {
@@ -474,12 +484,18 @@ export async function approveReviewPostForPublication(
     createConfiguredAdapters()
   )
 
-  for (const platform of resolvePublicationPlatforms(runtimeConfig.publicationPlatforms)) {
+  for (const platform of resolvePublicationPlatforms(
+    runtimeConfig.publicationPlatforms
+  )) {
     await publishingService.schedulePost(
       calendar,
       postId,
       platform,
-      resolvePublicationScheduledAt(post.datum, post.veroeffentlichungszeit, runtimeConfig),
+      resolvePublicationScheduledAt(
+        post.datum,
+        post.veroeffentlichungszeit,
+        runtimeConfig
+      ),
       "default",
       runtimeConfig.publicationTimezone,
       { force: options.force }
@@ -710,7 +726,11 @@ async function buildReviewPostCard(
     publicationTime: post.veroeffentlichungszeit ?? "",
     qaReadyForApproval: qaSummary?.ready_for_approval ?? false,
     rubric: post.rubrik,
-    status: getPublicationStatus(content.status, publicationApproved, publicationJobs),
+    status: getPublicationStatus(
+      content.status,
+      publicationApproved,
+      publicationJobs
+    ),
     theme: content.editorial_core.title || post.thema,
     weekday: post.wochentag,
     workflow
@@ -725,7 +745,10 @@ export function getPublicationStatus(
 ): string {
   if (!publicationApproved) return contentStatus
   const automaticJobs = jobs.filter((job) => job.platform !== "facebook")
-  if (automaticJobs.length > 0 && automaticJobs.every((job) => job.status === "published")) {
+  if (
+    automaticJobs.length > 0 &&
+    automaticJobs.every((job) => job.status === "published")
+  ) {
     return "veröffentlicht"
   }
   if (jobs.length > 0) {
@@ -746,9 +769,8 @@ function resolvePublicationPlatforms(value: string): PublicationPlatform[] {
   const parsed = value
     .split(",")
     .map((platform) => platform.trim().toLowerCase())
-    .filter(
-      (platform): platform is PublicationPlatform =>
-        supported.has(platform as PublicationPlatform)
+    .filter((platform): platform is PublicationPlatform =>
+      supported.has(platform as PublicationPlatform)
     )
 
   return parsed.length > 0
@@ -802,8 +824,7 @@ function buildZonedIsoTimestamp(
           Date.UTC(year, month - 1, day)) /
           86_400_000
       ) * 1_440
-    const minuteDelta =
-      actualMinutes - intendedMinutes + dayDeltaMinutes
+    const minuteDelta = actualMinutes - intendedMinutes + dayDeltaMinutes
 
     if (minuteDelta === 0 && actualDateKey === intendedDateKey) {
       break
@@ -850,7 +871,11 @@ async function updatePublicationJobsForRescheduledPost(
   const jobs = await store.list()
 
   for (const job of jobs) {
-    if (job.postId !== postId || !job.scheduledAt || job.status === "published") {
+    if (
+      job.postId !== postId ||
+      !job.scheduledAt ||
+      job.status === "published"
+    ) {
       continue
     }
 

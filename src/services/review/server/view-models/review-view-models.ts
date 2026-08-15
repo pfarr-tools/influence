@@ -116,6 +116,7 @@ export function buildPostDetailResponse(
     previousPostId?: string
     publicBaseUrl?: string
     defaultPublicationTime?: string
+    imageCredits?: string
   } = {}
 ): PostDetailResponse {
   const cacheVersion = Date.now()
@@ -131,6 +132,7 @@ export function buildPostDetailResponse(
       kind: inferAssetKind(assetPath),
       label: basename(assetPath)
     })),
+    imageCredits: navigation.imageCredits ?? process.env.IMAGE_CREDITS ?? "",
     chatContext: {
       contextType: "post",
       postId: detail.post.id
@@ -250,7 +252,10 @@ function buildCacheBustedFileHref(
   return `/files/${relativePath}?v=${encodeURIComponent(String(cacheVersion))}`
 }
 
-function buildPublicPostUrl(postId: string, publicBaseUrl?: string): string | null {
+function buildPublicPostUrl(
+  postId: string,
+  publicBaseUrl?: string
+): string | null {
   const normalizedBaseUrl = publicBaseUrl?.trim().replace(/\/$/, "")
   if (!normalizedBaseUrl) return null
   return `${normalizedBaseUrl}/posts/${postId}/`
@@ -427,7 +432,11 @@ export function buildChatSessionResponse(
 }
 
 function extractRawRevisionOutput(rawResponse: unknown): string | null {
-  if (rawResponse && typeof rawResponse === "object" && "output_text" in rawResponse) {
+  if (
+    rawResponse &&
+    typeof rawResponse === "object" &&
+    "output_text" in rawResponse
+  ) {
     const outputText = rawResponse.output_text
     if (typeof outputText === "string") {
       return outputText
@@ -457,10 +466,12 @@ function buildReviewActionButtons(
         ? publicationApproved
         : action === "approve"
           ? contentApproved
-        : isReviewActionCompleted(action, workflow),
+          : isReviewActionCompleted(action, workflow),
     disabled:
       action === "approve-publication"
-        ? !workflow.qaReadyForApproval || !workflow.contentGenerated || publicationApproved
+        ? !workflow.qaReadyForApproval ||
+          !workflow.contentGenerated ||
+          publicationApproved
         : isReviewActionDisabled(action, workflow),
     label: reviewActionLabels[action],
     method: action === "export" ? "GET" : "POST",

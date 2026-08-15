@@ -20,11 +20,7 @@ import type {
   ImageModelResponse
 } from "../src/services/image/flux-client.js"
 
-const fixturePath = join(
-  process.cwd(),
-  "content",
-  "content-plan.json"
-)
+const fixturePath = join(process.cwd(), "content", "content-plan.json")
 
 describe("image generator", () => {
   let tempDir: string
@@ -65,9 +61,11 @@ describe("image generator", () => {
     expect(result.dryRunRequests).toHaveLength(3)
     expect(result.dryRunRequests?.[0]?.model).toBe("flux-dev")
     expect(result.dryRunRequests?.[0]?.seed).toBe(77)
-    expect(result.dryRunRequests?.every((request) => request.prompt.includes("no text"))).toBe(
-      true
-    )
+    expect(
+      result.dryRunRequests?.every((request) =>
+        request.prompt.includes("no text")
+      )
+    ).toBe(true)
   })
 
   it("writes assets, raw responses, and content asset references on success", async () => {
@@ -100,9 +98,9 @@ describe("image generator", () => {
     const updatedContent = await readJsonFile<{
       metadata: { assets: string[] }
     }>(result.contentPath)
-    const rawResponse = await readJsonFile<{ data: Array<{ b64_json: string }> }>(
-      join(tempDir, "2026-08-10", "post-0001", "raw-flux-response-4x5.json")
-    )
+    const rawResponse = await readJsonFile<{
+      data: Array<{ b64_json: string }>
+    }>(join(tempDir, "2026-08-10", "post-0001", "raw-flux-response-4x5.json"))
 
     expect(assetBuffer.length).toBeGreaterThan(0)
     expect(summary.post_id).toBe("post-0001")
@@ -149,9 +147,10 @@ describe("image generator", () => {
       generated_at: string
       jobs: Array<{ aspectRatio: string; error?: string; status: string }>
     }>(result.summaryPath)
-    const failedRawResponse = await readJsonFile<{ error: string; status: string }>(
-      join(tempDir, "2026-08-10", "post-0001", "raw-flux-response-9x16.json")
-    )
+    const failedRawResponse = await readJsonFile<{
+      error: string
+      status: string
+    }>(join(tempDir, "2026-08-10", "post-0001", "raw-flux-response-9x16.json"))
 
     expect(summary.generated_at).toBe("2026-08-05T12:00:00.000Z")
     expect(summary.jobs).toEqual(
@@ -194,11 +193,15 @@ describe("image generator", () => {
       join(tempDir, "2026-08-10", "post-0001", "assets", "reel-shot-02.webp"),
       join(tempDir, "2026-08-10", "post-0001", "assets", "reel-shot-03.webp")
     ])
-    expect(result.dryRunRequests?.map((request) => request.seed)).toEqual([100, 101, 102])
-    expect(result.dryRunRequests?.every((request) => request.aspectRatio === "9:16")).toBe(
-      true
+    expect(result.dryRunRequests?.map((request) => request.seed)).toEqual([
+      100, 101, 102
+    ])
+    expect(
+      result.dryRunRequests?.every((request) => request.aspectRatio === "9:16")
+    ).toBe(true)
+    expect(result.dryRunRequests?.[1]?.prompt).toContain(
+      "scene focus: Bibel auf Holz"
     )
-    expect(result.dryRunRequests?.[1]?.prompt).toContain("scene focus: Bibel auf Holz")
   })
 })
 
@@ -207,7 +210,9 @@ function createMockImageClient(options?: {
   onCall?: (request: ImageModelRequest) => void
 }): ImageModelClient {
   return {
-    async generateImage(request: ImageModelRequest): Promise<ImageModelResponse> {
+    async generateImage(
+      request: ImageModelRequest
+    ): Promise<ImageModelResponse> {
       options?.onCall?.(request)
 
       if (request.aspectRatio === options?.failingAspectRatio) {
@@ -215,12 +220,15 @@ function createMockImageClient(options?: {
       }
 
       return {
-        imageBase64: Buffer.from(`image:${request.aspectRatio}`).toString("base64"),
+        imageBase64:
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
         mimeType: "image/webp",
         rawResponse: {
           data: [
             {
-              b64_json: Buffer.from(`image:${request.aspectRatio}`).toString("base64")
+              b64_json: Buffer.from(`image:${request.aspectRatio}`).toString(
+                "base64"
+              )
             }
           ],
           seed: request.seed ?? 123

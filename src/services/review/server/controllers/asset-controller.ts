@@ -1,5 +1,5 @@
 import { relative } from "node:path"
-import { join, relative as relativePath, resolve } from "node:path"
+import { resolve } from "node:path"
 import { unlink } from "node:fs/promises"
 
 import {
@@ -7,7 +7,11 @@ import {
   storeReviewReelAudioAsset
 } from "../../review-service.js"
 import { getPostById } from "../../../calendar/calendar-service.js"
-import { getContentOutputPaths, readContentPackage, writeJsonFile } from "../../../content/content-storage.js"
+import {
+  getContentOutputPaths,
+  readContentPackage,
+  writeJsonFile
+} from "../../../content/content-storage.js"
 import { assetKindSchemaPublic } from "../contracts/review-contracts.js"
 import { parseFormBody } from "../request/parse-form-body.js"
 import type { ReviewServerDependencies } from "../routes/review-routes.js"
@@ -20,9 +24,14 @@ export async function uploadPostAsset(
   const form = await parseFormBody(request)
   const uploadedAsset = form.getFile("asset_upload")
   const assetKind = assetKindSchemaPublic.parse(form.get("asset_kind"))
+  const imageCredits =
+    form.get("image_credits") || process.env.IMAGE_CREDITS || ""
+  const isAi = form.get("is_ai") === "true"
   const reelShotIndexRaw = form.get("reel_shot_index")
   const reelShotIndex =
-    reelShotIndexRaw.length > 0 ? Number.parseInt(reelShotIndexRaw, 10) : undefined
+    reelShotIndexRaw.length > 0
+      ? Number.parseInt(reelShotIndexRaw, 10)
+      : undefined
 
   if (!uploadedAsset) {
     throw new Error("Keine Asset-Datei empfangen.")
@@ -35,6 +44,8 @@ export async function uploadPostAsset(
     {
       assetKind,
       file: uploadedAsset,
+      imageCredits,
+      isAi,
       reelShotIndex
     }
   )
@@ -70,9 +81,16 @@ export async function uploadVoiceoverAsset(
   }
 }
 
-export async function deleteReviewAsset(postId: string, assetPath: string, dependencies: ReviewServerDependencies) {
+export async function deleteReviewAsset(
+  postId: string,
+  assetPath: string,
+  dependencies: ReviewServerDependencies
+) {
   const post = getPostById(dependencies.calendar, postId)
-  const paths = getContentOutputPaths(dependencies.runtimeConfig.outputDir, post)
+  const paths = getContentOutputPaths(
+    dependencies.runtimeConfig.outputDir,
+    post
+  )
   const normalized = assetPath.replace(/^\/+/, "")
   if (!normalized.startsWith("assets/") || normalized.includes("..")) {
     throw new Error("Ungültiger Asset-Pfad.")
@@ -84,7 +102,10 @@ export async function deleteReviewAsset(postId: string, assetPath: string, depen
   await unlink(resolve(paths.baseDir, normalized))
   await writeJsonFile(paths.contentPath, {
     ...content,
-    metadata: { ...content.metadata, assets: content.metadata.assets.filter((value) => value !== normalized) }
+    metadata: {
+      ...content.metadata,
+      assets: content.metadata.assets.filter((value) => value !== normalized)
+    }
   })
   return { notice: "Asset gelöscht." }
 }

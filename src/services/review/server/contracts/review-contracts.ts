@@ -120,6 +120,7 @@ const assetItemSchema = z.object({
 
 const postDetailResponseSchema = z.object({
   assets: z.array(assetItemSchema),
+  imageCredits: z.string(),
   chatContext: z.object({
     contextType: z.literal("post"),
     postId: z.string()
@@ -141,9 +142,11 @@ const postDetailResponseSchema = z.object({
     mainMessage: z.string(),
     mastodonText: z.string(),
     blueskyText: z.string().optional().default(""),
-    platforms: z.object({
-      bluesky: z.object({ text: z.string() })
-    }).optional(),
+    platforms: z
+      .object({
+        bluesky: z.object({ text: z.string() })
+      })
+      .optional(),
     reelHook: z.string(),
     reelScript: z.string(),
     storySlides: z.array(z.string()),
@@ -164,14 +167,16 @@ const postDetailResponseSchema = z.object({
     weekday: z.string()
   }),
   publicationApproved: z.boolean(),
-  publicationChannels: z.array(z.object({
-    platform: z.string(),
-    format: z.string(),
-    scheduledAt: z.string().nullable(),
-    timezone: z.string(),
-    status: z.string(),
-    remoteUrl: z.string().nullable()
-  })),
+  publicationChannels: z.array(
+    z.object({
+      platform: z.string(),
+      format: z.string(),
+      scheduledAt: z.string().nullable(),
+      timezone: z.string(),
+      status: z.string(),
+      remoteUrl: z.string().nullable()
+    })
+  ),
   previousPostHref: z.string().nullable(),
   nextPostHref: z.string().nullable(),
   previewGroups: z.array(
