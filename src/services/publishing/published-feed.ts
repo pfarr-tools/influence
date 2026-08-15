@@ -59,7 +59,7 @@ export async function buildPublishedFeed(
       const contentPath = join(outputRoot, post.datum, post.id, "content.json")
       if (!(await pathExists(contentPath))) return null
       const content = await readContentPackage(contentPath)
-      if (content.source.rubric === "Tageslosungen" || content.source.rubric === "Kirchenjahr") return null
+      if (isExcludedFromPublishedFeed(post, content)) return null
 
       return buildFeedPost(post, content, postJobs, outputRoot, publicBaseUrl)
     })
@@ -72,6 +72,14 @@ export async function buildPublishedFeed(
       .filter((post): post is PublishedFeedPost => post !== null)
       .sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id))
   }
+}
+
+function isExcludedFromPublishedFeed(post: CalendarPost, content: ContentPackage): boolean {
+  return content.source.rubric === "Tageslosungen" ||
+    content.source.rubric === "Kirchenjahr" ||
+    content.source.rubric === "Morgengebet" ||
+    content.source.rubric === "Abendgebet" ||
+    post.id.startsWith("prayer-")
 }
 
 async function findPublishedJobs(outputRoot: string): Promise<PublicationJob[]> {

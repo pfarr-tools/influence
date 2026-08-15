@@ -205,7 +205,12 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 function getApiError(value: unknown): string {
   if (!isRecord(value)) return "Unbekannter API-Fehler."
   if (typeof value.error === "string") return value.error
-  if (isRecord(value.error) && typeof value.error.message === "string") return value.error.message
+  if (isRecord(value.error)) {
+    const message = typeof value.error.message === "string" ? value.error.message : "Unbekannter API-Fehler."
+    const code = typeof value.error.code === "number" ? ` (Code ${value.error.code})` : ""
+    const userMessage = typeof value.error.error_user_msg === "string" ? ` ${value.error.error_user_msg}` : ""
+    return `${message}${code}${userMessage}`
+  }
   if (typeof value.error_description === "string") return value.error_description
   if (typeof value.error_message === "string") return value.error_message
   return "Unbekannter API-Fehler."

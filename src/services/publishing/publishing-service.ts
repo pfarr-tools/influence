@@ -1,5 +1,6 @@
 import type { Calendar, CalendarPost } from "../../domain/calendar.js"
 import { resolve } from "node:path"
+import sharp from "sharp"
 import { getPostById } from "../calendar/calendar-service.js"
 import { assertContentApproved, getContentOutputPaths, isPublicationApproved, pathExists, readContentPackage, readJsonFile } from "../content/content-storage.js"
 import { PublicationJobStore } from "./job-store.js"
@@ -95,7 +96,8 @@ export class PublishingService {
     if (!adapter) return this.store.save({ ...job, status: "failed", lastError: `${job.platform}: kein konfigurierter Adapter.`, updatedAt: new Date().toISOString() })
     const content = await this.loadContent(job)
     const assets = await resolvePublicationAssets(this.outputRoot, { id: job.postId, datum: job.contentDate } as CalendarPost, job.platform, job.format, content)
-    const processing = await this.store.save({ ...job, text: getPlatformText(content, job.platform), assets, status: "processing", attemptCount: job.attemptCount + 1, updatedAt: new Date().toISOString() })
+    const publicationAssets = await preparePublicationAssets(this.outputRoot, job, assets)
+    const processing = await this.store.save({ ...job, text: getPlatformText(content, job.platform), assets: publicationAssets, status: "processing", attemptCount: job.attemptCount + 1, updatedAt: new Date().toISOString() })
     try {
       const result = await adapter.publish({ job: processing, content, assetPaths: processing.assets.map((assetPath) => resolve(this.outputRoot, processing.contentDate, processing.postId, assetPath)) })
       return this.store.save({ ...processing, status: "published", remoteId: result.remoteId, remoteUrl: result.remoteUrl ?? null, responseMetadata: sanitizeMetadata(result.metadata), lastError: null, updatedAt: new Date().toISOString() })
@@ -109,6 +111,23 @@ export class PublishingService {
     const path = getContentOutputPaths(this.outputRoot, { id: job.postId, datum: job.contentDate } as CalendarPost).contentPath
     return readContentPackage(path)
   }
+}
+
+/** Meta's Instagram and Threads image containers require JPEG-compatible image URLs. */
+async function preparePublicationAssets(
+  outputRoot: string,
+  job: PublicationJob,
+  assets: string[]
+): Promise<string[]> {
+  if (job.platform !== "instagram" && job.platform !== "threads") return assets
+  return Promise.all(assets.map(async (assetPath) => {
+    if (!/\.(png|webp)$/i.test(assetPath)) return assetPath
+    const jpegPath = assetPath.replace(/\.[^.]+$/, ".jpg")
+    await sharp(resolve(outputRoot, job.contentDate, job.postId, assetPath))
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toFile(resolve(outputRoot, job.contentDate, job.postId, jpegPath))
+    return jpegPath
+  }))
 }
 
 export type PublicationProgressHandler = (progress: PublicationProgress) => void

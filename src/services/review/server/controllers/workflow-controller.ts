@@ -135,6 +135,20 @@ export async function duplicatePublicationJob(
   return getPublicationQueue(dependencies, "Veröffentlichung dupliziert.")
 }
 
+export async function retryPublicationJob(
+  jobId: string,
+  dependencies: ReviewServerDependencies
+) {
+  const job = await new PublishingService(
+    dependencies.runtimeConfig.outputDir,
+    createConfiguredAdapters()
+  ).retry(jobId)
+  if (job.status === "failed") {
+    return getPublicationQueue(dependencies, job.lastError ?? "Veröffentlichung fehlgeschlagen.")
+  }
+  return getPublicationQueue(dependencies, "Veröffentlichung erneut gestartet.")
+}
+
 async function buildPublicationQueueJob(
   job: PublicationJob,
   dependencies: ReviewServerDependencies
@@ -159,6 +173,8 @@ async function buildPublicationQueueJob(
     contentDate: job.contentDate,
     format: job.format,
     id: job.id,
+    lastError: job.lastError,
+    attemptCount: job.attemptCount,
     platform: job.platform,
     postHref,
     postId: job.postId,

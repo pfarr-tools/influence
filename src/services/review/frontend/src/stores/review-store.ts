@@ -13,6 +13,7 @@ import {
   getDefaultWeekDate,
   moveWeekPost as moveWeekPostApi,
   duplicatePublicationJob as duplicatePublicationJobApi,
+  retryPublicationJob as retryPublicationJobApi,
   removePublicationJob as removePublicationJobApi,
   reschedulePublicationJob as reschedulePublicationJobApi,
   cancelScheduledPublication as cancelScheduledPublicationApi,
@@ -63,6 +64,12 @@ export async function duplicatePublicationJob(jobId: string) {
   await withLoading("", async () => {
     reviewStore.publicationQueue = await duplicatePublicationJobApi(jobId)
   }, "Veröffentlichung konnte nicht dupliziert werden.")
+}
+
+export async function retryPublicationJob(jobId: string) {
+  await withLoading("Veröffentlichung wird erneut gestartet …", async () => {
+    reviewStore.publicationQueue = await retryPublicationJobApi(jobId)
+  }, "Veröffentlichung konnte nicht erneut gestartet werden.")
 }
 
 export async function triggerWeekAction(

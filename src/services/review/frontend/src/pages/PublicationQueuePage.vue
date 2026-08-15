@@ -54,8 +54,13 @@
                 <div class="d-flex justify-content-end gap-1 flex-wrap">
                   <button class="btn btn-sm btn-outline-secondary" type="button" @click="previewJob = job">Vorschau</button>
                   <button class="btn btn-sm btn-outline-primary" type="button" @click="openReschedule(job.id, job.scheduledAt)">Umplanen</button>
+                  <button v-if="job.status === 'failed'" class="btn btn-sm btn-outline-warning" type="button" @click="retryJob(job.id)">Erneut versuchen</button>
                   <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="!canDuplicate(job.status)" @click="duplicatePublicationJob(job.id)">Duplizieren</button>
                   <button class="btn btn-sm btn-outline-danger" type="button" :disabled="!canRemove(job.status)" @click="removeJob(job.id)">Entfernen</button>
+                </div>
+                <div v-if="job.status === 'failed'" class="queue-error text-danger small mt-2">
+                  <strong>Fehler:</strong> {{ job.lastError || "Unbekannter Veröffentlichungsfehler." }}
+                  <span class="text-secondary"> (Versuch {{ job.attemptCount }})</span>
                 </div>
               </td>
             </tr>
@@ -74,6 +79,11 @@
         <p class="small text-secondary mb-3">
           {{ previewJob.scheduledAt ? formatDateTime(previewJob.scheduledAt) : "Sobald freigegeben" }} · {{ previewJob.postId }}
         </p>
+        <div v-if="previewJob.status === 'failed'" class="alert alert-danger py-2">
+          <strong>Veröffentlichung fehlgeschlagen:</strong>
+          {{ previewJob.lastError || "Unbekannter Veröffentlichungsfehler." }}
+          <div class="small mt-1">Versuch {{ previewJob.attemptCount }}</div>
+        </div>
         <div v-if="previewJob.assets.length" class="queue-preview-assets mb-3">
           <a v-for="asset in previewJob.assets" :key="asset.href" :href="asset.href" target="_blank" rel="noreferrer">
             <img :src="asset.href" :alt="asset.label" loading="lazy" />
@@ -83,6 +93,7 @@
         <a v-if="previewJob.postHref" class="btn btn-outline-primary mt-3" :href="previewJob.postHref">Beitrag öffnen</a>
       </template>
       <template #footer>
+        <button v-if="previewJob?.status === 'failed'" class="btn btn-warning" type="button" @click="retryJob(previewJob.id)">Erneut versuchen</button>
         <button class="btn btn-secondary" type="button" @click="previewJob = null">Schließen</button>
       </template>
     </BaseModal>
@@ -103,7 +114,7 @@
 import { computed, onMounted, ref } from "vue"
 import BaseModal from "../components/BaseModal.vue"
 import type { PublicationQueueResponse } from "../../../server/contracts/review-contracts.js"
-import { duplicatePublicationJob, loadPublicationQueue, removePublicationJob, reschedulePublicationJob, reviewStore } from "../stores/review-store.js"
+import { duplicatePublicationJob, loadPublicationQueue, removePublicationJob, reschedulePublicationJob, retryPublicationJob, reviewStore } from "../stores/review-store.js"
 
 const filter = ref("")
 const statusFilter = ref("")
@@ -134,6 +145,10 @@ function formatDateTime(value: string) {
 function statusLabel(status: string) { return ({ approved: "Freigegeben", scheduled: "Geplant", failed: "Fehlgeschlagen", draft: "Entwurf", processing: "In Arbeit" }[status] ?? status) }
 function canRemove(status: string) { return !["processing", "published"].includes(status) }
 function canDuplicate(status: string) { return !["processing", "published"].includes(status) }
+async function retryJob(jobId: string) {
+  await retryPublicationJob(jobId)
+  if (!reviewStore.error) previewJob.value = null
+}
 function openReschedule(jobId: string, scheduledAt: string | null) {
   rescheduleJobId.value = jobId
   rescheduleValue.value = scheduledAt ? toLocalInputValue(scheduledAt) : ""
@@ -156,6 +171,7 @@ async function removeJob(jobId: string) {
 <style scoped>
 .queue-filters { display: grid; grid-template-columns: minmax(16rem, 1fr) 12rem 12rem auto; gap: .75rem; }
 .queue-table th { white-space: nowrap; }
+.queue-error { max-width: 34rem; overflow-wrap: anywhere; }
 .queue-preview-text { background: #f8f5ec; border: 1px solid rgba(31, 50, 58, .12); border-radius: .75rem; max-height: 24rem; overflow: auto; padding: 1rem; white-space: pre-wrap; }
 .queue-preview-assets { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
 .queue-preview-assets a { background: #f8f5ec; border-radius: .75rem; display: block; overflow: hidden; }

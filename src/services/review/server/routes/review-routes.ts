@@ -52,6 +52,7 @@ import {
   reschedulePublicationJob,
   removePublicationJob,
   duplicatePublicationJob,
+  retryPublicationJob,
   moveWeekPost,
   cancelScheduledPublication,
   reschedulePost,
@@ -263,6 +264,22 @@ async function routeReviewRequest(
       response,
       200,
       await duplicatePublicationJob(jobId, dependencies),
+      publicationQueueResponseSchemaPublic
+    )
+    return
+  }
+
+  if (
+    method === "POST" &&
+    requestUrl.pathname.match(/^\/api\/publication-queue\/[^/]+\/retry$/)
+  ) {
+    const jobId = decodeURIComponent(
+      requestUrl.pathname.replace(/^\/api\/publication-queue\/([^/]+)\/retry$/, "$1")
+    )
+    respondJson(
+      response,
+      200,
+      await retryPublicationJob(jobId, dependencies),
       publicationQueueResponseSchemaPublic
     )
     return

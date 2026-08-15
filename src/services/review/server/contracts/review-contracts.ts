@@ -112,6 +112,8 @@ const publicationQueueJobSchema = z.object({
   contentDate: z.string(),
   format: z.string(),
   id: z.string(),
+  lastError: z.string().nullable(),
+  attemptCount: z.number(),
   platform: z.string(),
   postHref: z.string().nullable(),
   postId: z.string(),

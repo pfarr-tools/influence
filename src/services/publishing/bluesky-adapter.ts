@@ -1,11 +1,13 @@
 import { extname } from "node:path"
 import { readFile } from "node:fs/promises"
+import sharp from "sharp"
 
 import type { PublicationAdapter, PublicationPayload, PublicationPlatform, PublicationResult } from "./types.js"
 
 const defaultServiceUrl = "https://bsky.social"
 const maxImages = 4
 const maxTextGraphemes = 300
+const maxBlobBytes = 2_000_000
 
 export interface BlueskyAdapterConfig {
   serviceUrl?: string
@@ -107,11 +109,12 @@ export class BlueskyPublicationAdapter implements PublicationAdapter {
   }
 
   private async uploadBlob(assetPath: string, accessToken: string): Promise<unknown> {
-    const bytes = await this.readFileImpl(assetPath)
+    const originalBytes = await this.readFileImpl(assetPath)
+    const { bytes, mimeType } = await prepareBlueskyImage(originalBytes, mimeTypeFor(assetPath))
     const response = await this.fetchImpl(this.endpoint("/xrpc/com.atproto.repo.uploadBlob"), {
       method: "POST",
-      headers: { authorization: `Bearer ${accessToken}`, "content-type": mimeTypeFor(assetPath) },
-      body: bytes
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": mimeType },
+      body: bytes as unknown as BodyInit
     })
     const result = await readJsonResponse(response)
     if (!response.ok || !isRecord(result) || !isRecord(result.blob)) {
@@ -123,6 +126,35 @@ export class BlueskyPublicationAdapter implements PublicationAdapter {
   private endpoint(path: string): string {
     return `${(this.config.serviceUrl || defaultServiceUrl).replace(/\/+$/, "")}${path}`
   }
+}
+
+async function prepareBlueskyImage(
+  bytes: Buffer,
+  mimeType: string
+): Promise<{ bytes: Buffer; mimeType: string }> {
+  if (bytes.byteLength <= maxBlobBytes) return { bytes, mimeType }
+
+  const metadata = await sharp(bytes).metadata()
+  let width = metadata.width ?? 1600
+  let height = metadata.height ?? 1600
+  let quality = 85
+  let compressed = await sharp(bytes).jpeg({ quality, mozjpeg: true }).toBuffer()
+  for (let attempt = 0; compressed.byteLength > maxBlobBytes && attempt < 12; attempt += 1) {
+    if (attempt > 0) {
+      const scale = Math.sqrt(maxBlobBytes / compressed.byteLength) * 0.9
+      width = Math.max(1, Math.floor(width * scale))
+      height = Math.max(1, Math.floor(height * scale))
+      quality = Math.max(45, quality - 5)
+    }
+    compressed = await sharp(bytes)
+      .resize({ width, height, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality, mozjpeg: true })
+      .toBuffer()
+  }
+  if (compressed.byteLength > maxBlobBytes) {
+    throw new Error(`bluesky: Bild konnte nicht unter das 2-MB-Limit komprimiert werden (${compressed.byteLength} Bytes).`)
+  }
+  return { bytes: compressed, mimeType: "image/jpeg" }
 }
 
 export function createBlueskyAdapter(environment: Record<string, string | undefined> = process.env): BlueskyPublicationAdapter | undefined {
@@ -164,5 +196,10 @@ function getApiError(value: unknown): string {
   if (!isRecord(value)) return "Unbekannter API-Fehler."
   if (typeof value.message === "string") return value.message
   if (typeof value.error === "string") return value.error
+  if (isRecord(value.error)) {
+    const message = typeof value.error.message === "string" ? value.error.message : "Unbekannter API-Fehler."
+    const code = typeof value.error.code === "number" ? ` (Code ${value.error.code})` : ""
+    return `${message}${code}`
+  }
   return "Unbekannter API-Fehler."
 }

@@ -64,6 +64,9 @@ describe("review api routes", () => {
   it("serves published posts as an aggregated feed", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
     const post = calendar.wochen[0]!.beitraege[0]!
+    const morningPrayer = { ...post, id: "prayer-morning-2026-08-15", rubrik: "Morgengebet", thema: "Morgengebet" }
+    const eveningPrayer = { ...post, id: "prayer-evening-2026-08-15", rubrik: "Abendgebet", thema: "Abendgebet" }
+    calendar.wochen[0]!.beitraege.push(morningPrayer, eveningPrayer)
     const postDir = join(tempDir, post.datum, post.id)
     await mkdir(join(postDir, "assets"), { recursive: true })
     await writeFile(join(postDir, "assets", "image.webp"), "image")
@@ -76,6 +79,19 @@ describe("review api routes", () => {
       qa: { warnings: [], approved: true }, metadata: { model: "test", generated_at: "2026-08-10T00:00:00Z", prompt_version: "test", assets: ["assets/image.webp"] }
     }))
     await writeFile(join(postDir, "published.json"), JSON.stringify([{ postId: post.id, contentDate: post.datum, platform: "instagram", format: "default", status: "published", updatedAt: "2026-08-10T12:00:00Z", text: "Published", assets: ["assets/image.webp"], remoteId: "remote-1", remoteUrl: "https://example.test/post" }]))
+    for (const prayer of [morningPrayer, eveningPrayer]) {
+      const prayerDir = join(tempDir, prayer.datum, prayer.id)
+      await mkdir(prayerDir, { recursive: true })
+      await writeFile(join(prayerDir, "content.json"), JSON.stringify({
+        id: prayer.id, status: "veröffentlicht", needs_input: false,
+        source: { calendar_post_id: prayer.id, date: prayer.datum, rubric: prayer.rubrik, liturgical_source: "" },
+        editorial_core: { title: prayer.thema, main_message: "Prayer", audience: "Everyone", tone: ["warm"], source_notes: [] },
+        platforms: { facebook: { text: "Facebook", headline: "Headline" }, instagram: { caption: "Instagram", carousel: [] }, mastodon: { text: "Mastodon" }, bluesky: { text: "Bluesky" }, story: { slides: [] }, reel: { hook: "Hook", script: "Script", shots: [], duration_seconds: 0 } },
+        visual: { concept: "Concept", flux_prompt: "Prompt", negative_prompt: "None", formats: ["4x5"], alt_text: "Alt text" },
+        qa: { warnings: [], approved: true }, metadata: { model: "test", generated_at: "2026-08-10T00:00:00Z", prompt_version: "test", assets: [] }
+      }))
+      await writeFile(join(prayerDir, "published.json"), JSON.stringify([{ postId: prayer.id, contentDate: prayer.datum, platform: "instagram", format: "default", status: "published", updatedAt: "2026-08-10T12:00:00Z", text: "Published", assets: [], remoteId: "remote-prayer", remoteUrl: null }]))
+    }
 
     const response = createMockResponse()
     await handleReviewRequest({ method: "GET", url: "/api/feed/published.json" } as never, response as never, {
@@ -88,6 +104,7 @@ describe("review api routes", () => {
     expect(feed.posts[0]?.id).toBe(post.id)
     expect(feed.posts[0]?.images[0]?.url).toBe(`https://influence.example/files/${post.datum}/${post.id}/assets/image.webp`)
     expect(feed.posts[0]?.publications[0]?.platform).toBe("instagram")
+    expect(feed.posts.some((feedPost) => feedPost.id === morningPrayer.id || feedPost.id === eveningPrayer.id)).toBe(false)
   })
 
   it("reloads the calendar so newly created prayer posts appear without restart", async () => {

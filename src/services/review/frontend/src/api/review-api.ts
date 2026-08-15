@@ -65,6 +65,12 @@ export async function duplicatePublicationJob(jobId: string): Promise<Publicatio
   )
 }
 
+export async function retryPublicationJob(jobId: string): Promise<PublicationQueueResponse> {
+  return readJson<PublicationQueueResponse>(
+    await fetch(`/api/publication-queue/${encodeURIComponent(jobId)}/retry`, { method: "POST" })
+  )
+}
+
 export async function runWeekAction(
   weekDate: string,
   action: WeekActionApi,
