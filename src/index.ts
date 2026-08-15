@@ -43,6 +43,7 @@ import {
 import {
   appendDiscussionMessage,
   applyContentChatRevision,
+  approveReviewPost,
   approveReviewPostForPublication,
   createReviewServer,
   loadContentChatSession,
@@ -646,6 +647,30 @@ qaCommand
       )
 
       printQaResult(result)
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
+
+qaCommand
+  .command("approve")
+  .requiredOption("--post-id <postId>", "Calendar post identifier, e.g. post-0001")
+  .option("--force", "Approve even when QA reports errors", false)
+  .description("Approve a post after QA, optionally bypassing QA errors")
+  .action(async (options: { force: boolean; postId: string }) => {
+    try {
+      assertOutputRoot(defaultOutputRoot)
+      const calendar = await loadCalendarFromFile(defaultCalendarPath)
+      const result = await approveReviewPost(
+        calendar,
+        options.postId,
+        defaultOutputRoot,
+        { force: options.force }
+      )
+
+      console.log(
+        `${result.id} approved${options.force ? " (forced despite QA errors)" : ""}.`
+      )
     } catch (error) {
       handleCliError(error)
     }

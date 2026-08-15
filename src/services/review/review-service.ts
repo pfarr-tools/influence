@@ -414,7 +414,8 @@ export async function updateReviewPost(
 export async function approveReviewPost(
   calendar: Calendar,
   postId: string,
-  outputRoot: string
+  outputRoot: string,
+  options: { force?: boolean } = {}
 ): Promise<ContentPackage> {
   const post = getPostById(calendar, postId)
   const contentPaths = getContentOutputPaths(outputRoot, post)
@@ -423,7 +424,13 @@ export async function approveReviewPost(
     join(contentPaths.baseDir, "qa-results.json")
   )
 
-  if (!qaSummary?.ready_for_approval) {
+  if (!qaSummary) {
+    throw new CalendarValidationError(
+      `Post "${postId}" cannot be approved because QA is missing.`
+    )
+  }
+
+  if (!qaSummary.ready_for_approval && !options.force) {
     throw new CalendarValidationError(
       `Post "${postId}" cannot be approved because QA is missing or still blocked.`
     )

@@ -169,6 +169,19 @@ werden.
 influence qa post --post-id post-0001
 ```
 
+Nach einem erfolgreichen QA-Lauf kann der Beitrag freigegeben werden:
+
+```bash
+influence qa approve --post-id post-0001
+```
+
+Mit `--force` lässt sich die Freigabe trotz QA-Fehlern erzwingen. Der QA-Lauf
+bleibt dabei mit seinen Fehlern in `qa-results.json` erhalten:
+
+```bash
+influence qa approve --post-id post-0001 --force
+```
+
 ### QA für eine Woche
 
 ```bash

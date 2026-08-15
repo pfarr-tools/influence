@@ -106,6 +106,26 @@ describe("review service", () => {
     expect(written.qa.approved).toBe(true)
   })
 
+  it("allows forced QA approval while retaining QA errors", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const contentPath = await writeQaReadyContent(calendar, tempDir, "post-0001", {
+      altText: ""
+    })
+
+    const qa = await runQaForPost(calendar, "post-0001", tempDir)
+    expect(qa.readyForApproval).toBe(false)
+
+    await approveReviewPost(calendar, "post-0001", tempDir, { force: true })
+
+    const written = await readJsonFile<ContentPackage>(contentPath)
+    const qaResults = await readJsonFile<{ errors: string[] }>(
+      join(tempDir, "2026-08-10", "post-0001", "qa-results.json")
+    )
+    expect(written.status).toBe("freigegeben")
+    expect(written.qa.approved).toBe(true)
+    expect(qaResults.errors.length).toBeGreaterThan(0)
+  })
+
   it("plans publication jobs automatically on publication approval", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
     await writeQaReadyContent(calendar, tempDir, "post-0001")
@@ -368,6 +388,7 @@ async function writeQaReadyContent(
   outputRoot: string,
   postId: string,
   overrides?: {
+    altText?: string
     metadataAssets?: string[]
   }
 ): Promise<string> {
@@ -417,7 +438,8 @@ async function writeQaReadyContent(
       concept: "Zwei Menschen hoeren einander aufmerksam zu",
       flux_prompt:
         "Documentary still life, two ceramic cups on a wooden table, soft morning light, no text, no letters, no typography, no logo, no watermark",
-      alt_text: "Zwei Tassen auf einem Holztisch im Morgenlicht"
+      alt_text:
+        overrides?.altText ?? "Zwei Tassen auf einem Holztisch im Morgenlicht"
     }
   })
 
