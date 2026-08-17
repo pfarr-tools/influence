@@ -405,6 +405,8 @@ function finalizeContentPackage(
     },
     metadata: {
       ...generated.metadata,
+      // Assets are produced by the image workflow, never by the text model.
+      assets: [],
       model,
       generated_at: now().toISOString(),
       prompt_version: generated.metadata.prompt_version || "1.0"

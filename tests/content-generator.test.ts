@@ -87,11 +87,12 @@ describe("content generator", () => {
       }
     )
 
-    const written = await readJsonFile<{ metadata: { model: string }; qa: { approved: boolean }; visual: { flux_prompt: string } }>(
+    const written = await readJsonFile<{ metadata: { model: string; assets: string[] }; qa: { approved: boolean }; visual: { flux_prompt: string } }>(
       result.contentPath
     )
 
     expect(written.metadata.model).toBe("gpt-5.6")
+    expect(written.metadata.assets).toEqual([])
     expect(written.qa.approved).toBe(false)
     expect(written.visual.flux_prompt).toContain("no typography")
   })

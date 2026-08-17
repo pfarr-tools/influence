@@ -8,7 +8,7 @@ import {
 } from "./content-storage.js"
 
 const citationPattern =
-  /\b(?:[1-5]\s*)?(?:Mo|Ex|Lev|Num|Dtn|Jos|Ri|Rut|1 Sam|2 Sam|1 Kön|2 Kön|1 Chr|2 Chr|Esra|Neh|Est|Hi|Ps|Spr|Pred|Hld|Jes|Jer|Klgl|Ez|Dan|Hos|Joel|Am|Obd|Jona|Mi|Nah|Hab|Zef|Hag|Sach|Mal|Mt|Mk|Lk|Joh|Apg|Röm|1 Kor|2 Kor|Gal|Eph|Phil|Kol|1 Thess|2 Thess|1 Tim|2 Tim|Tit|Phlm|Hebr|Jak|1 Petr|2 Petr|1 Joh|2 Joh|3 Joh|Jud|Offb)\s+\d{1,3},\d{1,3}(?:-\d{1,3})?\b/i
+  /\b(?:[1-5](?:\.\s*|\s+))?(?:Mo(?:se)?|Ex(?:odus)?|Lev(?:itikus)?|Num(?:eri)?|Dtn|Deuteronomium|Jos(?:ua)?|Ri(?:chter)?|Rut|Sam(?:uel)?|Kön(?:ige)?|Chr(?:onik)?|Esra|Neh(?:emia)?|Est(?:er)?|Hi(?:ob)?|Ps(?:alm(?:en)?)?|Spr(?:üche)?|Pred(?:iger)?|Hld|Jes(?:aja)?|Jer(?:emia)?|Klgl|Ez(?:echiel)?|Dan(?:iel)?|Hos(?:ea)?|Joel|Am(?:os)?|Obd(?:ja)?|Jona|Mi(?:cha)?|Nah(?:um)?|Hab(?:akuk)?|Zef(?:anja)?|Hag(?:gai)?|Sach(?:arja)?|Mal(?:echi)?|Mt(?:thäus)?|Mk(?:arkus)?|Lk(?:ukas)?|Joh(?:annes)?|Apg|Röm(?:er)?|Kor(?:inther)?|Gal(?:ater)?|Eph(?:eser)?|Phil(?:ipper)?|Kol(?:osser)?|Thess(?:alonicher)?|Tim(?:otheus)?|Tit(?:us)?|Phlm|Hebr(?:äer)?|Jak(?:obus)?|Petr(?:us)?|Jud(?:as)?|Offb)\s+\d{1,3}\s*[,.:]\s*\d{1,3}(?:\s*-\s*\d{1,3})?\b/i
 const likelyTextInImagePattern =
   /\b(?:text im bild|text overlay|overlay text|headline im bild|schriftzug|schrift im bild|lettering|caption inside image)\b/i
 const currentEventHintPattern =
@@ -194,18 +194,13 @@ function checkFluxPrompt(content: ContentPackage): QaFinding[] {
     ]
   }
 
-  if (
+  if (!hasNoTextInstruction(lowered) && (
     likelyTextInImagePattern.test(prompt) ||
     (lowered.includes("typography") && !lowered.includes("no typography")) ||
-    (lowered.includes("text") &&
-      !lowered.includes("no text") &&
-      !lowered.includes("without text") &&
-      !lowered.includes("ohne text")) ||
-    (lowered.includes("letters") &&
-      !lowered.includes("no letters") &&
-      !lowered.includes("without letters")) ||
+    (lowered.includes("text") && !lowered.includes("without text")) ||
+    (lowered.includes("letters") && !lowered.includes("without letters")) ||
     (lowered.includes("schrift") && !lowered.includes("ohne schrift"))
-  ) {
+  )) {
     return [
       {
         check: "flux-prompt-no-text",
@@ -216,6 +211,10 @@ function checkFluxPrompt(content: ContentPackage): QaFinding[] {
   }
 
   return []
+}
+
+function hasNoTextInstruction(prompt: string): boolean {
+  return /(?:no|without|do not add|do not include|ohne)\s+(?:any\s+)?(?:visible\s+)?(?:text|letters|words|typography|schrift|buchstaben)|text[- ]?free|textless|no\s+text\s+overlay/i.test(prompt)
 }
 
 function checkRequiredFields(

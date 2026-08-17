@@ -84,6 +84,38 @@ describe("content qa", () => {
       )
     ).rejects.toThrow(CalendarValidationError)
   })
+
+  it.each([
+    "Psalm 33,12",
+    "Ps 33:12",
+    "Johannes 3,16",
+    "1. Korinther 13:4"
+  ])("recognizes scripture citation %s", async (citation) => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    await writeQaReadyContent(calendar, tempDir, "post-0001", { citation })
+
+    const result = await runQaForPost(calendar, "post-0001", tempDir)
+
+    expect(result.errors).not.toContain(
+      "A biblical citation is required but was not found in the public platform copy."
+    )
+  })
+
+  it.each([
+    "A calm still life, without any text or lettering",
+    "A calm still life, no text overlay"
+  ])("accepts an explicit no-text Flux instruction", async (fluxPrompt) => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    await writeQaReadyContent(calendar, tempDir, "post-0001", {
+      visual: { flux_prompt: fluxPrompt }
+    })
+
+    const result = await runQaForPost(calendar, "post-0001", tempDir)
+
+    expect(result.errors).not.toContain(
+      "Flux prompt appears to ask for text inside the image."
+    )
+  })
 })
 
 async function writeQaReadyContent(
@@ -92,12 +124,15 @@ async function writeQaReadyContent(
   postId: string,
   overrides?: {
     platformTextsWithoutCitation?: boolean
+    citation?: string
     visual?: Partial<ContentPackage["visual"]>
   }
 ): Promise<string> {
   const scaffold = await scaffoldPostById(calendar, postId, outputRoot)
   const content = await readJsonFile<ContentPackage>(scaffold.outputPath)
-  const citation = overrides?.platformTextsWithoutCitation ? "" : " (Ps 33,12)"
+  const citation = overrides?.platformTextsWithoutCitation
+    ? ""
+    : ` (${overrides?.citation ?? "Ps 33,12"})`
 
   await writeJsonFile(scaffold.outputPath, {
     ...content,
