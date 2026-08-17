@@ -81,6 +81,7 @@ export function buildWeekOverviewResponse(
         badges: summarizeWorkflowBadges(post.workflow, post),
         date: post.date,
         postId: post.postId,
+        publicationApproved: post.publicationApproved,
         rubric: post.rubric,
         scheduledTime: post.publicationTime || defaultPublicationTime,
         status: post.status,

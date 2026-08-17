@@ -2,7 +2,14 @@
   <section class="card shadow-sm">
     <div class="card-body">
       <h2 class="h5">Workflow</h2>
-      <WorkflowBadges :workflow="workflow" />
+      <WorkflowBadges
+        :actions="orderedActions"
+        :approved="approvalAction?.completed"
+        :busy="busy"
+        :workflow="workflow"
+        :publication-approved="publicationAction?.completed"
+        @trigger="triggerMenuAction"
+      />
       <div class="mt-3 d-flex align-items-center gap-2">
         <button
           class="btn btn-primary"
@@ -64,6 +71,12 @@ const props = defineProps<{
 const orderedActions = computed(() => useWorkflowActions(props.actions).value)
 const saveAction = computed(() =>
   orderedActions.value.find((action) => action.action === "edit")
+)
+const approvalAction = computed(() =>
+  orderedActions.value.find((action) => action.action === "approve")
+)
+const publicationAction = computed(() =>
+  orderedActions.value.find((action) => action.action === "approve-publication")
 )
 const menuActions = computed(() =>
   orderedActions.value.filter(

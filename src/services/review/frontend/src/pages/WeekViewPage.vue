@@ -193,7 +193,12 @@
               <div
                 class="d-flex justify-content-between align-items-center gap-2"
               >
-                <WorkflowBadges compact :workflow="post.workflow" />
+                <WorkflowBadges
+                  compact
+                  :approved="post.isApproved"
+                  :publication-approved="post.publicationApproved"
+                  :workflow="post.workflow"
+                />
                 <div class="d-flex flex-wrap gap-1">
                   <button
                     class="btn btn-sm btn-outline-danger"

@@ -98,6 +98,7 @@ export interface ReviewPostCard {
   hasRenderedPreviews: boolean
   isApproved: boolean
   postId: string
+  publicationApproved: boolean
   qaReadyForApproval: boolean
   rubric: string
   publicationTime: string
@@ -667,6 +668,7 @@ async function buildReviewPostCard(
       hasRenderedPreviews: false,
       isApproved: false,
       postId: post.id,
+      publicationApproved: false,
       publicationTime: post.veroeffentlichungszeit ?? "",
       qaReadyForApproval: false,
       rubric: post.rubrik,
@@ -723,6 +725,7 @@ async function buildReviewPostCard(
     hasRenderedPreviews: (renderSummary?.renders?.length ?? 0) > 0,
     isApproved: content.qa.approved,
     postId: post.id,
+    publicationApproved,
     publicationTime: post.veroeffentlichungszeit ?? "",
     qaReadyForApproval: qaSummary?.ready_for_approval ?? false,
     rubric: post.rubrik,

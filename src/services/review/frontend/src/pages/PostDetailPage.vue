@@ -255,6 +255,7 @@
               <div class="col-12">
                 <label class="form-label">Kernbotschaft</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.mainMessage"
                   class="form-control"
                   rows="3"
@@ -267,6 +268,7 @@
               <div class="col-12">
                 <label class="form-label">Konzept</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.concept"
                   class="form-control"
                   rows="3"
@@ -276,6 +278,7 @@
               <div class="col-12">
                 <label class="form-label">Flux-Prompt</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.fluxPrompt"
                   class="form-control"
                   rows="3"
@@ -296,6 +299,7 @@
               <div class="col-12">
                 <label class="form-label">Facebook-Text</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.facebookText"
                   class="form-control"
                   rows="3"
@@ -336,6 +340,7 @@
                     <span class="small text-secondary">{{ index + 1 }}</span>
                     <div class="input-group flex-grow-1">
                       <textarea
+                        v-auto-resize
                         v-model="slide.text"
                         class="form-control"
                         rows="2"
@@ -395,6 +400,7 @@
               <div class="col-12">
                 <label class="form-label">Instagram-Caption</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.instagramCaption"
                   class="form-control"
                   rows="3"
@@ -407,6 +413,7 @@
               <div class="col-12">
                 <label class="form-label">Mastodon-Text</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.mastodonText"
                   class="form-control"
                   rows="3"
@@ -422,6 +429,7 @@
                   <span class="text-secondary">(max. 300 Zeichen)</span></label
                 >
                 <textarea
+                  v-auto-resize
                   v-model="form.blueskyText"
                   class="form-control"
                   rows="3"
@@ -435,6 +443,7 @@
               <div class="col-12">
                 <label class="form-label">Reel-Hook</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.reelHook"
                   class="form-control"
                   rows="3"
@@ -471,6 +480,7 @@
                     >
                     <span class="small text-secondary">{{ index + 1 }}</span>
                     <textarea
+                      v-auto-resize
                       v-model="slide.text"
                       class="form-control"
                       rows="2"
@@ -493,6 +503,7 @@
               <div class="col-12">
                 <label class="form-label">Reel-Skript</label>
                 <textarea
+                  v-auto-resize
                   v-model="form.reelScript"
                   class="form-control"
                   rows="4"
@@ -678,6 +689,17 @@ import { germanCopy } from "../utils/german-copy.js"
 const route = useRoute()
 const router = useRouter()
 const post = computed(() => reviewStore.post)
+
+const vAutoResize = {
+  mounted: resizeTextarea,
+  updated: resizeTextarea
+}
+
+function resizeTextarea(element: HTMLTextAreaElement) {
+  element.style.height = "auto"
+  element.style.height = `${element.scrollHeight}px`
+}
+
 const facebookNotice = ref("")
 const facebookShareModalOpen = ref(false)
 const facebookCopyNotice = ref("")
@@ -799,6 +821,24 @@ async function handleAction(payload: { action: string; force: boolean }) {
     return
   }
 
+  if (action === "qa") {
+    await savePost(false)
+    if (reviewStore.error) return
+  }
+
+  if (action === "approve") {
+    await triggerPostAction(postId.value, "approve", undefined, { force })
+    if (reviewStore.error) return
+
+    if (!post.value?.workflow.imagesGenerated) {
+      await triggerPostAction(postId.value, "images")
+      if (reviewStore.error) return
+    }
+    await triggerPostAction(postId.value, "render", undefined, { force: true })
+    if (reviewStore.error) return
+    return
+  }
+
   await triggerPostAction(
     postId.value,
     action as Exclude<ReviewActionApi, "export">,
@@ -825,7 +865,7 @@ async function forceApprovePublication() {
   })
 }
 
-async function savePost() {
+async function savePost(runQa = true) {
   const savedBlueskyText = form.blueskyText
   await triggerPostAction(postId.value, "edit", {
     altText: form.altText,
@@ -852,6 +892,9 @@ async function savePost() {
   if (!reviewStore.error) {
     await refreshPost()
     form.blueskyText = savedBlueskyText
+    if (runQa) {
+      await triggerPostAction(postId.value, "qa")
+    }
   }
 }
 
@@ -1054,6 +1097,11 @@ function showNextPreview() {
 </script>
 
 <style scoped>
+textarea {
+  overflow-y: hidden;
+  resize: none;
+}
+
 .story-slide-row {
   align-items: center;
   display: grid;

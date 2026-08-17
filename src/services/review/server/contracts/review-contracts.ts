@@ -70,6 +70,7 @@ const postCardSchema = z.object({
   badges: z.array(z.string()),
   date: z.string(),
   postId: z.string(),
+  publicationApproved: z.boolean(),
   rubric: z.string(),
   scheduledTime: z.string(),
   status: z.string(),
