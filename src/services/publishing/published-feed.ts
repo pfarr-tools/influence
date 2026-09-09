@@ -76,6 +76,7 @@ export async function buildPublishedFeed(
 
 function isExcludedFromPublishedFeed(post: CalendarPost, content: ContentPackage): boolean {
   return content.source.rubric === "Tageslosungen" ||
+    content.source.rubric === "Grundrechte" ||
     content.source.rubric === "Kirchenjahr" ||
     content.source.rubric === "Morgengebet" ||
     content.source.rubric === "Abendgebet" ||

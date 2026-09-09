@@ -51,6 +51,7 @@ const renderFormats = {
 export type RenderFormatKey = keyof typeof renderFormats
 type RenderTemplateKind =
   | "abendgebet"
+  | "grundrechte"
   | "kirchenjahr"
   | "gebet-oder-liedgedanke"
   | "gemeinde-lebt"
@@ -187,6 +188,10 @@ export function resolveRenderTemplateKind(rubric: string): RenderTemplateKind {
 
   if (rubric === "Abendgebet") {
     return "abendgebet"
+  }
+
+  if (rubric === "Grundrechte") {
+    return "grundrechte"
   }
 
   if (
@@ -477,6 +482,7 @@ function buildFeedPageSpecs(
   format: RenderFormatKey
 ): RenderPageSpec[] {
   const template = resolveRenderTemplateKind(post.rubrik)
+  if (template === "grundrechte") return [buildGrundrechtePageSpec(content, format, "feed-card")]
   if (template === "kirchenjahr") return [buildKirchenjahrPageSpec(content, format, "feed-card")]
   if (template === "tageslosungen") {
     const sourceNote = (prefix: string) => content.editorial_core.source_notes.find((note) => note.startsWith(prefix))?.replace(prefix, "").trim() ?? ""
@@ -567,6 +573,7 @@ function buildStoryPageSpecs(
   format: RenderFormatKey
 ): RenderPageSpec[] {
   const template = resolveRenderTemplateKind(post.rubrik)
+  if (template === "grundrechte") return [buildGrundrechtePageSpec(content, format, "story-slide")]
   if (template === "kirchenjahr") return [buildKirchenjahrPageSpec(content, format, "story-slide")]
   const slides = content.platforms.story.slides
     .map((slide) => slide.text.trim())
@@ -669,6 +676,27 @@ function buildKirchenjahrPageSpec(
   }
 }
 
+function buildGrundrechtePageSpec(
+  content: ContentPackage,
+  format: RenderFormatKey,
+  variant: "feed-card" | "story-slide"
+): RenderPageSpec {
+  return {
+    citation: content.editorial_core.source_notes[0] ?? "",
+    eyebrow: "",
+    format,
+    pageCount: 1,
+    pageIndex: 1,
+    pageLabel: renderFormats[format].label,
+    primaryText: content.editorial_core.main_message,
+    template: "grundrechte",
+    title: "Zur Erinnerung",
+    variant,
+    width: renderFormats[format].width,
+    height: renderFormats[format].height
+  }
+}
+
 async function buildHtmlDocument(
   page: RenderPageSpec,
   cssClass: string,
@@ -687,8 +715,10 @@ async function buildHtmlDocument(
     page.template === "morgengebet"
       ? "morning-prayer"
       : page.template === "abendgebet"
-        ? "evening-prayer"
-        : page.template === "tageslosungen"
+      ? "evening-prayer"
+        : page.template === "grundrechte"
+          ? "grundrechte"
+      : page.template === "tageslosungen"
           ? "tageslosungen"
           : page.template === "kirchenjahr"
             ? (page.variant === "story-slide" ? "kirchenjahr-story" : "kirchenjahr-feed")
@@ -824,6 +854,47 @@ async function buildHtmlDocument(
         backdrop-filter: none;
         box-shadow: none;
         border-radius: 0;
+      }
+
+      .template-grundrechte .layout {
+        justify-content: flex-start;
+      }
+
+      .template-grundrechte .panel {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        justify-content: space-between;
+        background: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
+        border-radius: 0;
+        text-align: center;
+      }
+
+      .template-grundrechte .accent-line {
+        display: none;
+      }
+
+      .template-grundrechte .title {
+        margin-top: 0;
+      }
+
+      .template-grundrechte .grundrechte-content {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        gap: 24px;
+      }
+
+      .template-grundrechte .sender-mark {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .format-story .template-grundrechte .sender-mark {
+        font-size: 19px;
       }
 
       .template-kirchenjahr::before {
@@ -1069,7 +1140,7 @@ async function buildHtmlDocument(
     </style>
   </head>
   <body>
-    <main class="canvas ${cssClass}${page.template === "tageslosungen" ? " template-tageslosungen" : ""}${page.template === "kirchenjahr" ? " template-kirchenjahr" : ""}${page.template === "morgengebet" ? " template-morgengebet" : ""}${page.template === "abendgebet" ? " template-abendgebet" : ""}">
+    <main class="canvas ${cssClass}${page.template === "tageslosungen" ? " template-tageslosungen" : ""}${page.template === "kirchenjahr" ? " template-kirchenjahr" : ""}${page.template === "morgengebet" ? " template-morgengebet" : ""}${page.template === "abendgebet" ? " template-abendgebet" : ""}${page.template === "grundrechte" ? " template-grundrechte" : ""}">
       <section class="layout">
         <div class="panel-meta">
           <div class="eyebrow">${escapeHtml(page.eyebrow)}</div>

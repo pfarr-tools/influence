@@ -10,32 +10,29 @@
   },
   "editorial_core": {
     "title": "Morgengebet",
-    "main_message": "Mit offenen Augen für die Not der Welt und zugleich voller Hoffnung und Vertrauen in Gottes Zukunft in den neuen Tag gehen.",
+    "main_message": "Den neuen Tag als Morgenlob beginnen: sich auf Gott ausrichten, Gottes Gegenwart und Güte wahrnehmen und aus christlicher Hoffnung in den Tag gehen.",
     "audience": "breite Öffentlichkeit",
     "tone": [
-      "ruhig",
+      "lobend",
       "hoffnungsvoll",
       "zugewandt"
     ],
     "source_notes": [
-      "Goal: Ein kurzes Morgengebet, das den neuen Tag bewusst vor Gott beginnt und ausgewählte Ereignisse der aktuellen Nachrichtenlage aufnimmt.",
+      "Goal: Ein kurzes Morgenlob, das den neuen Tag bewusst vor Gott beginnt und die Aufmerksamkeit zuerst auf Gott richtet.",
       "Column: Gebet am Morgen",
-      "Production mode: tagesaktuell; Nachrichtenlage am Morgen der Veröffentlichung prüfen.",
-      "News selection: Nicht versuchen, die Nachrichtenlage vollständig abzubilden. Zwei bis vier konkrete Situationen auswählen, die exemplarisch für das stehen, was Menschen an diesem Morgen bewegt.",
-      "Verbindliche aktuelle Bezüge: Das Gebet MUSS mindestens zwei konkrete und zum Erzeugungszeitpunkt relevante aktuelle Situationen aufnehmen. Allgemeine Formulierungen wie 'die Krisen der Welt' oder 'alle Menschen in Not' ersetzen diese Bezüge nicht.",
-      "Konkretheit aktueller Bezüge: Für jede ausgewählte Situation im Gebet erkennbar benennen, was geschehen ist oder welche konkrete Lage besteht und welche Menschen davon betroffen sind. Nur verlässliche, aktuell überprüfte Informationen verwenden; nichts erfinden.",
-      "Ausgabeprüfung aktuelle Bezüge: Vor der Ausgabe prüfen, dass editorial_core.main_message und die wesentlichen Plattformtexte die mindestens zwei konkreten aktuellen Situationen tatsächlich als Fürbitte oder Gebetsanliegen enthalten.",
-      "News sources: Aktuelle weltweite Nachrichtenlage sowie tagesschau.de und SWR Aktuell Baden-Württemberg prüfen. Regionale und internationale Perspektiven miteinander verbinden.",
-      "Current possible themes as of 2026-08-14: Krieg und Gewalt im Nahen Osten; Krieg in der Ukraine; Angriffe auf medizinische Einrichtungen und die Not von Kranken und Helfenden in Konfliktgebieten; Dürre, Trockenheit und Niedrigwasser in Baden-Württemberg.",
-      "Prayer structure: Ankommen vor Gott | den neuen Tag als Geschenk wahrnehmen | ausgewählte Not der Welt vor Gott bringen | Menschen nennen, die leiden, helfen, Verantwortung tragen oder Frieden suchen | um Mut zum eigenen Handeln bitten | mit Hoffnung und Vertrauen in Gottes Zukunft enden.",
-      "Theological key: Jürgen Moltmann. Christliche Hoffnung ist keine optimistische Einschätzung der Gegenwart, sondern lebt aus Gottes verheißener Zukunft und widerspricht deshalb Leid, Gewalt, Tod und Resignation.",
-      "Theological key: Den gekreuzigten Gott bei den Leidenden suchen. Gott nicht als distanzierten Weltenlenker darstellen, sondern als den, der Leid und Verlassenheit kennt und den Leidenden nahe ist.",
-      "Theological key: Gottes Zukunft verändert die Gegenwart. Das Gebet soll nicht zur Passivität führen, sondern zu Wachheit, Mut, Solidarität und kleinen Schritten des Friedens an diesem Tag.",
-      "Theological key: Hoffnung nicht als Vertröstung formulieren. Leid und Gewalt dürfen beim Namen genannt werden. Gerade darin soll das Gebet der Vorstellung widersprechen, dass das Gegenwärtige das letzte Wort hat.",
-      "Language: Kurze, einfache Sätze. Konkrete Bilder und Situationen statt abstrakter politischer Begriffe. Keine Nachrichtenzusammenfassung und keine lange Liste von Krisen.",
+      "Production mode: weitgehend vorproduzierbar; am Morgen der Veröffentlichung nur auf stimmigen Tagesbezug prüfen.",
+      "Ausrichtung: Gott anreden und loben. Gottes Gegenwart, Treue, Güte, Schöpferkraft, Barmherzigkeit oder verheißene Zukunft in den Mittelpunkt stellen.",
+      "Abgrenzung: Keine Nachrichtenschau und keine konkreten Fürbitten für aktuelle Ereignisse, Länder, Gruppen oder Einzelne. Solche Anliegen gehören in das Abendgebet.",
+      "Prayer structure: Vor Gott ankommen | Gott mit einem Namen oder Bild anreden | den neuen Morgen und das Leben als Gabe wahrnehmen | einen kurzen Gebetsschnipsel aufnehmen | Hoffnung und Vertrauen aussprechen | den Tag offen und zuversichtlich aus Gottes Hand annehmen.",
+      "Prayer fragment: Wenn passend, einen sehr kurzen, erkennbaren Schnipsel aus einem bekannten Gebet aufnehmen, zum Beispiel aus einem Psalm, einem biblischen Gebet oder der Tradition von Taizé oder Iona.",
+      "Source handling: Quelle des Gebetsschnipsels zuverlässig prüfen und knapp nennen. Biblische Worte mit Bibelstelle kennzeichnen. Bei modernen Gebeten und Gesängen nur ein kurzes zulässiges Zitat verwenden; sonst den Gedanken in eigenen Worten aufnehmen.",
+      "Theological key: Christliche Hoffnung gründet in Gott und seiner verheißenen Zukunft. Sie ist mehr als gute Stimmung und trägt auch dann, wenn der Tag ungewiss beginnt.",
+      "Theological key: Das Morgenlob verschweigt Dunkelheit und Leid nicht, macht sie aber nicht zum Mittelpunkt. Es beginnt mit Gott, von dem Licht, Leben und Erneuerung erwartet werden.",
+      "Spiritual tone: Lob, Dank, Staunen, Vertrauen, Erwartung und ruhige Zuversicht. Keine Leistungsforderung und kein Appellkatalog.",
+      "Language: Kurze, einfache und poetisch klare Sätze. Konkrete Bilder des Morgens und der Schöpfung verwenden, ohne kitschig zu werden.",
       "Language: Möglichst wenig kirchliche Binnenbegriffe. Das Gebet soll auch für Menschen zugänglich sein, die mit traditioneller Gebetssprache wenig anfangen können.",
-      "Ending: Nicht mit Angst oder einer Aufzählung ungelöster Probleme enden, sondern mit Vertrauen: Gottes Zukunft kommt uns entgegen; deshalb können wir diesen Tag beginnen.",
-      "AI support notes: Aktuelle Nachrichten sichten und verifizieren | mindestens zwei konkrete aktuelle Situationen auswählen | diese Situationen ausdrücklich als Gebetsanliegen einarbeiten | kurzes Gebet in einfacher Sprache entwerfen | vor der Ausgabe auf konkrete aktuelle Bezüge prüfen | theologisch auf Vertröstung, Allmachtsklischees und billigen Optimismus prüfen | Caption kürzen | Alt-Text"
+      "Ending: Mit einem Satz des Vertrauens oder Lobes enden, der in den Tag mitgenommen werden kann.",
+      "AI support notes: Passenden geistlichen Leitgedanken wählen | gegebenenfalls einen kurzen Gebetsschnipsel samt Quelle prüfen | Morgenlob in einfacher Sprache entwerfen | konkrete Fürbitten konsequent dem Abendgebet überlassen | Caption kürzen | Alt-Text"
     ]
   },
   "platforms": {
@@ -83,7 +80,7 @@
   "metadata": {
     "model": "",
     "generated_at": "",
-    "prompt_version": "1.0",
+    "prompt_version": "1.1",
     "assets": []
   }
 }

@@ -41,8 +41,19 @@ export class InstagramPostPublicationAdapter implements PublicationAdapter {
 
   async publish(payload: PublicationPayload): Promise<PublicationResult> {
     this.assertConfigured()
-    if (payload.assetPaths.length < 2) throw new Error("instagram: Ein Feed-Post benötigt mindestens zwei gerenderte Carousel-Bilder.")
+    if (payload.assetPaths.length === 0) throw new Error("instagram: Ein Feed-Post benötigt mindestens ein gerendertes Bild.")
     if (payload.assetPaths.length > 10) throw new Error("instagram: Ein Carousel darf höchstens zehn Bilder enthalten.")
+
+    if (payload.assetPaths.length === 1) {
+      const image = await this.createContainer({
+        image_url: this.publicAssetUrl(payload.assetPaths[0]!, payload.job.contentDate, payload.job.postId),
+        media_type: "IMAGE",
+        caption: payload.job.text
+      })
+      await this.waitUntilFinished(image.id)
+      const published = await this.publishContainer(image.id)
+      return { remoteId: published, metadata: { mediaCount: 1, mediaType: "IMAGE", status: 200 } }
+    }
 
     const childIds: string[] = []
     for (const assetPath of payload.assetPaths) {

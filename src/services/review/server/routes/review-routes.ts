@@ -678,11 +678,12 @@ async function routeReviewRequest(
     return
   }
 
-  if (method === "GET" && requestUrl.pathname.startsWith("/files/")) {
+  if ((method === "GET" || method === "HEAD") && requestUrl.pathname.startsWith("/files/")) {
     await serveOutputFile(
       response,
       dependencies.runtimeConfig.outputDir,
-      requestUrl.pathname.replace("/files/", "")
+      requestUrl.pathname.replace("/files/", ""),
+      method === "HEAD"
     )
     return
   }
@@ -763,7 +764,8 @@ function parseForceSearchParam(requestUrl: URL): boolean {
 async function serveOutputFile(
   response: ServerResponse,
   outputRoot: string,
-  relativePath: string
+  relativePath: string,
+  headOnly = false
 ) {
   const filePath = resolve(outputRoot, relativePath)
   const content = await readFile(filePath)
@@ -785,7 +787,8 @@ async function serveOutputFile(
 
   response.writeHead(200, {
     "cache-control": "no-store, max-age=0",
-    "content-type": contentType
+    "content-type": contentType,
+    "content-length": String(content.byteLength)
   })
-  response.end(content)
+  response.end(headOnly ? undefined : content)
 }

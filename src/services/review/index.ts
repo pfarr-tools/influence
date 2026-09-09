@@ -1,6 +1,7 @@
 export {
   appendDiscussionMessage,
   applyContentChatRevision,
+  canonicalJsonHash,
   loadContentChatSession,
   persistDiscussionReply,
   prepareDiscussionRequest,

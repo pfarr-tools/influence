@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { mkdir } from "node:fs/promises"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
@@ -31,6 +32,7 @@ const contentChatRevisionSchema = z.object({
   diff: z.array(z.string()),
   id: z.string().min(1),
   model: z.string().min(1),
+  patch: z.unknown().nullable().default(null),
   rawResponse: z.unknown(),
   validationErrors: z.array(z.string()),
   validationStatus: z.enum(["invalid", "valid"]),
@@ -107,6 +109,19 @@ export interface JsonRevisionResponse {
     totalTokens: number
   }
 }
+
+const jsonPatchOperationSchema = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("add"), path: z.string().startsWith("/"), value: z.unknown() }),
+  z.object({ op: z.literal("remove"), path: z.string().startsWith("/") }),
+  z.object({ op: z.literal("replace"), path: z.string().startsWith("/"), value: z.unknown() })
+])
+
+const jsonPatchSchema = z.object({
+  base_hash: z.string().regex(/^[a-f0-9]{64}$/),
+  operations: z.array(jsonPatchOperationSchema)
+})
+
+export type JsonPatch = z.infer<typeof jsonPatchSchema>
 
 export interface JsonChatModelClient {
   discussJson(request: JsonDiscussionRequest): Promise<JsonDiscussionResponse>
@@ -300,12 +315,13 @@ export async function requestContentChatRevision(
     "revision_request",
     [
       options.instruction ? `Änderungsanweisung: ${options.instruction}` : null,
-      "Bitte überarbeite jetzt den vollständigen Plan anhand des gesamten Chatverlaufs. Gib ausschließlich das vollständige JSON-Dokument im exakt gleichen Schema zurück. Lass alle unveränderten Felder und sämtliche Einträge vollständig enthalten. Gib keine Erklärung, keinen Patch und keine Markdown-Codeblöcke aus."
+      "Bitte überarbeite jetzt das JSON anhand des gesamten Chatverlaufs. Gib ausschließlich einen Patch im vorgegebenen Patch-Schema zurück. Gib keine Erklärung und keine Markdown-Codeblöcke aus."
     ].filter((value): value is string => value !== null).join("\n\n"),
     now
   )
 
   let revisionResponse: JsonRevisionResponse | null = null
+  let appliedPatch: JsonPatch | null = null
   let validationErrors: string[] = []
   let lastRevisionError: unknown
 
@@ -328,9 +344,25 @@ export async function requestContentChatRevision(
       break
     }
 
-    const attemptValidation = validateRevisionJson(session.schemaName, revisionResponse.parsedJson)
+    const patchValidation = jsonPatchSchema.safeParse(revisionResponse.parsedJson)
+    if (!patchValidation.success) {
+      validationErrors = patchValidation.error.issues.map(formatValidationIssueInGerman)
+      continue
+    }
+
+    let patchedJson: unknown
+    try {
+      patchedJson = applyJsonPatch(session.sourceJson, patchValidation.data)
+    } catch (error) {
+      validationErrors = [error instanceof Error ? error.message : "Patch konnte nicht angewendet werden."]
+      continue
+    }
+
+    const attemptValidation = validateRevisionJson(session.schemaName, patchedJson)
     if (attemptValidation.success) {
       validationErrors = []
+      revisionResponse = { ...revisionResponse, parsedJson: patchedJson }
+      appliedPatch = patchValidation.data
       break
     }
 
@@ -360,7 +392,8 @@ export async function requestContentChatRevision(
           revisionResponse.rawResponse,
           validation.data,
           diffJsonValues(session.sourceJson, validation.data),
-          now
+          now,
+          appliedPatch!
         )
       : createInvalidRevision(
           revisionResponse.rawResponse,
@@ -461,7 +494,8 @@ function createValidRevision(
   rawResponse: unknown,
   validatedJson: unknown,
   diff: string[],
-  now: () => Date
+  now: () => Date,
+  patch: JsonPatch
 ): ContentChatRevision {
   return {
     appliedAt: null,
@@ -470,6 +504,7 @@ function createValidRevision(
     id: randomUUID(),
     model,
     rawResponse,
+    patch,
     validationErrors: [],
     validationStatus: "valid",
     validatedJson
@@ -488,6 +523,7 @@ function createInvalidRevision(
     diff: ["Keine Diff-Vorschau verfügbar, weil die Revision nicht gültig validiert werden konnte."],
     id: randomUUID(),
     model,
+    patch: null,
     rawResponse,
     validationErrors: validationErrorText
       .split("\n")
@@ -586,46 +622,49 @@ function buildDiscussionInput(session: ContentChatSession, latestPrompt: string)
 
 function buildRevisionInstructions(session: ContentChatSession, validationErrors: string[] = []): string {
   return [
-    "You are producing the final revised JSON document, not an explanation or a partial patch.",
-    "Return exactly one complete JSON object and nothing else: no Markdown fences, comments, prose, or placeholders.",
-    "The output must contain every required field and every item from the source document, including unchanged content.",
-    "Follow the supplied JSON Schema exactly. Do not add fields, omit fields, change types, or replace arrays with summaries.",
-    "Keep stable identifiers, structural keys, and required fields intact unless the current context explicitly permits a change.",
+    "You are producing a JSON Patch for the existing document, not a complete replacement document.",
+    "Return exactly one patch object and nothing else: no Markdown fences, comments, prose, or placeholders.",
+    "Use only add, remove, and replace operations with JSON Pointer paths beginning with /. Do not use move, copy, or test.",
+    "The base_hash must exactly match the canonical source JSON hash supplied in the input.",
+    "Preserve stable identifiers, structural keys, dates, and statuses unless the current context explicitly permits a change.",
     "Do not invent factual details for church, school, sermon, or community content.",
     "Use natural German content inside string values where content is rewritten.",
     ...(validationErrors.length > 0
       ? [
-          "A previous attempt failed application validation. Correct every error below and return the complete document again.",
+          "A previous attempt failed application validation. Correct every error below and return the patch again.",
           "EXACT VALIDATION ERRORS FROM THE APPLICATION:",
           ...validationErrors.map((error) => `- ${error}`)
         ]
       : []),
-    buildSchemaGuidance(session)
+    buildSchemaGuidance(session),
+    "The patch is applied and the resulting complete document is validated by the application against the source schema."
   ].join("\n")
 }
 
 function buildRevisionInput(
   session: ContentChatSession,
   validationErrors: string[] = [],
-  schema: Record<string, unknown> = getJsonSchemaForSession(session),
+  _schema: Record<string, unknown> = getJsonSchemaForSession(session),
   instruction = ""
 ): string {
   return [
     `Kontexttyp: ${session.contextType}`,
     `Kontextreferenz: ${session.contextRef}`,
     `Schema: ${session.schemaName}`,
-    "Verbindliches JSON-Schema für die vollständige Ausgabe:",
-    JSON.stringify(schema, null, 2),
+    "Verbindliches Patch-Schema für die Ausgabe:",
+    JSON.stringify(getJsonPatchSchema(), null, 2),
     ...(instruction.trim().length > 0
       ? ["Direkte Änderungsanweisung des Benutzers:", instruction.trim()]
       : []),
-    "Arbeite auf Basis dieses JSON-Dokuments:",
+    "Arbeite auf Basis dieses JSON-Dokuments. Verwende den folgenden kanonischen base_hash:",
+    canonicalJsonHash(session.sourceJson),
+    "Quelldokument:",
     JSON.stringify(session.sourceJson, null, 2),
     "Berücksichtige diesen Chatverlauf bei der Überarbeitung:",
     formatConversationHistory(session.messages),
     ...(validationErrors.length > 0
       ? [
-          "Die vorige Ausgabe wurde von der Anwendung abgelehnt. Überarbeite sie jetzt anhand dieser exakten Fehler und sende danach wieder das vollständige JSON-Dokument:",
+          "Die vorige Ausgabe wurde von der Anwendung abgelehnt. Korrigiere den Patch anhand dieser exakten Fehler und sende danach wieder den Patch:",
           ...validationErrors.map((error) => `- ${error}`)
         ]
       : [])
@@ -733,6 +772,117 @@ function diffJsonValues(before: unknown, after: unknown): string[] {
   const changes: string[] = []
   collectJsonDiffs(before, after, "$", changes)
   return changes.length > 0 ? changes : ["Keine inhaltlichen Änderungen erkannt."]
+}
+
+export function canonicalJsonHash(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(sortJsonValue(value))).digest("hex")
+}
+
+function sortJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortJsonValue)
+  }
+
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+        .map(([key, entry]) => [key, sortJsonValue(entry)])
+    )
+  }
+
+  return value
+}
+
+function getJsonPatchSchema(): Record<string, unknown> {
+  const schema = z.toJSONSchema(jsonPatchSchema)
+  delete schema.$schema
+  return schema
+}
+
+function applyJsonPatch(source: unknown, patch: JsonPatch): unknown {
+  const expectedHash = canonicalJsonHash(source)
+  if (patch.base_hash !== expectedHash) {
+    throw new Error("Der Patch bezieht sich auf einen veralteten JSON-Stand.")
+  }
+
+  let result = structuredClone(source)
+  for (const operation of patch.operations) {
+    result = applyJsonPatchOperation(result, operation)
+  }
+
+  return result
+}
+
+function applyJsonPatchOperation(
+  source: unknown,
+  operation: z.infer<typeof jsonPatchOperationSchema>
+): unknown {
+  const segments = operation.path.slice(1).split("/").map(unescapeJsonPointer)
+  if (segments.some((segment) => segment.length === 0)) {
+    throw new Error(`Ungültiger Patch-Pfad: ${operation.path}`)
+  }
+
+  const parentSegments = segments.slice(0, -1)
+  const key = segments.at(-1) ?? ""
+  const parent = getJsonPointerValue(source, parentSegments)
+
+  if (Array.isArray(parent)) {
+    const index = key === "-" ? parent.length : Number(key)
+    if (!Number.isInteger(index) || index < 0 || index > parent.length) {
+      throw new Error(`Ungültiger Array-Index im Patch-Pfad: ${operation.path}`)
+    }
+    if (operation.op === "add") {
+      parent.splice(index, 0, structuredClone(operation.value))
+    } else if (operation.op === "replace" && index < parent.length) {
+      parent[index] = structuredClone(operation.value)
+    } else if (operation.op === "remove" && index < parent.length) {
+      parent.splice(index, 1)
+    } else {
+      throw new Error(`Patch-Operation nicht möglich: ${operation.op} ${operation.path}`)
+    }
+    return source
+  }
+
+  if (parent === null || typeof parent !== "object") {
+    throw new Error(`Patch-Elternpfad ist kein Objekt: ${operation.path}`)
+  }
+
+  const record = parent as Record<string, unknown>
+  if (operation.op === "remove") {
+    if (!(key in record)) throw new Error(`Feld nicht gefunden: ${operation.path}`)
+    delete record[key]
+  } else if (operation.op === "replace") {
+    if (!(key in record)) throw new Error(`Feld nicht gefunden: ${operation.path}`)
+    record[key] = structuredClone(operation.value)
+  } else {
+    if (key in record) throw new Error(`Feld bereits vorhanden: ${operation.path}`)
+    record[key] = structuredClone(operation.value)
+  }
+
+  return source
+}
+
+function getJsonPointerValue(source: unknown, segments: string[]): unknown {
+  let current = source
+  for (const segment of segments) {
+    if (Array.isArray(current)) {
+      const index = Number(segment)
+      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+        throw new Error(`Ungültiger Patch-Pfad: /${segments.join("/")}`)
+      }
+      current = current[index]
+    } else if (current !== null && typeof current === "object" && segment in current) {
+      current = (current as Record<string, unknown>)[segment]
+    } else {
+      throw new Error(`Patch-Elternpfad nicht gefunden: /${segments.join("/")}`)
+    }
+  }
+  return current
+}
+
+function unescapeJsonPointer(segment: string): string {
+  return segment.replaceAll("~1", "/").replaceAll("~0", "~")
 }
 
 function formatValidationIssueInGerman(issue: z.ZodIssue): string {

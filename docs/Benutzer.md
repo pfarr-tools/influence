@@ -116,13 +116,13 @@ Im rechten Bereich werden die erzeugten Bilder angezeigt. Durch Anklicken kann m
 
 ### 8. JSON mit ChatGPT diskutieren
 
-Mit `JSON mit ChatGPT` kann der aktuelle Beitrag als strukturierte JSON-Datei überarbeitet werden.
+Mit `JSON mit ChatGPT` kann der aktuelle Beitrag über eine strukturierte Patch-Revision überarbeitet werden. ChatGPT liefert dabei nur die Änderungen; Influence wendet sie lokal an und prüft anschließend das vollständige JSON gegen das Schema.
 
 Typischer Ablauf:
 
 1. Dialog öffnen
 2. Änderungswunsch formulieren
-3. Revision anfordern
+3. Patch-Revision anfordern
 4. Vorschlag prüfen
 5. gültige Revision übernehmen
 

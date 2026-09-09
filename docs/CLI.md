@@ -299,6 +299,8 @@ influence chat message --session-id <id> --text "Bitte kürze den Facebook-Text.
 influence chat revise --session-id <id>
 ```
 
+Revisionen werden ausschließlich als JSON-Patches mit `add`, `remove` und `replace` angefordert. Influence prüft den Basis-Hash, wendet den Patch lokal an und validiert das daraus entstandene vollständige JSON. Ungültige oder veraltete Patches werden als fehlgeschlagene Revision gespeichert und automatisch erneut angefordert; es gibt keinen vollständigen JSON-Fallback.
+
 ### Letzte gültige Revision anwenden
 
 ```bash

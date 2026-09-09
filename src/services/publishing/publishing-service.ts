@@ -147,10 +147,13 @@ async function resolvePublicationAssets(
   if (platform !== "facebook" && platform !== "instagram" && platform !== "mastodon" && platform !== "threads" && platform !== "bluesky" && platform !== "linkedin") return content.metadata.assets
   if (platform === "mastodon" && containsUrl(getPlatformText(content, platform))) return []
   const isTageslosung = content.source.rubric === "Tageslosungen"
+  const isGrundrechte = content.source.rubric === "Grundrechte"
   const isKirchenjahr = content.source.rubric === "Kirchenjahr"
   const renderFormat = isKirchenjahr
     ? format === "story" ? "instagram-story" : "square"
     : isTageslosung
+    ? platform === "instagram" && format === "story" ? "instagram-story" : "square"
+    : isGrundrechte
     ? platform === "instagram" && format === "story" ? "instagram-story" : "square"
     : platform === "facebook" || platform === "mastodon" ? "facebook-mastodon" : platform === "threads" || platform === "bluesky" || platform === "linkedin" || format !== "story" ? "instagram-feed" : "instagram-story"
   const summaryPath = getContentOutputPaths(outputRoot, post).baseDir + "/render-results.json"

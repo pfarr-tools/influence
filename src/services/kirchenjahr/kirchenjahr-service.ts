@@ -17,6 +17,10 @@ export interface KirchenjahrProprium {
   description: string
 }
 
+export function createKirchenjahrBlueskyText(entry: Pick<KirchenjahrProprium, "designation" | "title">): string {
+  return [entry.designation, entry.title ? `Titel: ${entry.title}` : ""].filter(Boolean).join("\n")
+}
+
 export interface KirchenjahrOptions {
   force: boolean
   outputRoot: string
@@ -136,7 +140,7 @@ function buildContent(post: CalendarPost, entry: KirchenjahrProprium): ContentPa
     id: post.id, status: "freigegeben", needs_input: false,
     source: { calendar_post_id: post.id, date: post.datum, rubric: post.rubrik, liturgical_source: apiUrl(Number(post.datum.slice(0, 4))) },
     editorial_core: { title: entry.designation, main_message: "", audience: "breite Öffentlichkeit", tone: ["ruhig"], source_notes: [entry.title ? `Titel: ${entry.title}` : ""] .filter(Boolean) },
-    platforms: { facebook: { text: entry.description, headline: entry.designation }, instagram: { caption: entry.description, carousel: [] }, mastodon: { text: entry.description }, bluesky: { text: entry.description }, story: { slides: [] }, reel: { hook: "", script: "", shots: [], duration_seconds: 0 } },
+    platforms: { facebook: { text: entry.description, headline: entry.designation }, instagram: { caption: entry.description, carousel: [] }, mastodon: { text: entry.description }, bluesky: { text: createKirchenjahrBlueskyText(entry) }, story: { slides: [] }, reel: { hook: "", script: "", shots: [], duration_seconds: 0 } },
     visual: { concept: `kirchenjahr:${entry.cssColor}`, flux_prompt: "", negative_prompt: "text, letters, logo, watermark", formats: ["1:1", "9:16"], alt_text: entry.designation },
     qa: { warnings: [], approved: true }, metadata: { model: "", generated_at: new Date().toISOString(), prompt_version: "kirchenjahr-1.0", assets: [] }
   }

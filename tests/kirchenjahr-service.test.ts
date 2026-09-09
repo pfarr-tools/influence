@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { expandKirchenjahrAbbreviations, loadKirchenjahr } from "../src/services/kirchenjahr/kirchenjahr-service.js"
+import { createKirchenjahrBlueskyText, expandKirchenjahrAbbreviations, loadKirchenjahr } from "../src/services/kirchenjahr/kirchenjahr-service.js"
 import { buildRenderDocument } from "../src/services/render/post-renderer.js"
 import type { CalendarPost } from "../src/domain/calendar.js"
 import type { ContentPackage } from "../src/domain/content.js"
@@ -28,6 +28,11 @@ describe("kirchenjahr service", () => {
     expect(expandKirchenjahrAbbreviations("1. So. n. Trinitatis")).toBe("1. Sonntag nach Trinitatis")
     expect(expandKirchenjahrAbbreviations("Drittl.S.d.Kj.")).toBe("Drittletzter Sonntag des Kirchenjahres")
     expect(expandKirchenjahrAbbreviations("Vorletzter Sonntag d. Kj.")).toBe("Vorletzter Sonntag des Kirchenjahres")
+  })
+
+  it("keeps Bluesky copy concise by omitting the full liturgical details", () => {
+    expect(createKirchenjahrBlueskyText({ designation: "4. Advent", title: "Die Freude" })).toBe("4. Advent\nTitel: Die Freude")
+    expect(createKirchenjahrBlueskyText({ designation: "Ostersonntag" })).toBe("Ostersonntag")
   })
 
   it("renders only the designation and optional title in the image", async () => {

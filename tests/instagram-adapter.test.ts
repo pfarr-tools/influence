@@ -3,6 +3,24 @@ import { describe, expect, it } from "vitest"
 import { InstagramPostPublicationAdapter, InstagramStoryPublicationAdapter } from "../src/services/publishing/instagram-adapter.js"
 
 describe("Instagram publication adapters", () => {
+  it("publishes one generated feed render as a single-image post", async () => {
+    const requests: Array<{ url: string; body?: URLSearchParams }> = []
+    const fetchImpl = async (url: string | URL, init?: RequestInit) => {
+      const body = init?.body instanceof URLSearchParams ? init.body : undefined
+      requests.push({ url: String(url), body })
+      return jsonResponse(String(url).endsWith("/media_publish") ? { id: "published-1" } : String(url).endsWith("/media") ? { id: "container-1" } : { status_code: "FINISHED" })
+    }
+    const adapter = new InstagramPostPublicationAdapter({ accountId: "ig-1", accessToken: "token", publicBaseUrl: "https://influence.example", pollIntervalMs: 0 }, fetchImpl)
+
+    const result = await adapter.publish({ job: job("post"), content: {} as never, assetPaths: ["/tmp/post/render-square-01.png"] })
+
+    expect(result.remoteId).toBe("published-1")
+    expect(requests[0]?.body?.get("media_type")).toBe("IMAGE")
+    expect(requests[0]?.body?.get("is_carousel_item")).toBeNull()
+    expect(requests[0]?.body?.get("caption")).toBe("Caption")
+    expect(requests.filter((request) => request.url.endsWith("/media_publish"))).toHaveLength(1)
+  })
+
   it("creates and publishes a carousel from the generated feed renders", async () => {
     const requests: Array<{ url: string; body?: URLSearchParams }> = []
     let containerNumber = 0

@@ -12,6 +12,7 @@ import { scaffoldPostById } from "../src/services/content/content-scaffolder.js"
 import {
   appendDiscussionMessage,
   applyContentChatRevision,
+  canonicalJsonHash,
   loadContentChatSession,
   requestContentChatRevision,
   startContentChatSession,
@@ -99,10 +100,7 @@ describe("content chat service", () => {
     await scaffoldPostById(calendar, "post-0001", tempDir)
     const reviseJson = vi.fn().mockResolvedValue({
       model: "gpt-5.6",
-      parsedJson: {
-        id: "post-0001",
-        status: "in Arbeit"
-      },
+      parsedJson: { base_hash: "stale", operations: [] },
       rawResponse: { invalid: true },
       usage: { inputTokens: 20, outputTokens: 10, totalTokens: 30 }
     })
@@ -133,8 +131,8 @@ describe("content chat service", () => {
       "EXACT VALIDATION ERRORS FROM THE APPLICATION:"
     )
     expect(reviseJson.mock.calls[1]?.[0].input).toContain("Die vorige Ausgabe wurde von der Anwendung abgelehnt.")
-    expect(reviseJson.mock.calls[0]?.[0].input).toContain("Verbindliches JSON-Schema für die vollständige Ausgabe:")
-    expect(reviseJson.mock.calls[0]?.[0].input).toContain('"properties"')
+    expect(reviseJson.mock.calls[0]?.[0].input).toContain("Verbindliches Patch-Schema für die Ausgabe:")
+    expect(reviseJson.mock.calls[0]?.[0].input).toContain('"operations"')
     expect(revised.session.revisions).toHaveLength(1)
     expect(revised.session.revisions[0]?.validationStatus).toBe("invalid")
     expect(revised.session.revisions[0]?.validationErrors.length).toBeGreaterThan(0)
@@ -145,19 +143,12 @@ describe("content chat service", () => {
     const calendar = await loadCalendarFromFile(tempCalendarPath)
     const scaffold = await scaffoldPostById(calendar, "post-0001", tempDir)
     const originalContent = await readJsonFile<ContentPackage>(scaffold.outputPath)
-    const revisedContent: ContentPackage = {
-      ...originalContent,
-      editorial_core: {
-        ...originalContent.editorial_core,
-        title: "Überarbeiteter Titel"
-      },
-      platforms: {
-        ...originalContent.platforms,
-        facebook: {
-          ...originalContent.platforms.facebook,
-          text: "Überarbeiteter Facebook-Text"
-        }
-      }
+    const revisedPatch = {
+      base_hash: canonicalJsonHash(originalContent),
+      operations: [
+        { op: "replace", path: "/editorial_core/title", value: "Überarbeiteter Titel" },
+        { op: "replace", path: "/platforms/facebook/text", value: "Überarbeiteter Facebook-Text" }
+      ]
     }
 
     const started = await startContentChatSession(
@@ -177,7 +168,7 @@ describe("content chat service", () => {
           discussJson: vi.fn(),
           reviseJson: vi.fn().mockResolvedValue({
             model: "gpt-5.6",
-            parsedJson: revisedContent,
+            parsedJson: revisedPatch,
             rawResponse: { valid: true },
             usage: { inputTokens: 22, outputTokens: 18, totalTokens: 40 }
           })
@@ -198,12 +189,11 @@ describe("content chat service", () => {
 
   it("applies a valid full-plan revision back to the Redaktionsplan file", async () => {
     const calendar = await loadCalendarFromFile(tempCalendarPath)
-    const revisedPlan = {
-      ...calendar,
-      meta: {
-        ...calendar.meta,
-        titel: "Redaktionskalender 2026/2027 überarbeitet"
-      }
+    const revisedPatch = {
+      base_hash: canonicalJsonHash(calendar),
+      operations: [
+        { op: "replace", path: "/meta/titel", value: "Redaktionskalender 2026/2027 überarbeitet" }
+      ]
     }
 
     const started = await startContentChatSession(
@@ -223,7 +213,7 @@ describe("content chat service", () => {
           discussJson: vi.fn(),
           reviseJson: vi.fn().mockResolvedValue({
             model: "gpt-5.6",
-            parsedJson: revisedPlan,
+            parsedJson: revisedPatch,
             rawResponse: { valid: true },
             usage: { inputTokens: 50, outputTokens: 25, totalTokens: 75 }
           })

@@ -107,6 +107,25 @@ describe("review api routes", () => {
     expect(feed.posts.some((feedPost) => feedPost.id === morningPrayer.id || feedPost.id === eveningPrayer.id)).toBe(false)
   })
 
+  it("serves media metadata for HEAD requests instead of the SPA", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const imagePath = join(tempDir, "2026-08-10", "post-0001", "render.jpg")
+    await mkdir(join(tempDir, "2026-08-10", "post-0001"), { recursive: true })
+    await writeFile(imagePath, Buffer.from("jpeg-fixture"))
+    const response = createMockResponse()
+
+    await handleReviewRequest({ method: "HEAD", url: "/files/2026-08-10/post-0001/render.jpg" } as never, response as never, {
+      calendar,
+      pageRenderClient: { async renderHtmlDocument() { return { overflowRegions: [] } } },
+      runtimeConfig: { ...loadRuntimeConfig(), outputDir: tempDir }
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers["content-type"]).toBe("image/jpeg")
+    expect(response.headers["content-length"]).toBe(String(Buffer.byteLength("jpeg-fixture")))
+    expect(response.body).toBe("")
+  })
+
   it("reloads the calendar so newly created prayer posts appear without restart", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
     const calendarPath = join(tempDir, "content-plan.json")
