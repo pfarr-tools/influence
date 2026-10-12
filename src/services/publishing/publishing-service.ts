@@ -5,7 +5,7 @@ import { getPostById } from "../calendar/calendar-service.js"
 import { assertContentApproved, getContentOutputPaths, isPublicationApproved, pathExists, readContentPackage, readJsonFile } from "../content/content-storage.js"
 import { PublicationJobStore } from "./job-store.js"
 import type { PublicationAdapter, PublicationJob, PublicationPlatform } from "./types.js"
-import { containsUrl } from "./text-utils.js"
+import { containsUrl, limitSocialText } from "./text-utils.js"
 
 /** Creates or schedules approved jobs and executes them idempotently. */
 export class PublishingService {
@@ -29,7 +29,7 @@ export class PublishingService {
     }
     const existing = (await this.store.list()).find((job) => job.postId === postId && job.platform === platform && job.format === format && job.status !== "failed")
     if (existing) return existing
-    const text = getPlatformText(content, platform)
+    const text = limitTextForPlatform(getPlatformText(content, platform), platform)
     const assets = await resolvePublicationAssetsForJob(this.outputRoot, post, platform, format, content)
     const job = await this.store.create({ postId, contentDate: post.datum, platform, format, scheduledAt: at, timezone, status: at ? "scheduled" : "approved", text, assets, altTexts: [content.visual.alt_text] })
     return job
@@ -97,7 +97,7 @@ export class PublishingService {
     const content = await this.loadContent(job)
     const assets = await resolvePublicationAssets(this.outputRoot, { id: job.postId, datum: job.contentDate } as CalendarPost, job.platform, job.format, content)
     const publicationAssets = await preparePublicationAssets(this.outputRoot, job, assets)
-    const processing = await this.store.save({ ...job, text: getPlatformText(content, job.platform), assets: publicationAssets, status: "processing", attemptCount: job.attemptCount + 1, updatedAt: new Date().toISOString() })
+    const processing = await this.store.save({ ...job, text: limitTextForPlatform(getPlatformText(content, job.platform), job.platform), assets: publicationAssets, status: "processing", attemptCount: job.attemptCount + 1, updatedAt: new Date().toISOString() })
     try {
       const result = await adapter.publish({ job: processing, content, assetPaths: processing.assets.map((assetPath) => resolve(this.outputRoot, processing.contentDate, processing.postId, assetPath)) })
       return this.store.save({ ...processing, status: "published", remoteId: result.remoteId, remoteUrl: result.remoteUrl ?? null, responseMetadata: sanitizeMetadata(result.metadata), lastError: null, updatedAt: new Date().toISOString() })
@@ -187,6 +187,10 @@ function getPlatformText(content: Awaited<ReturnType<typeof readContentPackage>>
   if (platform === "bluesky") return content.platforms.bluesky?.text ?? ""
   if (platform === "linkedin") return content.platforms.instagram.caption
   return ""
+}
+
+function limitTextForPlatform(text: string, platform: PublicationPlatform): string {
+  return platform === "threads" || platform === "bluesky" ? limitSocialText(text) : text
 }
 
 function sanitizeMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> | null {

@@ -3,10 +3,10 @@ import { readFile } from "node:fs/promises"
 import sharp from "sharp"
 
 import type { PublicationAdapter, PublicationPayload, PublicationPlatform, PublicationResult } from "./types.js"
+import { limitSocialText } from "./text-utils.js"
 
 const defaultServiceUrl = "https://bsky.social"
 const maxImages = 4
-const maxTextGraphemes = 300
 const maxBlobBytes = 2_000_000
 
 export interface BlueskyAdapterConfig {
@@ -39,10 +39,7 @@ export class BlueskyPublicationAdapter implements PublicationAdapter {
   ) {}
 
   async publish(payload: PublicationPayload): Promise<PublicationResult> {
-    const text = payload.content.platforms.bluesky.text
-    if (countGraphemes(text) > maxTextGraphemes) {
-      throw new Error("bluesky: Der Beitrag darf höchstens 300 Zeichen enthalten.")
-    }
+    const text = limitSocialText(payload.content.platforms.bluesky.text)
     const assetPaths = payload.assetPaths
     if (assetPaths.length > maxImages) {
       throw new Error("bluesky: Ein Beitrag darf höchstens vier Bilder enthalten.")
@@ -180,10 +177,6 @@ function mimeTypeFor(path: string): string {
     case ".gif": return "image/gif"
     default: return "image/png"
   }
-}
-
-function countGraphemes(text: string): number {
-  return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].length
 }
 
 async function readJsonResponse(response: BlueskyFetchResponse): Promise<unknown> {

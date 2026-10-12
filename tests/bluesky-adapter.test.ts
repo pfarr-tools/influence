@@ -14,6 +14,19 @@ afterEach(async () => {
 })
 
 describe("Bluesky publication adapter", () => {
+  it("shortens overlong text before creating a feed post", async () => {
+    let recordText = ""
+    const fetchImpl = async (_url: string | URL, init?: RequestInit) => {
+      recordText = JSON.parse(String(init?.body)).record.text
+      return jsonResponse({ uri: "at://did:plc:author/app.bsky.feed.post/text-1" })
+    }
+    const adapter = new BlueskyPublicationAdapter({ serviceUrl: "https://bsky.example", accessToken: "token", repo: "did:plc:author" }, fetchImpl)
+
+    await adapter.publish({ job: job(), content: { platforms: { bluesky: { text: "x".repeat(301) } } } as never, assetPaths: [] })
+
+    expect(recordText).toBe("x".repeat(297) + "...")
+  })
+
   it("uploads images and creates a native feed post", async () => {
     const directory = await mkdtemp(join(tmpdir(), "influence-bluesky-"))
     temporaryDirectories.push(directory)
