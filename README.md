@@ -78,6 +78,23 @@ externe Plattformen auf gerenderte Assets zugreifen sollen. Plattformen werden
 nur aktiviert, wenn ihre Zugangsdaten vollständig und rechtlich zulässig
 konfiguriert sind.
 
+### Instagram- und Threads-Tokens
+
+Für Instagram und Threads wird die erste Verbindung einmalig über den
+jeweiligen OAuth-Dialog hergestellt. Die Start-URLs sind:
+
+- `https://<PUBLIC_BASE_URL>/admin/instagram/oauth/start`
+- `https://<PUBLIC_BASE_URL>/admin/threads/oauth/start`
+
+Nach erfolgreicher Verbindung speichert Influence die Zugangsdaten mit ihrer
+Gültigkeitszeit außerhalb von `content/` in `TOKEN_STORE_PATH` (standardmäßig
+`config/tokens.json`). Gültige Long-Lived-Tokens werden während des normalen
+Publishings automatisch vor Ablauf erneuert und atomar gespeichert. Tokens,
+die bereits abgelaufen oder widerrufen sind, können vom Anbieter nicht
+automatisch wiederhergestellt werden; dann muss der jeweilige OAuth-Dialog
+einmal erneut gestartet werden. Zugangstokens werden weder auf der
+Erfolgsseite noch in Logs ausgegeben.
+
 ## Typischer Workflow
 
 1. Redaktionsplan anlegen und validieren.
