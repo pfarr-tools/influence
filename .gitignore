@@ -2,4 +2,5 @@ node_modules/
 content/
 coverage/
 .env
+config/tokens.json
 .vscode/

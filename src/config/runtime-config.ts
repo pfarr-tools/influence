@@ -28,6 +28,7 @@ export interface RuntimeConfig {
   reelSubtitleFontName: string
   reelSubtitleFontsDir: string
   sourceMark?: string
+  tokenStorePath: string
 }
 
 /**
@@ -60,7 +61,8 @@ export function loadRuntimeConfig(): RuntimeConfig {
       "Atkinson Hyperlegible Next"
     ),
     reelSubtitleFontsDir: readEnv("REEL_SUBTITLE_FONTS_DIR", ""),
-    sourceMark: readEnv("SOURCE_MARK", "")
+    sourceMark: readEnv("SOURCE_MARK", ""),
+    tokenStorePath: readEnv("TOKEN_STORE_PATH", "config/tokens.json")
   }
 }
 
