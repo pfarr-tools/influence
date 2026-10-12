@@ -66,7 +66,8 @@ export class InstagramOAuthService {
     const body = new URLSearchParams({ client_id: this.config.appId, client_secret: this.config.appSecret, grant_type: "authorization_code", redirect_uri: pending.redirectUri, code })
     const response = await this.fetchImpl(`${(this.config.tokenBaseUrl || defaultTokenBaseUrl).replace(/\/+$/, "")}/oauth/access_token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body })
     const result = await readJsonResponse(response)
-    if (!response.ok || !isRecord(result) || typeof result.access_token !== "string" || typeof result.user_id !== "string") throw new Error(`instagram: OAuth-Token konnte nicht abgerufen werden (${response.status}).`)
+    const userId = isRecord(result) && (typeof result.user_id === "string" || typeof result.user_id === "number") ? String(result.user_id) : undefined
+    if (!response.ok || !isRecord(result) || typeof result.access_token !== "string" || !userId) throw new Error(`instagram: OAuth-Token konnte nicht abgerufen werden (${response.status}).`)
 
     const longLivedUrl = new URL(`${(this.config.graphApiBaseUrl || defaultGraphApiBaseUrl).replace(/\/+$/, "")}/access_token`)
     longLivedUrl.searchParams.set("grant_type", "ig_exchange_token")
@@ -76,7 +77,7 @@ export class InstagramOAuthService {
     const longLived = await readJsonResponse(longLivedResponse)
     if (!longLivedResponse.ok || !isRecord(longLived) || typeof longLived.access_token !== "string" || typeof longLived.expires_in !== "number" || longLived.expires_in <= 0) throw new Error(`instagram: Long-lived Token konnte nicht abgerufen werden (${longLivedResponse.status}).`)
 
-    const token = { accessToken: longLived.access_token, userId: result.user_id, expiresIn: longLived.expires_in }
+    const token = { accessToken: longLived.access_token, userId, expiresIn: longLived.expires_in }
     await this.tokenStore?.save({ provider: "instagram", accessToken: token.accessToken, accountId: token.userId, expiresAt: new Date(Date.now() + token.expiresIn * 1000).toISOString() })
     return token
   }
