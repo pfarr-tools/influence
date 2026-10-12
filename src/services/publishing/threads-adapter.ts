@@ -176,7 +176,8 @@ export class ThreadsOAuthService {
     const body = new URLSearchParams({ client_id: this.config.appId, client_secret: this.config.appSecret, code, grant_type: "authorization_code", redirect_uri: pending.redirectUri })
     const response = await this.fetchImpl(`${this.graphEndpoint()}/oauth/access_token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body })
     const result = await readJsonResponse(response)
-    if (!response.ok || !isRecord(result) || typeof result.access_token !== "string" || typeof result.user_id !== "string") throw new Error(`threads: OAuth-Token konnte nicht abgerufen werden (${response.status}): ${getApiError(result)}`)
+    const userId = isRecord(result) && (typeof result.user_id === "string" || typeof result.user_id === "number") ? String(result.user_id) : undefined
+    if (!response.ok || !isRecord(result) || typeof result.access_token !== "string" || !userId) throw new Error(`threads: OAuth-Token konnte nicht abgerufen werden (${response.status}): ${getApiError(result)}`)
     let accessToken = result.access_token
     let expiresIn = typeof result.expires_in === "number" ? result.expires_in : undefined
     const longLivedUrl = new URL(`${this.graphEndpoint()}/access_token`)
@@ -192,9 +193,9 @@ export class ThreadsOAuthService {
       throw new Error(`threads: Token konnte nicht dauerhaft gemacht werden (${longLivedResponse.status}): ${getApiError(longLived)}`)
     }
     if (this.tokenStore && expiresIn) {
-      await this.tokenStore.save({ provider: "threads", accessToken, accountId: result.user_id, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() })
+      await this.tokenStore.save({ provider: "threads", accessToken, accountId: userId, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() })
     }
-    return { accessToken, userId: result.user_id, expiresIn }
+    return { accessToken, userId, expiresIn }
   }
 
   redirectUri(): string { return `${this.config.publicBaseUrl.replace(/\/+$/, "")}${threadsOAuthCallbackPath}` }

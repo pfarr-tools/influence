@@ -30,6 +30,18 @@ describe("Meta OAuth token persistence", () => {
     expect(await readFile(storePath(store), "utf8")).not.toContain("short-lived")
   })
 
+  it("accepts the numeric Threads user ID returned by Meta", async () => {
+    const store = await createStore()
+    const fetchImpl = async (url: string | URL) => String(url).includes("/oauth/access_token")
+      ? response({ access_token: "short-lived", user_id: 17841405793187218 })
+      : response({ access_token: "long-lived", expires_in: 5_184_000 })
+    const service = new ThreadsOAuthService({ appId: "app", appSecret: "secret", publicBaseUrl: "https://influence.example" }, fetchImpl, store)
+    const state = new URL(service.begin()).searchParams.get("state") ?? ""
+
+    await expect(service.complete("code", state)).resolves.toMatchObject({ accessToken: "long-lived", userId: "17841405793187218" })
+    expect(await store.get("threads")).toMatchObject({ accountId: "17841405793187218" })
+  })
+
   it("exchanges and persists the long-lived Instagram token", async () => {
     const store = await createStore()
     const requests: string[] = []
