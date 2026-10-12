@@ -30,7 +30,7 @@ Threads uses Meta's `th_refresh_token` endpoint. Instagram uses the applicable M
 
 ### OAuth callback
 
-The existing Threads and Facebook callback behavior is changed so successful authorization persists the token record and displays only a success message, account identifier, and expiry information. Instagram receives the same persistent authorization path if its configured API mode requires an OAuth callback.
+The existing Threads callback behavior is changed so successful authorization persists the token record and displays only a success message, account identifier, and expiry information. Instagram receives the same persistent authorization path if its configured API mode requires an OAuth callback.
 
 The callback must not place access tokens in HTML, logs, or URLs. Existing credentials remain valid until replaced by a successful refresh or reauthorization.
 
