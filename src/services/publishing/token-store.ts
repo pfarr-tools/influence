@@ -3,6 +3,7 @@ import { dirname } from "node:path"
 import { randomUUID } from "node:crypto"
 
 export type TokenProvider = "instagram" | "threads"
+export const defaultTokenStorePath = "../influence-runtime/tokens.json"
 
 export interface StoredToken {
   provider: TokenProvider
@@ -15,6 +16,8 @@ type TokenFile = Partial<Record<TokenProvider, StoredToken>>
 
 /** Stores provider credentials outside the public content tree. */
 export class TokenStore {
+  private mutationQueue: Promise<void> = Promise.resolve()
+
   constructor(private readonly path: string) {}
 
   async get(provider: TokenProvider): Promise<StoredToken | undefined> {
@@ -25,15 +28,21 @@ export class TokenStore {
 
   async save(record: StoredToken): Promise<void> {
     if (!isStoredToken(record)) throw new Error("Ungültiger Token-Datensatz.")
-    const file = await this.readFile()
-    file[record.provider] = record
-    await this.writeFile(file)
+    await this.enqueueMutation((file) => { file[record.provider] = record })
   }
 
   async remove(provider: TokenProvider): Promise<void> {
-    const file = await this.readFile()
-    delete file[provider]
-    await this.writeFile(file)
+    await this.enqueueMutation((file) => { delete file[provider] })
+  }
+
+  private async enqueueMutation(mutate: (file: TokenFile) => void): Promise<void> {
+    const operation = this.mutationQueue.then(async () => {
+      const file = await this.readFile()
+      mutate(file)
+      await this.writeFile(file)
+    })
+    this.mutationQueue = operation.catch(() => undefined)
+    await operation
   }
 
   private async writeFile(file: TokenFile): Promise<void> {

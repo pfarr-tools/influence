@@ -62,7 +62,7 @@ export function loadRuntimeConfig(): RuntimeConfig {
     ),
     reelSubtitleFontsDir: readEnv("REEL_SUBTITLE_FONTS_DIR", ""),
     sourceMark: readEnv("SOURCE_MARK", ""),
-    tokenStorePath: readEnv("TOKEN_STORE_PATH", "config/tokens.json")
+    tokenStorePath: readEnv("TOKEN_STORE_PATH", "../influence-runtime/tokens.json")
   }
 }
 

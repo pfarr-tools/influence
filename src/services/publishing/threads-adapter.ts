@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto"
 import type { PublicationAdapter, PublicationPayload, PublicationPlatform, PublicationResult } from "./types.js"
 import { limitSocialText } from "./text-utils.js"
 import { MetaTokenRefreshService } from "./meta-token-refresh.js"
-import { TokenStore } from "./token-store.js"
+import { defaultTokenStorePath, TokenStore } from "./token-store.js"
 
 const defaultGraphApiBaseUrl = "https://graph.threads.net"
 const defaultGraphApiVersion = "v1.0"
@@ -204,7 +204,7 @@ export function createThreadsOAuthService(environment: Record<string, string | u
   const appSecret = environment.THREADS_APP_SECRET?.trim()
   const publicBaseUrl = environment.PUBLIC_BASE_URL?.trim()
   if (!appId || !appSecret || !publicBaseUrl) return undefined
-  return new ThreadsOAuthService({ appId, appSecret, publicBaseUrl, graphApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim() }, fetch, new TokenStore(environment.TOKEN_STORE_PATH?.trim() || "config/tokens.json"))
+  return new ThreadsOAuthService({ appId, appSecret, publicBaseUrl, graphApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim() }, fetch, new TokenStore(environment.TOKEN_STORE_PATH?.trim() || defaultTokenStorePath))
 }
 
 async function readJsonResponse(response: ThreadsFetchResponse): Promise<unknown> { try { return await response.json() } catch { return { error: (await response.text()).slice(0, 300) } } }

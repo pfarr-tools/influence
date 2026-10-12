@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it } from "vitest"
 
-import { TokenStore, type StoredToken } from "../src/services/publishing/token-store.js"
+import { defaultTokenStorePath, TokenStore, type StoredToken } from "../src/services/publishing/token-store.js"
 
 const temporaryDirectories: string[] = []
 
@@ -13,6 +13,10 @@ afterEach(async () => {
 })
 
 describe("TokenStore", () => {
+  it("defaults to a runtime path outside the repository and content tree", () => {
+    expect(defaultTokenStorePath).toBe("../influence-runtime/tokens.json")
+  })
+
   it("saves provider-isolated credentials with restrictive permissions and loads them", async () => {
     const directory = await temporaryDirectory()
     const path = join(directory, "tokens.json")
@@ -38,6 +42,19 @@ describe("TokenStore", () => {
 
     expect(await readFile(path, "utf8")).toContain("second")
     expect((await readdir(join(directory, "nested"))).filter((entry) => entry.includes("tmp")).length).toBe(0)
+  })
+
+  it("serializes concurrent provider updates without losing either record", async () => {
+    const directory = await temporaryDirectory()
+    const store = new TokenStore(join(directory, "tokens.json"))
+
+    await Promise.all([
+      store.save(token("instagram", "instagram-token", "instagram-account")),
+      store.save(token("threads", "threads-token", "threads-user"))
+    ])
+
+    expect(await store.get("instagram")).toBeDefined()
+    expect(await store.get("threads")).toBeDefined()
   })
 
   it("does not return malformed records or expose their secret values", async () => {

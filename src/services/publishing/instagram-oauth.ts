@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { TokenStore } from "./token-store.js"
+import { defaultTokenStorePath, TokenStore } from "./token-store.js"
 
 const defaultAuthorizationBaseUrl = "https://www.instagram.com"
 const defaultTokenBaseUrl = "https://api.instagram.com"
@@ -89,7 +89,7 @@ export function createInstagramOAuthService(environment: Record<string, string |
   const appSecret = environment.INSTAGRAM_APP_SECRET?.trim()
   const publicBaseUrl = environment.PUBLIC_BASE_URL?.trim()
   if (!appId || !appSecret || !publicBaseUrl) return undefined
-  const store = new TokenStore(environment.TOKEN_STORE_PATH?.trim() || "config/tokens.json")
+  const store = new TokenStore(environment.TOKEN_STORE_PATH?.trim() || defaultTokenStorePath)
   return new InstagramOAuthService({ appId, appSecret, publicBaseUrl, graphApiBaseUrl: environment.INSTAGRAM_GRAPH_API_URL?.trim() }, fetch, store)
 }
 

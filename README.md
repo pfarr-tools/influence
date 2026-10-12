@@ -87,8 +87,9 @@ jeweiligen OAuth-Dialog hergestellt. Die Start-URLs sind:
 - `https://<PUBLIC_BASE_URL>/admin/threads/oauth/start`
 
 Nach erfolgreicher Verbindung speichert Influence die Zugangsdaten mit ihrer
-Gültigkeitszeit außerhalb von `content/` in `TOKEN_STORE_PATH` (standardmäßig
-`config/tokens.json`). Gültige Long-Lived-Tokens werden während des normalen
+Gültigkeitszeit außerhalb von `content/` und des deployten Quellbaums in
+`TOKEN_STORE_PATH` (standardmäßig `../influence-runtime/tokens.json`). Gültige
+Long-Lived-Tokens werden während des normalen
 Publishings automatisch vor Ablauf erneuert und atomar gespeichert. Tokens,
 die bereits abgelaufen oder widerrufen sind, können vom Anbieter nicht
 automatisch wiederhergestellt werden; dann muss der jeweilige OAuth-Dialog

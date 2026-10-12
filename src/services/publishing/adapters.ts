@@ -6,7 +6,7 @@ import { createBlueskyAdapter } from "./bluesky-adapter.js"
 import { FacebookPagePublicationAdapter } from "./facebook-adapter.js"
 import { createLinkedInAdapter } from "./linkedin-adapter.js"
 import { MetaTokenRefreshService } from "./meta-token-refresh.js"
-import { TokenStore } from "./token-store.js"
+import { defaultTokenStorePath, TokenStore } from "./token-store.js"
 
 /** Adapter used by dry-runs and tests; it records no external side effects. */
 export class DryRunPublicationAdapter implements PublicationAdapter {
@@ -20,7 +20,7 @@ export class DryRunPublicationAdapter implements PublicationAdapter {
 /** Returns adapters without coupling the queue to credentials or SDKs. */
 export function createConfiguredAdapters(environment: Record<string, string | undefined> = process.env): Map<PublicationPlatform, PublicationAdapter> {
   const adapters = new Map<PublicationPlatform, PublicationAdapter>()
-  const tokenStore = new TokenStore(environment.TOKEN_STORE_PATH?.trim() || "config/tokens.json")
+  const tokenStore = new TokenStore(environment.TOKEN_STORE_PATH?.trim() || defaultTokenStorePath)
   const tokenRefresh = new MetaTokenRefreshService(tokenStore, {
     threadsApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim(),
     instagramApiBaseUrl: environment.INSTAGRAM_GRAPH_API_URL?.trim()
