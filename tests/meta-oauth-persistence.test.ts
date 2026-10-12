@@ -48,6 +48,18 @@ describe("Meta OAuth token persistence", () => {
     expect(requests[1]).toContain("https://graph.instagram.com/access_token")
     expect(await store.get("instagram")).toMatchObject({ accessToken: "long-lived", accountId: "instagram-account" })
   })
+
+  it("does not persist a short-lived Threads token when the durable exchange fails", async () => {
+    const store = await createStore()
+    const fetchImpl = async (url: string | URL) => String(url).includes("/oauth/access_token")
+      ? response({ access_token: "short-lived", user_id: "threads-user", expires_in: 3600 })
+      : response({ error: { message: "exchange failed" } }, 400)
+    const service = new ThreadsOAuthService({ appId: "app", appSecret: "secret", publicBaseUrl: "https://influence.example" }, fetchImpl, store)
+    const state = new URL(service.begin()).searchParams.get("state") ?? ""
+
+    await expect(service.complete("code", state)).rejects.toThrow("Token konnte nicht dauerhaft gemacht werden")
+    expect(await store.get("threads")).toBeUndefined()
+  })
 })
 
 async function createStore(): Promise<TokenStore> {
@@ -60,6 +72,6 @@ function storePath(store: TokenStore): string {
   return (store as unknown as { path: string }).path
 }
 
-function response(value: unknown): Response {
-  return new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } })
+function response(value: unknown, status = 200): Response {
+  return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } })
 }

@@ -188,6 +188,8 @@ export class ThreadsOAuthService {
     if (longLivedResponse.ok && isRecord(longLived) && typeof longLived.access_token === "string") {
       accessToken = longLived.access_token
       expiresIn = typeof longLived.expires_in === "number" ? longLived.expires_in : expiresIn
+    } else if (this.tokenStore) {
+      throw new Error(`threads: Token konnte nicht dauerhaft gemacht werden (${longLivedResponse.status}): ${getApiError(longLived)}`)
     }
     if (this.tokenStore && expiresIn) {
       await this.tokenStore.save({ provider: "threads", accessToken, accountId: result.user_id, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() })
