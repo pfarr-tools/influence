@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto"
 
 import type { PublicationAdapter, PublicationPayload, PublicationPlatform, PublicationResult } from "./types.js"
+import { limitSocialText } from "./text-utils.js"
+import { MetaTokenRefreshService } from "./meta-token-refresh.js"
+import { TokenStore } from "./token-store.js"
 
 const defaultGraphApiBaseUrl = "https://graph.threads.net"
 const defaultGraphApiVersion = "v1.0"
 const threadsScopes = "threads_basic,threads_content_publish"
-const maxTextCharacters = 500
 const oauthStateLifetimeMs = 10 * 60 * 1000
 
 export const threadsOAuthCallbackPath = "/publish/threads/oauth/callback"
@@ -18,6 +20,8 @@ export interface ThreadsAdapterConfig {
   graphApiVersion?: string
   pollIntervalMs?: number
   maxPollAttempts?: number
+  tokenStore?: TokenStore
+  tokenRefresh?: MetaTokenRefreshService
 }
 
 export interface ThreadsOAuthConfig {
@@ -56,9 +60,9 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
 
   async publish(payload: PublicationPayload): Promise<PublicationResult> {
     this.assertConfigured()
-    if ([...payload.job.text].length > maxTextCharacters) {
-      throw new Error("threads: Der Beitrag darf höchstens 500 Zeichen enthalten.")
-    }
+    const record = await this.config.tokenStore?.get("threads")
+    if (record && this.config.tokenRefresh) this.config.accessToken = (await this.config.tokenRefresh.getOrRefreshToken(record)).accessToken
+    const text = limitSocialText(payload.job.text)
     const assetPaths = payload.assetPaths
     if (assetPaths.length > 20) throw new Error("threads: Ein Carousel darf höchstens zwanzig Bilder enthalten.")
 
@@ -75,14 +79,14 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
     }
 
     const parent = assetPaths.length === 0
-      ? await this.createContainer({ media_type: "TEXT", text: payload.job.text })
+      ? await this.createContainer({ media_type: "TEXT", text })
       : assetPaths.length === 1
         ? await this.createContainer({
             media_type: "IMAGE",
             image_url: this.publicAssetUrl(assetPaths[0]!, payload.job.contentDate, payload.job.postId),
-            text: payload.job.text
+            text
           })
-        : await this.createContainer({ media_type: "CAROUSEL", children: children.join(","), text: payload.job.text })
+        : await this.createContainer({ media_type: "CAROUSEL", children: children.join(","), text })
 
     await this.waitUntilFinished(parent)
     const published = await this.publishContainer(parent)

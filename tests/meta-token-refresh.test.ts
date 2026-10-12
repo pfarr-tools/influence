@@ -12,7 +12,7 @@ describe("MetaTokenRefreshService", () => {
       expect(String(url)).toContain("access_token=old-token")
       return response({ access_token: "new-token", expires_in: 5_184_000 })
     })
-    const service = new MetaTokenRefreshService(store, { threadsAppSecret: "app-secret", refreshWindowMs: 86_400_000 }, fetchImpl, () => new Date("2026-10-12T00:00:00.000Z"))
+    const service = new MetaTokenRefreshService(store, { refreshWindowMs: 86_400_000 }, fetchImpl, () => new Date("2026-10-12T00:00:00.000Z"))
 
     const refreshed = await service.getOrRefreshToken(token("threads", "old-token", "2026-10-12T12:00:00.000Z"))
 
@@ -47,7 +47,7 @@ describe("MetaTokenRefreshService", () => {
     const fetchImpl = vi.fn(() => new Promise<Response>((resolve) => {
       release = () => resolve(response({ access_token: "new-token", expires_in: 5_184_000 }))
     }))
-    const service = new MetaTokenRefreshService(store, { threadsAppSecret: "app-secret", refreshWindowMs: 86_400_000 }, fetchImpl, () => new Date("2026-10-12T00:00:00.000Z"))
+    const service = new MetaTokenRefreshService(store, { refreshWindowMs: 86_400_000 }, fetchImpl, () => new Date("2026-10-12T00:00:00.000Z"))
     const current = token("threads", "old-token", "2026-10-12T12:00:00.000Z")
     const first = service.getOrRefreshToken(current)
     const second = service.getOrRefreshToken(current)

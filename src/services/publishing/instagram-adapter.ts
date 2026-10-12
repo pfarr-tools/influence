@@ -1,4 +1,6 @@
 import type { PublicationAdapter, PublicationPayload, PublicationResult } from "./types.js"
+import { MetaTokenRefreshService } from "./meta-token-refresh.js"
+import { TokenStore } from "./token-store.js"
 
 const defaultGraphApiBaseUrl = "https://graph.instagram.com"
 const defaultGraphApiVersion = "v23.0"
@@ -11,6 +13,8 @@ export interface InstagramAdapterConfig {
   graphApiVersion?: string
   pollIntervalMs?: number
   maxPollAttempts?: number
+  tokenStore?: TokenStore
+  tokenRefresh?: MetaTokenRefreshService
 }
 
 interface InstagramFetchResponse {
@@ -41,6 +45,7 @@ export class InstagramPostPublicationAdapter implements PublicationAdapter {
 
   async publish(payload: PublicationPayload): Promise<PublicationResult> {
     this.assertConfigured()
+    await this.refreshAccessToken()
     if (payload.assetPaths.length === 0) throw new Error("instagram: Ein Feed-Post benötigt mindestens ein gerendertes Bild.")
     if (payload.assetPaths.length > 10) throw new Error("instagram: Ein Carousel darf höchstens zehn Bilder enthalten.")
 
@@ -82,6 +87,12 @@ export class InstagramPostPublicationAdapter implements PublicationAdapter {
   protected assertConfigured(): void {
     if (!this.config.accessToken || !this.config.accountId) throw new Error("instagram: Zugangsdaten oder Instagram-Konto fehlen.")
     if (!this.config.publicBaseUrl) throw new Error("instagram: PUBLIC_BASE_URL fehlt; Meta benötigt öffentlich erreichbare Bild-URLs.")
+  }
+
+  protected async refreshAccessToken(): Promise<void> {
+    const record = await this.config.tokenStore?.get("instagram")
+    if (!record || !this.config.tokenRefresh) return
+    this.config.accessToken = (await this.config.tokenRefresh.getOrRefreshToken(record)).accessToken
   }
 
   protected endpoint(path: string): string {
@@ -159,6 +170,7 @@ export class InstagramPostPublicationAdapter implements PublicationAdapter {
 export class InstagramStoryPublicationAdapter extends InstagramPostPublicationAdapter {
   async publish(payload: PublicationPayload): Promise<PublicationResult> {
     this.assertConfigured()
+    await this.refreshAccessToken()
     if (payload.assetPaths.length === 0) throw new Error("instagram: Eine Story benötigt mindestens ein gerendertes Story-Bild.")
     let remoteId = ""
     for (const assetPath of payload.assetPaths) {

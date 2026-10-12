@@ -28,7 +28,7 @@ export interface RuntimeConfig {
   reelSubtitleFontName: string
   reelSubtitleFontsDir: string
   sourceMark?: string
-  tokenStorePath: string
+  tokenStorePath?: string
 }
 
 /**

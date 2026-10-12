@@ -5,6 +5,8 @@ import { ThreadsPublicationAdapter } from "./threads-adapter.js"
 import { createBlueskyAdapter } from "./bluesky-adapter.js"
 import { FacebookPagePublicationAdapter } from "./facebook-adapter.js"
 import { createLinkedInAdapter } from "./linkedin-adapter.js"
+import { MetaTokenRefreshService } from "./meta-token-refresh.js"
+import { TokenStore } from "./token-store.js"
 
 /** Adapter used by dry-runs and tests; it records no external side effects. */
 export class DryRunPublicationAdapter implements PublicationAdapter {
@@ -18,6 +20,11 @@ export class DryRunPublicationAdapter implements PublicationAdapter {
 /** Returns adapters without coupling the queue to credentials or SDKs. */
 export function createConfiguredAdapters(environment: Record<string, string | undefined> = process.env): Map<PublicationPlatform, PublicationAdapter> {
   const adapters = new Map<PublicationPlatform, PublicationAdapter>()
+  const tokenStore = new TokenStore(environment.TOKEN_STORE_PATH?.trim() || "config/tokens.json")
+  const tokenRefresh = new MetaTokenRefreshService(tokenStore, {
+    threadsApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim(),
+    instagramApiBaseUrl: environment.INSTAGRAM_GRAPH_API_URL?.trim()
+  })
   const facebookPageId = environment.FACEBOOK_PAGE_ID?.trim()
   const facebookToken = environment.FACEBOOK_ACCESS_TOKEN?.trim()
   const facebookBaseUrl = environment.PUBLIC_BASE_URL?.trim()
@@ -43,7 +50,9 @@ export function createConfiguredAdapters(environment: Record<string, string | un
       publicBaseUrl: threadsBaseUrl,
       graphApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim(),
       graphApiVersion: environment.THREADS_GRAPH_API_VERSION?.trim(),
-      pollIntervalMs: Number(environment.THREADS_POLL_INTERVAL_MS) || undefined
+      pollIntervalMs: Number(environment.THREADS_POLL_INTERVAL_MS) || undefined,
+      tokenStore,
+      tokenRefresh
     }))
   }
   const instagramAccountId = environment.INSTAGRAM_ACCOUNT_ID?.trim()
@@ -56,7 +65,9 @@ export function createConfiguredAdapters(environment: Record<string, string | un
       publicBaseUrl: instagramBaseUrl,
       graphApiBaseUrl: environment.INSTAGRAM_GRAPH_API_URL?.trim(),
       graphApiVersion: environment.INSTAGRAM_GRAPH_API_VERSION?.trim(),
-      pollIntervalMs: Number(environment.INSTAGRAM_POLL_INTERVAL_MS) || undefined
+      pollIntervalMs: Number(environment.INSTAGRAM_POLL_INTERVAL_MS) || undefined,
+      tokenStore,
+      tokenRefresh
     }))
   }
   const mastodonServerUrl = environment.MASTODON_SERVER_URL?.trim()
