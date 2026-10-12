@@ -61,6 +61,27 @@ describe("review api routes", () => {
     expect(overview.weekActions[0]?.action).toBe("scaffold")
   })
 
+  it("does not expose an Instagram OAuth token in the callback response", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const secret = "instagram-secret-token"
+    const response = createMockResponse()
+    const dependencies = {
+      calendar,
+      pageRenderClient: { async renderHtmlDocument() { return { overflowRegions: [] } } },
+      runtimeConfig: { ...loadRuntimeConfig(), outputDir: tempDir },
+      instagramOAuth: {
+        async complete() { return { accessToken: secret, userId: "ig-account", expiresIn: 5_184_000 } },
+        begin() { return "https://www.instagram.com/oauth/authorize" }
+      }
+    }
+
+    await handleReviewRequest({ method: "GET", url: "/publish/instagram/oauth/callback?code=code&state=state" } as never, response as never, dependencies as never)
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain("ig-account")
+    expect(response.body).not.toContain(secret)
+  })
+
   it("serves published posts as an aggregated feed", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
     const post = calendar.wochen[0]!.beitraege[0]!

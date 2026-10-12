@@ -66,10 +66,12 @@ import {
   PublishingService,
   notifyPublicationWebhook,
   resolveScheduleTime,
+  shortenScheduledSocialText,
   type PublicationPlatform
 } from "./services/publishing/index.js"
 import { createMastodonOAuthService } from "./services/publishing/mastodon-adapter.js"
 import { createThreadsOAuthService } from "./services/publishing/threads-adapter.js"
+import { createInstagramOAuthService } from "./services/publishing/instagram-oauth.js"
 import { createFacebookOAuthService } from "./services/publishing/facebook-adapter.js"
 import { syncContentRepository } from "./services/content/content-repository.js"
 import { scheduleTageslosungen } from "./services/losungen/tageslosungen-service.js"
@@ -322,6 +324,15 @@ publishCommand.command("run").description("Run due publication jobs").action(asy
     if (jobs.length === 0) console.log("No publication jobs due.")
   } catch (error) { handleCliError(error) }
 })
+
+publishCommand.command("shorten-social-text")
+  .description("Kürzt geplante Threads- und Bluesky-Beiträge auf 300 Zeichen")
+  .action(async () => {
+    try {
+      const result = await shortenScheduledSocialText(defaultOutputRoot)
+      console.log(`${result.updated} geplante Threads-/Bluesky-Beiträge gekürzt; ${result.skipped} übersprungen.`)
+    } catch (error) { handleCliError(error) }
+  })
 
 publishCommand.command("retry")
   .requiredOption("--job-id <jobId>", "Publication job identifier")
@@ -1197,6 +1208,7 @@ reviewCommand
         pageRenderClient: createPlaywrightHtmlRenderClient(),
         mastodonOAuth: createMastodonOAuthService(),
         threadsOAuth: createThreadsOAuthService(),
+        instagramOAuth: createInstagramOAuthService(),
         facebookOAuth: createFacebookOAuthService(),
         runtimeConfig
       })

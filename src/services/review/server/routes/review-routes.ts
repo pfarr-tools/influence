@@ -64,6 +64,7 @@ import { isValidationError, respondJson } from "../responses/json-response.js"
 import { mastodonOAuthCallbackPath, type MastodonOAuthService } from "../../../publishing/mastodon-adapter.js"
 import { threadsOAuthCallbackPath, type ThreadsOAuthService } from "../../../publishing/threads-adapter.js"
 import { facebookOAuthCallbackPath, type FacebookOAuthService } from "../../../publishing/facebook-adapter.js"
+import { instagramOAuthCallbackPath, type InstagramOAuthService } from "../../../publishing/instagram-oauth.js"
 import { syncContentRepository } from "../../../content/content-repository.js"
 import { buildPublishedFeed } from "../../../publishing/published-feed.js"
 
@@ -76,6 +77,7 @@ export interface ReviewServerDependencies extends ContentGeneratorDependencies {
   mastodonOAuth?: MastodonOAuthService
   threadsOAuth?: ThreadsOAuthService
   facebookOAuth?: FacebookOAuthService
+  instagramOAuth?: InstagramOAuthService
 }
 
 const frontendRoot = resolve(
@@ -157,6 +159,23 @@ async function routeReviewRequest(
     response.writeHead(302, { location: dependencies.facebookOAuth.begin() }); response.end(); return
   }
 
+  if (requestUrl.pathname === "/admin/instagram/oauth/start" && method === "GET") {
+    if (!dependencies.instagramOAuth) { respondJson(response, 503, { error: "Instagram-OAuth ist nicht konfiguriert." }); return }
+    response.writeHead(302, { location: dependencies.instagramOAuth.begin() }); response.end(); return
+  }
+
+  if (requestUrl.pathname === instagramOAuthCallbackPath && method === "GET") {
+    if (!dependencies.instagramOAuth) { respondHtml(response, 503, "Instagram-OAuth ist nicht konfiguriert."); return }
+    const oauthError = requestUrl.searchParams.get("error")
+    if (oauthError) { respondHtml(response, 400, `Instagram-OAuth abgebrochen: ${escapeHtml(oauthError)}`); return }
+    const code = requestUrl.searchParams.get("code")
+    const state = requestUrl.searchParams.get("state")
+    if (!code || !state) { respondHtml(response, 400, "Instagram-OAuth: Code oder Status fehlt."); return }
+    const token = await dependencies.instagramOAuth.complete(code, state)
+    respondHtml(response, 200, `Instagram-OAuth erfolgreich für Konto <code>${escapeHtml(token.userId)}</code>.${token.expiresIn ? ` <p>Gültigkeit: ${escapeHtml(String(token.expiresIn))} Sekunden</p>` : ""}`)
+    return
+  }
+
   if (requestUrl.pathname === facebookOAuthCallbackPath && method === "GET") {
     if (!dependencies.facebookOAuth) { respondHtml(response, 503, "Facebook-OAuth ist nicht konfiguriert."); return }
     const oauthError = requestUrl.searchParams.get("error")
@@ -177,7 +196,7 @@ async function routeReviewRequest(
     const state = requestUrl.searchParams.get("state")
     if (!code || !state) { respondHtml(response, 400, "Threads-OAuth: Code oder Status fehlt."); return }
     const token = await dependencies.threadsOAuth.complete(code, state)
-    respondHtml(response, 200, `Threads-OAuth erfolgreich. Trage diese Werte als <code>THREADS_ACCESS_TOKEN</code> und <code>THREADS_USER_ID</code> in <code>config/.env</code> ein und starte Influence neu:<pre>${escapeHtml(token.accessToken)}</pre><pre>${escapeHtml(token.userId)}</pre>${token.expiresIn ? `<p>Gültigkeit: ${escapeHtml(String(token.expiresIn))} Sekunden</p>` : ""}`)
+    respondHtml(response, 200, `Threads-OAuth erfolgreich für Konto <code>${escapeHtml(token.userId)}</code>.${token.expiresIn ? ` <p>Gültigkeit: ${escapeHtml(String(token.expiresIn))} Sekunden</p>` : ""}`)
     return
   }
 

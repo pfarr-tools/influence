@@ -154,7 +154,7 @@ export class ThreadsPublicationAdapter implements PublicationAdapter {
 export class ThreadsOAuthService {
   private readonly states = new Map<string, ThreadsOAuthState>()
 
-  constructor(private readonly config: ThreadsOAuthConfig, private readonly fetchImpl: ThreadsFetch = fetch) {}
+  constructor(private readonly config: ThreadsOAuthConfig, private readonly fetchImpl: ThreadsFetch = fetch, private readonly tokenStore?: TokenStore) {}
 
   begin(): string {
     const state = randomUUID()
@@ -189,6 +189,9 @@ export class ThreadsOAuthService {
       accessToken = longLived.access_token
       expiresIn = typeof longLived.expires_in === "number" ? longLived.expires_in : expiresIn
     }
+    if (this.tokenStore && expiresIn) {
+      await this.tokenStore.save({ provider: "threads", accessToken, accountId: result.user_id, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() })
+    }
     return { accessToken, userId: result.user_id, expiresIn }
   }
 
@@ -201,7 +204,7 @@ export function createThreadsOAuthService(environment: Record<string, string | u
   const appSecret = environment.THREADS_APP_SECRET?.trim()
   const publicBaseUrl = environment.PUBLIC_BASE_URL?.trim()
   if (!appId || !appSecret || !publicBaseUrl) return undefined
-  return new ThreadsOAuthService({ appId, appSecret, publicBaseUrl, graphApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim() })
+  return new ThreadsOAuthService({ appId, appSecret, publicBaseUrl, graphApiBaseUrl: environment.THREADS_GRAPH_API_URL?.trim() }, fetch, new TokenStore(environment.TOKEN_STORE_PATH?.trim() || "config/tokens.json"))
 }
 
 async function readJsonResponse(response: ThreadsFetchResponse): Promise<unknown> { try { return await response.json() } catch { return { error: (await response.text()).slice(0, 300) } } }
