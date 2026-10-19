@@ -296,6 +296,12 @@ function buildGenerationRequestPreview(
     "Keep qa.approved false.",
     "Do not ask for any text inside generated images.",
     "When liturgical_context.resolved_weekly_verse is present, use its exact wording for Wochenspruch slots instead of placeholders.",
+    ...(post.rubrik === "Morgengebet"
+      ? [
+          "For each morning prayer, first consider a varied list of several suitable Bible references for a morning prayer, then randomly select one and cite it accurately.",
+          "Psalm 118:24 may be selected sometimes, but must not be used as the daily default or repeated every day."
+        ]
+      : []),
     ...(webSearch
       ? [
           "Use the web search tool before drafting to verify current situations.",

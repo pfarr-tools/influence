@@ -63,6 +63,30 @@ describe("prayer generator", () => {
     expect(await readFile(calendarPath, "utf8")).toBe(before)
   })
 
+  it("asks morning prayers to vary their randomly selected Bible reference", async () => {
+    const result = await generatePrayer({
+      calendarPath,
+      date: "2026-08-15",
+      dryRun: true,
+      force: false,
+      kind: "morning",
+      language: "de",
+      model: "test-model",
+      outputRoot: tempDir,
+      publicationTimezone: "Europe/Berlin"
+    }, {})
+
+    expect(result.result.dryRunRequest?.developerPrompt).toContain(
+      "several suitable Bible references"
+    )
+    expect(result.result.dryRunRequest?.developerPrompt).toContain(
+      "randomly select one"
+    )
+    expect(result.result.dryRunRequest?.developerPrompt).toContain(
+      "Psalm 118:24"
+    )
+  })
+
   it("does not persist an evening prayer when web search did not run", async () => {
     const scaffold = JSON.parse(await readFile("assets/prayers/scaffold.evening.json", "utf8"))
     const before = await readFile(calendarPath, "utf8")
