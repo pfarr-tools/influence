@@ -103,6 +103,10 @@ describe("prayer generator", () => {
     }, { prayerCycleSourceClient: mockPrayerCycleSourceClient() })
 
     expect(result.result.dryRunRequest?.userPrompt).toContain("Für Menschen, die heute keinen sicheren Ort haben")
+    expect(result.result.dryRunRequest?.userPrompt).toContain("Beispielregion")
+    expect(result.result.dryRunRequest?.userPrompt).toContain("keine Flaggen")
+    expect(result.result.dryRunRequest?.userPrompt).toContain("nicht stereotypen")
+    expect(result.result.dryRunRequest?.developerPrompt).toContain("regional visual concept")
   })
 })
 

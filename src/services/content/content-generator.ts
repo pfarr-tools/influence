@@ -304,6 +304,11 @@ function buildGenerationRequestPreview(
           "Psalm 118:24 may be selected sometimes, but must not be used as the daily default or repeated every day."
         ]
       : []),
+    ...(post.rubrik === "Abendgebet"
+      ? [
+          "For evening prayer visuals, follow the supplied regional visual concept respectfully. Prefer landscape, architecture, ecology, or ordinary daily-life details; never use flags, stereotypes, poverty imagery, text, or logos."
+        ]
+      : []),
     ...(webSearch
       ? [
           "Use the web search tool before drafting to verify current situations.",

@@ -73,10 +73,12 @@ async function addPrayerCycleContext(
   }
 
   const cycle = await client.loadForDate(date)
+  scaffold.visual.concept = `Ruhige, respektvolle Abendstimmung mit einem konkreten, nicht stereotypen visuellen Bezug zur Gebetsregion ${cycle.region}. Bei mehreren Ländern ein gemeinsames regionales Motiv wählen; keine Flaggen, keine Schrift, keine Logos, keine Folklore-Klischees und keine Darstellung von Armut als Bildmotiv.`
   scaffold.editorial_core.source_notes.push(
     `Ecumenical Prayer Cycle: ${cycle.weekStart} to ${cycle.weekEnd}; region: ${cycle.region}.`,
     `Daily prayer intention for ${date}: ${cycle.selectedIntention.text}`,
     `Prayer cycle source: ${cycle.sourceUrl}`,
+    "Visual direction: The background image must reflect the prayer region respectfully. Use landscape, architecture, ecology or everyday-life details rather than flags, stereotypes, poverty imagery, text or logos.",
     "Write an original evening prayer inspired by the daily intention. Do not copy the source prayer or reproduce source wording beyond the short intention itself."
   )
 }
