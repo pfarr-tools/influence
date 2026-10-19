@@ -172,7 +172,10 @@ async function generateImagesForCalendarPost(
   const contentPaths = getContentOutputPaths(options.outputRoot, post)
   const content = await readContentPackage(contentPaths.contentPath)
   assertContentApproved(content, contentPaths.contentPath)
-  const safePrompt = sanitizeFluxPrompt(content.visual.flux_prompt)
+  const safePrompt = sanitizeFluxPrompt(
+    content.visual.flux_prompt,
+    content.visual.concept
+  )
 
   if (safePrompt.length === 0) {
     throw new CalendarValidationError(
@@ -320,7 +323,10 @@ async function generateReelImagesForCalendarPost(
   const contentPaths = getContentOutputPaths(options.outputRoot, post)
   const content = await readContentPackage(contentPaths.contentPath)
   assertContentApproved(content, contentPaths.contentPath)
-  const safePrompt = sanitizeFluxPrompt(content.visual.flux_prompt)
+  const safePrompt = sanitizeFluxPrompt(
+    content.visual.flux_prompt,
+    content.visual.concept
+  )
 
   if (safePrompt.length === 0) {
     throw new CalendarValidationError(
@@ -555,7 +561,7 @@ function mergeNegativePrompt(negativePrompt: string): string {
   return existing.join(", ")
 }
 
-function sanitizeFluxPrompt(prompt: string): string {
+function sanitizeFluxPrompt(prompt: string, fallbackPrompt = ""): string {
   const lowered = prompt.toLowerCase()
   const explicitNoTextPatterns = [
     "no text",
@@ -577,7 +583,7 @@ function sanitizeFluxPrompt(prompt: string): string {
     lowered.includes("buchstaben") ||
     lowered.includes("typography")
   ) {
-    return ""
+    return fallbackPrompt.trim()
   }
 
   return prompt.trim()

@@ -68,6 +68,35 @@ describe("image generator", () => {
     ).toBe(true)
   })
 
+  it("falls back to the visual concept when the Flux prompt is rejected", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    await writeImageReadyContent(calendar, tempDir, {
+      visual: {
+        concept: "Quiet still life with two ceramic cups on a wooden table",
+        flux_prompt: "A poster with large text saying welcome"
+      }
+    })
+
+    const result = await generateImagesForPost(
+      calendar,
+      "post-0001",
+      {
+        dryRun: true,
+        force: false,
+        model: "flux-dev",
+        outputRoot: tempDir
+      },
+      {}
+    )
+
+    expect(result.dryRunRequests?.[0]?.prompt).toContain(
+      "Quiet still life with two ceramic cups on a wooden table"
+    )
+    expect(result.dryRunRequests?.[0]?.prompt).not.toContain(
+      "large text saying welcome"
+    )
+  })
+
   it("writes assets, raw responses, and content asset references on success", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
     await writeImageReadyContent(calendar, tempDir)
@@ -244,6 +273,7 @@ async function writeImageReadyContent(
   outputRoot: string,
   overrides?: {
     reelShots?: string[]
+    visual?: Partial<{ concept: string; flux_prompt: string }>
   }
 ): Promise<void> {
   const scaffold = await scaffoldPostById(calendar, "post-0001", outputRoot)
@@ -264,7 +294,9 @@ async function writeImageReadyContent(
     status: "freigegeben",
     visual: {
       ...content.visual,
+      ...overrides?.visual,
       flux_prompt:
+        overrides?.visual?.flux_prompt ??
         "Documentary still life of two ceramic cups on a wooden table, soft morning light, generous negative space, no text, no letters, no typography, no logo, no watermark",
       negative_prompt: "text, letters, logo, watermark"
     }
