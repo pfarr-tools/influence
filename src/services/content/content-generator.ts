@@ -18,6 +18,7 @@ import {
 } from "./content-storage.js"
 import type { ContentModelClient, TokenUsage } from "../openai/openai-client.js"
 import type { LiturgicalContext, LiturgicalSourceClient } from "../liturgy/liturgical-source.js"
+import type { PrayerCycleSourceClient } from "../prayers/prayer-cycle-source.js"
 
 /**
  * Generation options shared by post, week, and month commands.
@@ -149,6 +150,7 @@ export interface ContentGeneratorDependencies {
   liturgicalSourceClient?: LiturgicalSourceClient
   modelClient?: ContentModelClient
   now?: () => Date
+  prayerCycleSourceClient?: PrayerCycleSourceClient
 }
 
 /**
@@ -470,5 +472,5 @@ function shouldSkipModelGeneration(post: CalendarPost): boolean {
 }
 
 function isPrayerRubric(rubric: string): boolean {
-  return rubric === "Morgengebet" || rubric === "Abendgebet"
+  return rubric === "Morgengebet"
 }

@@ -78,6 +78,7 @@ import { scheduleTageslosungen } from "./services/losungen/tageslosungen-service
 import { scheduleKirchenjahr } from "./services/kirchenjahr/kirchenjahr-service.js"
 import { scheduleGrundrechte } from "./services/grundrechte/grundrechte-service.js"
 import { generatePrayer, type PrayerKind } from "./services/prayers/prayer-generator.js"
+import { createPrayerCycleSourceClient } from "./services/prayers/prayer-cycle-source.js"
 
 const program = new Command()
 const runtimeConfig = loadRuntimeConfig()
@@ -140,7 +141,8 @@ prayerCommand
         modelClient:
           options.dryRun || runtimeConfig.openAiApiKey === ""
             ? undefined
-            : createOpenAIContentClient(runtimeConfig.openAiApiKey)
+            : createOpenAIContentClient(runtimeConfig.openAiApiKey),
+        prayerCycleSourceClient: createPrayerCycleSourceClient()
       })
       console.log(`${result.kind} prayer for ${result.date}: ${result.postId}`)
       printGenerationResult(result.result)

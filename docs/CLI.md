@@ -138,11 +138,10 @@ versehen und als normale, noch nicht freigegebene Beiträge in den Content-Kalen
 übernommen. Ohne `--date` erzeugt der Morgenlauf den nächsten Tag, der Abendlauf
 den aktuellen Tag:
 
-Für Morgengebet und Abendgebet aktiviert Influence automatisch die Websuche der
-Responses API. Dadurch kann das Modell vor dem Entwurf aktuelle Situationen aus
-der Nachrichtenlage prüfen. Dafür ist keine zusätzliche Anwendungskonfiguration
-nötig; der verwendete OpenAI API-Schlüssel muss Zugriff auf die Responses API mit
-Websuche haben.
+Für das Morgengebet aktiviert Influence automatisch die Websuche der Responses
+API. Das Abendgebet lädt den deutschen Ökumenischen Fürbittkalender des
+Ökumenischen Rates der Kirchen, wählt die Anregung des jeweiligen Wochentags
+und erzeugt daraus ein eigenständiges Gebet.
 
 ```bash
 influence prayer generate --kind morning

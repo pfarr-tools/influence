@@ -7,6 +7,7 @@ import { getPostById, getWeekForDate, loadCalendarFromFile } from "../calendar/c
 import { generateContentForPost, type ContentGeneratorDependencies, type GenerateContentResult } from "../content/content-generator.js"
 import { contentPackageSchema } from "../content/content-schema.js"
 import { writeJsonFile } from "../content/content-storage.js"
+import type { PrayerCycleSourceClient } from "./prayer-cycle-source.js"
 
 export type PrayerKind = "morning" | "evening"
 
@@ -32,6 +33,9 @@ export async function generatePrayer(
   assertIsoDate(date)
   const postId = `prayer-${options.kind}-${date}`
   const scaffold = await loadPrayerScaffold(options.kind, date, postId, options.scaffoldRoot)
+  if (options.kind === "evening") {
+    await addPrayerCycleContext(scaffold, date, dependencies.prayerCycleSourceClient)
+  }
   const post = upsertPrayerCalendarPost(calendar, scaffold, options.kind, date, postId)
 
   if (!options.dryRun && !calendarContainsPost(calendar, postId)) {
@@ -57,6 +61,24 @@ export async function generatePrayer(
   }
 
   return { date, kind: options.kind, postId, result }
+}
+
+async function addPrayerCycleContext(
+  scaffold: ContentPackage,
+  date: string,
+  client?: PrayerCycleSourceClient
+): Promise<void> {
+  if (!client) {
+    throw new Error("The evening prayer requires the German ecumenical prayer cycle source.")
+  }
+
+  const cycle = await client.loadForDate(date)
+  scaffold.editorial_core.source_notes.push(
+    `Ecumenical Prayer Cycle: ${cycle.weekStart} to ${cycle.weekEnd}; region: ${cycle.region}.`,
+    `Daily prayer intention for ${date}: ${cycle.selectedIntention.text}`,
+    `Prayer cycle source: ${cycle.sourceUrl}`,
+    "Write an original evening prayer inspired by the daily intention. Do not copy the source prayer or reproduce source wording beyond the short intention itself."
+  )
 }
 
 async function loadPrayerScaffold(
