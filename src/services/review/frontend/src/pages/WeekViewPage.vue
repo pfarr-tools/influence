@@ -328,7 +328,6 @@ const jsonEditorOpen = ref(false)
 const idea = ref({ date: "", rubric: "", title: "" })
 const dragState = ref<DragState | null>(null)
 const actionsMenu = ref<HTMLDetailsElement | null>(null)
-const lastWeekStorageKey = "influence.review.last-week"
 const weekRefreshIntervalMs = 30_000
 let weekRefreshTimer: ReturnType<typeof window.setInterval> | undefined
 
@@ -424,16 +423,11 @@ async function loadCurrentWeek() {
       ? route.params.weekDate
       : undefined
   const weekDate =
-    routeWeekDate ??
-    window.localStorage.getItem(lastWeekStorageKey) ??
-    undefined
+    routeWeekDate ?? undefined
   await loadWeek(weekDate)
   selectedWeekDate.value = reviewStore.week?.selectedWeek.startDate ?? ""
   calendarJumpDate.value = selectedWeekDate.value
   idea.value.date = reviewStore.week?.selectedWeek.startDate ?? ""
-  if (!routeWeekDate && selectedWeekDate.value) {
-    window.localStorage.setItem(lastWeekStorageKey, selectedWeekDate.value)
-  }
 }
 
 async function refreshCurrentWeek() {
@@ -466,7 +460,6 @@ async function triggerWeek(payload: { action: string; force: boolean }) {
 }
 
 async function navigateToWeek() {
-  window.localStorage.setItem(lastWeekStorageKey, selectedWeekDate.value)
   calendarJumpDate.value = selectedWeekDate.value
   await router.push(`/weeks/${selectedWeekDate.value}`)
 }
@@ -489,7 +482,6 @@ async function jumpToCalendarDate() {
     return
   }
 
-  window.localStorage.setItem(lastWeekStorageKey, calendarJumpDate.value)
   await router.push(`/weeks/${calendarJumpDate.value}`)
 }
 

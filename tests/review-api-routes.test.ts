@@ -34,6 +34,7 @@ describe("review api routes", () => {
           return { overflowRegions: [] }
         }
       },
+      now: () => new Date("2026-10-19T12:00:00.000Z"),
       runtimeConfig
     }
 
@@ -56,7 +57,7 @@ describe("review api routes", () => {
       weekActions: Array<{ action: string }>
     }
 
-    expect(defaultWeek.date).toBe("2026-08-10")
+    expect(defaultWeek.date).toBe("2026-10-19")
     expect(overview.selectedWeek.startDate).toBe(defaultWeek.date)
     expect(overview.weekActions[0]?.action).toBe("scaffold")
   })

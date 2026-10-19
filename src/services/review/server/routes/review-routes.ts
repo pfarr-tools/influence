@@ -137,7 +137,10 @@ async function routeReviewRequest(
 ) {
   const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1")
   const method = request.method ?? "GET"
-  const defaultDate = dependencies.calendar.wochen[0]?.zeitraum.von
+  const defaultDate = resolveDefaultWeekDate(
+    dependencies.calendar,
+    dependencies.now?.() ?? new Date()
+  )
 
   if (requestUrl.pathname === "/admin/mastodon/oauth/start" && method === "GET") {
     if (!dependencies.mastodonOAuth) {
@@ -708,6 +711,27 @@ async function routeReviewRequest(
   }
 
   await serveFrontend(request, response)
+}
+
+function resolveDefaultWeekDate(calendar: Calendar, now: Date): string | undefined {
+  const currentDate = formatDateInTimeZone(now, "Europe/Berlin")
+  return (
+    calendar.wochen.find(
+      (week) =>
+        week.zeitraum.von <= currentDate && currentDate <= week.zeitraum.bis
+    )?.zeitraum.von ?? calendar.wochen[0]?.zeitraum.von
+  )
+}
+
+function formatDateInTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone,
+    year: "numeric"
+  }).formatToParts(date)
+  const values = new Map(parts.map((part) => [part.type, part.value]))
+  return `${values.get("year")}-${values.get("month")}-${values.get("day")}`
 }
 
 async function getViteServer() {
