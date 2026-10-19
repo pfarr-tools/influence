@@ -13,6 +13,7 @@ import { contentPackageSchema } from "./content-schema.js"
 import {
   assertWritableContentTarget,
   getContentOutputPaths,
+  pathExists,
   writeJsonFile
 } from "./content-storage.js"
 import type { ContentModelClient, TokenUsage } from "../openai/openai-client.js"
@@ -94,6 +95,22 @@ export async function generateContentForWeek(
   const results: GenerateContentResult[] = []
 
   for (const post of week.beitraege) {
+    const outputPaths = getContentOutputPaths(options.outputRoot, post)
+
+    if (
+      !options.dryRun &&
+      !options.force &&
+      (await pathExists(outputPaths.contentPath))
+    ) {
+      results.push({
+        contentPath: outputPaths.contentPath,
+        postId: post.id,
+        rawResponsePath: outputPaths.rawResponsePath,
+        skippedReason: "already_exists"
+      })
+      continue
+    }
+
     results.push(await generateContentForCalendarPost(post, options, dependencies))
   }
 

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { loadCalendarFromFile } from "../src/services/calendar/calendar-service.js"
 import { CalendarValidationError } from "../src/services/calendar/errors.js"
 import {
+  generateContentForWeek,
   generateContentForMonth,
   generateContentForPost
 } from "../src/services/content/content-generator.js"
@@ -315,6 +316,60 @@ describe("content generator", () => {
         { modelClient: client }
       )
     ).rejects.toThrow("--force")
+  })
+
+  it("skips existing posts during week generation without stopping the week", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const firstPost = calendar.wochen[0]!.beitraege[0]!
+    const scaffold = createContentScaffold(firstPost)
+    const existingClient = createMockModelClient({
+      model: "gpt-5.6",
+      parsedContent: scaffold,
+      rawResponse: { id: "resp_existing_week_1" }
+    })
+
+    await generateContentForPost(
+      calendar,
+      firstPost.id,
+      {
+        dryRun: false,
+        force: false,
+        language: "de",
+        model: "gpt-5.6",
+        outputRoot: tempDir
+      },
+      { modelClient: existingClient }
+    )
+
+    let generatedCalls = 0
+    const results = await generateContentForWeek(
+      calendar,
+      "2026-08-10",
+      {
+        dryRun: false,
+        force: false,
+        language: "de",
+        model: "gpt-5.6",
+        outputRoot: tempDir
+      },
+      {
+        modelClient: createMockModelClient({
+          model: "gpt-5.6",
+          onCall: () => {
+            generatedCalls++
+          },
+          parsedContent: scaffold,
+          rawResponse: { id: "resp_week_1" }
+        })
+      }
+    )
+
+    expect(results).toHaveLength(7)
+    expect(results[0]?.skippedReason).toBe("already_exists")
+    expect(
+      results.slice(1).every((result) => result.skippedReason !== "already_exists")
+    ).toBe(true)
+    expect(generatedCalls).toBe(5)
   })
 
   it("creates an incomplete fallback package for predigt preview posts", async () => {
