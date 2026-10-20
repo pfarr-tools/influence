@@ -42,4 +42,15 @@ describe("Compose runtime", () => {
 		expect(compose).toMatch(/INFLUENCE_UID/);
 		expect(compose).toMatch(/INFLUENCE_GID/);
 	});
+
+	it("keeps production persistence explicit without binding source code", () => {
+		const compose = readFileSync(`${root}/compose.production.yaml`, "utf8");
+
+		expect(compose).toMatch(/services:/);
+		expect(compose).toMatch(/app:/);
+		expect(compose).toMatch(/influence_production_content/);
+		expect(compose).toMatch(/influence_production_runtime/);
+		expect(compose).not.toMatch(/- \.:\/app/);
+		expect(compose).not.toMatch(/node_modules:\/app\/node_modules/);
+	});
 });

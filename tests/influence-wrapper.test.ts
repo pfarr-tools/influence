@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -20,7 +20,7 @@ function runWrapper(...args: string[]) {
 		encoding: "utf8",
 	});
 
-	return { result, invocation: readFileSync(log, "utf8").trim().split("\n") };
+	return { result, invocation: existsSync(log) ? readFileSync(log, "utf8").trim().split("\n") : [] };
 }
 
 describe("host influence wrapper", () => {
@@ -66,5 +66,18 @@ describe("host influence wrapper", () => {
 			"run",
 			"typecheck",
 		]);
+	});
+
+	it("routes production lifecycle commands to the production Compose file", () => {
+		const { result, invocation } = runWrapper("prod", "status");
+
+		expect(result.status).toBe(0);
+		expect(invocation).toEqual(["compose", "-f", "compose.production.yaml", "ps"]);
+	});
+
+	it("rejects development-only tools in production mode", () => {
+		const { result } = runWrapper("prod", "test");
+
+		expect(result.status).toBe(2);
 	});
 });

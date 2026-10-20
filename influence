@@ -9,7 +9,13 @@ export INFLUENCE_GID="${INFLUENCE_GID:-$(id -g)}"
 DOCKER_BIN="${DOCKER_BIN:-docker}"
 
 run_compose() {
-	command "$DOCKER_BIN" compose -f compose.yaml "$@"
+	run_compose_file compose.yaml "$@"
+}
+
+run_compose_file() {
+	local compose_file="$1"
+	shift
+	command "$DOCKER_BIN" compose -f "$compose_file" "$@"
 }
 
 usage() {
@@ -58,6 +64,33 @@ case "$command_name" in
 		;;
 	compose)
 		command "$DOCKER_BIN" compose "$@"
+		;;
+	prod)
+		if [[ $# -eq 0 ]]; then
+			echo "Usage: ./influence prod <up|down|restart|status|ps|logs|build|exec>" >&2
+			exit 2
+		fi
+		production_command="$1"
+		shift
+		case "$production_command" in
+			status)
+				production_command=ps
+				;&
+			up|down|restart|ps|logs|build)
+				run_compose_file compose.production.yaml "$production_command" "$@"
+				;;
+			exec)
+				if [[ $# -eq 0 ]]; then
+					echo "Usage: ./influence prod exec <command...>" >&2
+					exit 2
+				fi
+				run_compose_file compose.production.yaml exec app "$@"
+				;;
+			*)
+				echo "Unsupported production command: $production_command" >&2
+				exit 2
+				;;
+		esac
 		;;
 	*)
 		cli_args=("$command_name" "$@")

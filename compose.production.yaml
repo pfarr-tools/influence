@@ -1,0 +1,29 @@
+name: influence-production
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UID: ${INFLUENCE_UID:-1000}
+        GID: ${INFLUENCE_GID:-1000}
+    working_dir: /app
+    env_file:
+      - path: config/.env
+        required: false
+    environment:
+      CONTENT_CALENDAR_PATH: /app/content/content-plan.json
+      OUTPUT_DIR: /app/content
+      TOKEN_STORE_PATH: /var/lib/influence/tokens.json
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - influence_production_content:/app/content
+      - influence_production_runtime:/var/lib/influence
+    ports:
+      - "${INFLUENCE_REVIEW_PORT:-3040}:3040"
+    command: ["sleep", "infinity"]
+
+volumes:
+  influence_production_content:
+  influence_production_runtime:
