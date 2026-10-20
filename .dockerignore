@@ -1,0 +1,9 @@
+.git/
+.dockerignore
+node_modules/
+content/
+config/.env
+.env
+influence-runtime/
+coverage/
+.superpowers/
