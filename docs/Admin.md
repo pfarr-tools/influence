@@ -8,13 +8,10 @@ Dieses Dokument beschreibt Installation, Konfiguration, Betrieb und Wartung von 
 
 ## Systemvoraussetzungen
 
-- Linux, macOS oder Windows mit funktionierender Node.js-Umgebung
-- Node.js `24.x`
-- `npm`
+- Linux, macOS oder Windows mit Docker und Docker Compose v2
 - Schreibzugriff auf das Projektverzeichnis
 - Internetzugriff für:
-  - `npm install`
-  - `npx playwright install chromium`
+  - `docker compose build`
   - optional OpenAI- und Flux-APIs
 - optional `ffmpeg` im `PATH` oder über `FFMPEG_BIN`
 
@@ -27,27 +24,23 @@ git clone <repo-url> influence
 cd influence
 ```
 
-### 2. Node-Abhängigkeiten installieren
-
-```bash
-npm install
-```
-
-### 3. Playwright-Browser installieren
-
-Influence rendert Social-Grafiken über HTML/CSS und Playwright. Dafür wird mindestens Chromium benötigt.
-
-```bash
-npx playwright install chromium
-```
-
-### 4. Umgebungsdatei anlegen
+### 2. Konfiguration anlegen
 
 ```bash
 cp config/.env.example config/.env
 ```
 
-Danach die Werte in `config/.env` anpassen.
+### 3. Runtime starten
+
+Influence rendert Social-Grafiken über HTML/CSS und Playwright. Dafür wird mindestens Chromium benötigt.
+
+```bash
+./influence build
+./influence up -d
+```
+
+Das Image enthält Node 24, Chromium, ffmpeg und alle npm-Abhängigkeiten.
+Danach die Werte in `config/.env` anpassen und den Container neu starten.
 
 Beginne mit `BRAND_NAME`, `BRAND_WEBSITE`, `SOURCE_MARK` und `IMAGE_CREDITS`.
 Diese Variablen ersetzen organisations- oder personenbezogene Angaben in
@@ -60,6 +53,18 @@ Influence liest Umgebungswerte aus:
 
 - Prozessumgebung
 - `config/.env`
+
+Für den Produktionsbetrieb stehen explizite Befehle bereit:
+
+```bash
+./influence prod build
+./influence prod up -d
+./influence prod status
+./influence prod logs
+```
+
+Produktions-Compose bindet keinen Quellcode vom Host ein und verwendet eigene
+benannte Volumes für Content und Runtime-Daten.
 
 ### Wichtige Variablen
 

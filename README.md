@@ -28,19 +28,17 @@ Dateien unter `content/` erhalten.
 
 ## Voraussetzungen
 
-- Node.js `24.x`
-- npm
-- Chromium für Playwright-Rendering
-- optional `ffmpeg` für Reels
+- Docker mit Docker Compose v2
 - optional API-Zugänge für OpenAI, Flux/BFL und die gewünschten Plattformen
 
 ## Installation
 
 ```bash
-npm install
-npx playwright install chromium
 cp config/.env.example config/.env
 ```
+
+Die Anwendung läuft über den Docker-Wrapper `./influence`. Das Image enthält
+Node 24, Chromium, ffmpeg und die npm-Abhängigkeiten.
 
 Anschließend `config/.env` ausfüllen. Die vollständige, kommentierte
 Variablenliste steht in [config/.env.example](config/.env.example). Geheimnisse
@@ -53,15 +51,16 @@ und anschließend mit Wochen und Beiträgen befüllt werden:
 
 ```bash
 cp examples/content-plan.empty.json content/content-plan.json
-influence calendar validate content/content-plan.json
+./influence calendar validate content/content-plan.json
 ```
 
 ## Schnellstart
 
 ```bash
-influence calendar validate content/content-plan.json
-influence content scaffold --post-id post-0001
-influence review serve --host 127.0.0.1 --port 3040
+./influence up -d
+./influence calendar validate content/content-plan.json
+./influence content scaffold --post-id post-0001
+./influence review serve --port 3040
 ```
 
 Die Oberfläche ist danach unter `http://127.0.0.1:3040/` erreichbar.
@@ -119,11 +118,14 @@ Erfolgsseite noch in Logs ausgegeben.
 ## Entwicklung
 
 ```bash
-npm run typecheck
-npm test
-npm run lint
-npm run review:frontend:build
+./influence typecheck
+./influence test
+./influence lint
 ```
+
+`content/` und der Token-Speicher bleiben auf dem Host persistent. `./influence
+prod ...` verwendet eine getrennte Produktions-Compose-Datei ohne
+Quellcode-Bind-Mounts.
 
 ## Releases
 

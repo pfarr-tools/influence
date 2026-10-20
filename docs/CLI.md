@@ -9,21 +9,18 @@ Die CLI ist der technische Arbeitszugang zu Influence. Sie deckt Validierung, Ge
 Aufgerufen wird sie im Projekt üblicherweise so:
 
 ```bash
-influence <kommando>
+./influence <kommando>
 ```
+
+Der Wrapper führt jeden CLI-Aufruf im Container aus. `./influence up -d`,
+`./influence down`, `./influence shell` sowie `./influence test` und
+`./influence typecheck` steuern die Runtime und Werkzeuge.
 
 ## Voraussetzungen
 
-- installierte Projektabhängigkeiten
+- Docker mit Docker Compose v2
 - korrekt konfigurierte `config/.env` (Vorlage: `config/.env.example`)
-- für Rendering: installierter Playwright-Chromium
-- für Reel-Video-Rendering: optional `ffmpeg`
-
-Playwright-Chromium installierst du einmalig so:
-
-```bash
-npx playwright install chromium
-```
+- Chromium und `ffmpeg` werden vom Image bereitgestellt.
 
 Für öffentliche Share-Links und automatische Kanalplanung sind diese
 `config/.env`-Werte relevant:
@@ -67,7 +64,7 @@ LINKEDIN_ACCESS_TOKEN=...
 ### Kalender validieren
 
 ```bash
-influence calendar validate content/content-plan.json
+./influence calendar validate content/content-plan.json
 ```
 
 ### Content-Plan validieren
@@ -154,8 +151,8 @@ npm run prayer:generate -- --kind morning
 Für Cron (aus dem Projektverzeichnis, mit der gewünschten `.env`-Konfiguration):
 
 ```cron
-0 16 * * * cd /path/to/influence && ./node_modules/.bin/influence prayer generate --kind morning >> /var/log/influence-prayers.log 2>&1
-0 11 * * * cd /path/to/influence && ./node_modules/.bin/influence prayer generate --kind evening >> /var/log/influence-prayers.log 2>&1
+0 16 * * * cd /path/to/influence && ./influence prayer generate --kind morning >> /var/log/influence-prayers.log 2>&1
+0 11 * * * cd /path/to/influence && ./influence prayer generate --kind evening >> /var/log/influence-prayers.log 2>&1
 ```
 
 Mit `--date YYYY-MM-DD` lässt sich ein Lauf gezielt wiederholen; `--force` ist

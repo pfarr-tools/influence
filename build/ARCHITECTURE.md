@@ -1,5 +1,17 @@
 # Architektur
 
+## Runtime und Persistenz
+
+Die unterstützte Runtime ist das Docker-Image aus `Dockerfile`, gesteuert über
+den Host-Wrapper `./influence`. `compose.yaml` bindet den Quellbaum für die
+Entwicklung nach `/app` ein und hält npm-Abhängigkeiten in einem benannten
+Volume. `content/` und der Token-Speicher bleiben persistent außerhalb der
+Image-Layer.
+
+Produktionsbefehle werden ausdrücklich mit `./influence prod ...` ausgeführt.
+Die Produktions-Compose-Datei bindet keinen Quellcode ein und verwendet eigene
+benannte Volumes für Content und Runtime-Daten.
+
 ## Datenfluss
 
 ```text
