@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
@@ -29,7 +29,17 @@ describe("Docker runtime image", () => {
 });
 
 describe("Compose runtime", () => {
-  it("has not been added before the Compose task", () => {
-    expect(existsSync(`${root}/compose.yaml`)).toBe(false);
-  });
+	it("binds the source, persists dependencies and uses container paths", () => {
+		const compose = readFileSync(`${root}/compose.yaml`, "utf8");
+
+		expect(compose).toMatch(/services:/);
+		expect(compose).toMatch(/app:/);
+		expect(compose).toMatch(/- \.:\/app/);
+		expect(compose).toMatch(/- [^\n]*node_modules:\/app\/node_modules/);
+		expect(compose).toMatch(/CONTENT_CALENDAR_PATH:/);
+		expect(compose).toMatch(/OUTPUT_DIR:/);
+		expect(compose).toMatch(/TOKEN_STORE_PATH:/);
+		expect(compose).toMatch(/INFLUENCE_UID/);
+		expect(compose).toMatch(/INFLUENCE_GID/);
+	});
 });
