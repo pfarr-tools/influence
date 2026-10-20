@@ -14,6 +14,7 @@ import {
   assertWritableContentTarget,
   getContentOutputPaths,
   pathExists,
+  readContentPackage,
   writeJsonFile
 } from "./content-storage.js"
 import type { ContentModelClient, TokenUsage } from "../openai/openai-client.js"
@@ -101,7 +102,7 @@ export async function generateContentForWeek(
     if (
       !options.dryRun &&
       !options.force &&
-      (await pathExists(outputPaths.contentPath))
+      (await hasGeneratedContent(outputPaths))
     ) {
       results.push({
         contentPath: outputPaths.contentPath,
@@ -116,6 +117,25 @@ export async function generateContentForWeek(
   }
 
   return results
+}
+
+async function hasGeneratedContent(outputPaths: { contentPath: string; rawResponsePath: string }): Promise<boolean> {
+  if (!(await pathExists(outputPaths.contentPath))) {
+    return false
+  }
+
+  try {
+    const content = await readContentPackage(outputPaths.contentPath)
+    const isScaffoldOnly =
+      content.status === "in Arbeit" &&
+      content.metadata.model === "" &&
+      content.metadata.generated_at === "" &&
+      !(await pathExists(outputPaths.rawResponsePath))
+
+    return !isScaffoldOnly
+  } catch {
+    return true
+  }
 }
 
 /**
@@ -170,7 +190,7 @@ async function generateContentForCalendarPost(
   const scaffold = options.scaffold ?? createContentScaffold(post, { liturgicalContext })
   const outputPaths = getContentOutputPaths(options.outputRoot, post)
 
-  if (!options.dryRun) {
+  if (!options.dryRun && (options.force || await hasGeneratedContent(outputPaths))) {
     await assertWritableContentTarget(outputPaths.contentPath, options.force)
   }
 

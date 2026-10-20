@@ -11,7 +11,7 @@ import {
   generateContentForMonth,
   generateContentForPost
 } from "../src/services/content/content-generator.js"
-import { createContentScaffold } from "../src/services/content/content-scaffolder.js"
+import { createContentScaffold, scaffoldPostById } from "../src/services/content/content-scaffolder.js"
 import { readJsonFile } from "../src/services/content/content-storage.js"
 import type {
   LiturgicalContext,
@@ -372,6 +372,39 @@ describe("content generator", () => {
     expect(generatedCalls).toBe(5)
   })
 
+  it("does not skip a scaffold-only content package during week generation", async () => {
+    const calendar = await loadCalendarFromFile(fixturePath)
+    const firstPost = calendar.wochen[0]!.beitraege[0]!
+    await scaffoldPostById(calendar, firstPost.id, tempDir)
+
+    let generatedCalls = 0
+    const results = await generateContentForWeek(
+      calendar,
+      "2026-08-10",
+      {
+        dryRun: false,
+        force: false,
+        language: "de",
+        model: "gpt-5.6",
+        outputRoot: tempDir
+      },
+      {
+        modelClient: createMockModelClient({
+          model: "gpt-5.6",
+          onCall: () => {
+            generatedCalls++
+          },
+          parsedContent: createContentScaffold(firstPost),
+          rawResponse: { id: "resp_scaffold_week_1" },
+          webSearchPerformed: true
+        })
+      }
+    )
+
+    expect(results.find((result) => result.postId === firstPost.id)?.skippedReason).toBeUndefined()
+    expect(generatedCalls).toBeGreaterThan(0)
+  })
+
   it("creates an incomplete fallback package for predigt preview posts", async () => {
     const calendar = await loadCalendarFromFile(fixturePath)
 
@@ -430,6 +463,7 @@ function createMockModelClient(options: {
   onCall?: (request: ContentModelRequest) => void
   parsedContent: unknown
   rawResponse: unknown
+  webSearchPerformed?: boolean
 }): ContentModelClient {
   return {
     async generateContent(
@@ -441,6 +475,7 @@ function createMockModelClient(options: {
         model: options.model,
         parsedContent: options.parsedContent,
         rawResponse: options.rawResponse,
+        webSearchPerformed: options.webSearchPerformed,
         usage: {
           inputTokens: 12,
           outputTokens: 34,
