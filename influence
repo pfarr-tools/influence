@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+cd "$ROOT"
+
+export INFLUENCE_UID="${INFLUENCE_UID:-$(id -u)}"
+export INFLUENCE_GID="${INFLUENCE_GID:-$(id -g)}"
+DOCKER_BIN="${DOCKER_BIN:-docker}"
+
+run_compose() {
+	command "$DOCKER_BIN" compose -f compose.yaml "$@"
+}
+
+usage() {
+	cat <<'EOF'
+Usage: ./influence <command> [arguments]
+
+Container lifecycle:
+  up, down, restart, status, ps, logs, build
+  shell                         Open a shell in the app container
+  exec <command...>             Execute a command in the app container
+  test | typecheck | lint       Run project checks in the container
+  npm <arguments...>            Run npm in the container
+  compose <arguments...>        Pass arguments directly to Docker Compose
+
+Any other arguments are passed to bin/influence.js in the container.
+EOF
+}
+
+if [[ $# -eq 0 || "$1" == "help" ]]; then
+	usage
+	exit 0
+fi
+
+command_name="$1"
+shift
+
+case "$command_name" in
+	up|down|restart|status|ps|logs|build)
+		run_compose "$command_name" "$@"
+		;;
+	shell)
+		run_compose run --rm --no-deps app bash "$@"
+		;;
+	exec)
+		if [[ $# -eq 0 ]]; then
+			echo "Usage: ./influence exec <command...>" >&2
+			exit 2
+		fi
+		run_compose exec app "$@"
+		;;
+	test|typecheck|lint)
+		run_compose run --rm --no-deps app npm run "$command_name" "$@"
+		;;
+	npm)
+		run_compose run --rm --no-deps app npm "$@"
+		;;
+	compose)
+		command "$DOCKER_BIN" compose "$@"
+		;;
+	*)
+		cli_args=("$command_name" "$@")
+		if [[ "${cli_args[*]}" == "review serve"* ]]; then
+			has_host=false
+			for arg in "${cli_args[@]}"; do
+				if [[ "$arg" == "--host" || "$arg" == --host=* ]]; then
+					has_host=true
+				fi
+			done
+			if [[ "$has_host" == false ]]; then
+				cli_args+=(--host 0.0.0.0)
+			fi
+			run_compose run --rm --no-deps --service-ports app node bin/influence.js "${cli_args[@]}"
+		fi
+		run_compose run --rm --no-deps app node bin/influence.js "${cli_args[@]}"
+		;;
+esac
