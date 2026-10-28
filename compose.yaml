@@ -17,6 +17,11 @@ services:
       OUTPUT_DIR: /app/content
       TOKEN_STORE_PATH: /var/lib/influence/tokens.json
       TZ: ${TZ:-Europe/Berlin}
+      GIT_CONFIG_COUNT: "2"
+      GIT_CONFIG_KEY_0: user.name
+      GIT_CONFIG_VALUE_0: ${GIT_USER_NAME:-Influence}
+      GIT_CONFIG_KEY_1: user.email
+      GIT_CONFIG_VALUE_1: ${GIT_USER_EMAIL:-influence@example.invalid}
     volumes:
       - .:/app
       - influence_node_modules:/app/node_modules
